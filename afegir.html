@@ -32,6 +32,7 @@
   <a class="btn torna" id="torna" href="./" hidden>‹ Torna a Què · Qui · Quan</a>
   <p class="peu">Enviat amb <b><span class="w-que">Què</span> · <span class="w-qui">Qui</span> · <span class="w-quan">Quan</span></b></p>
 
+  <script src="config.js"></script>
   <script src="calendari.js"></script>
   <script>
     'use strict';
@@ -59,11 +60,13 @@
           ${e.n ? `<li class="notes"><span>📝</span><div>${esc(e.n).replace(/\n/g, '<br>')}</div></li>` : ''}
         </ul>
         <div class="accions">
-          <button class="btn primary" id="bIcs">📆 Afegeix al calendari (iPhone, Mac…)</button>
+          ${Cal.urlIcs(e)
+            ? `<a class="btn primary" href="${esc(Cal.urlIcs(e))}" target="_blank" rel="noopener">📆 Afegeix al calendari (iPhone, Mac…)</a>`
+            : '<button class="btn primary" id="bIcs">📆 Afegeix al calendari (iPhone, Mac…)</button>'}
           <a class="btn" href="${esc(Cal.google(e))}" target="_blank" rel="noopener">Google Calendar</a>
           <a class="btn" href="${esc(Cal.outlook(e))}" target="_blank" rel="noopener">Outlook</a>
         </div>`;
-      document.getElementById('bIcs').addEventListener('click', () => Cal.baixaIcs(e));
+      document.getElementById('bIcs')?.addEventListener('click', () => Cal.baixaIcs(e));
     }
   </script>
 </body>

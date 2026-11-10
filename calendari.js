@@ -112,5 +112,18 @@ const Cal = (() => {
     setTimeout(() => URL.revokeObjectURL(url), 5000);
   }
 
-  return { codifica, descodifica, ics, google, outlook, mapa, baixaIcs, inici, fi, totElDia };
+  // Enllaç al fitxer .ics servit per la funció «ics» de Supabase (a l'iPhone és l'única manera que
+  // funciona des de l'app instal·lada: s'obre a Safari i surt «Afegeix al calendari»)
+  function urlIcs(e) {
+    const base = (window.QQQ_CONFIG || {}).supabaseUrl;
+    if (!base) return '';
+    const tot = totElDia(e);
+    const p = {
+      u: e.u, v: e.v, t: titol(e), l: e.l, n: descripcio(e) || undefined,
+      s: tot ? local(inici(e)) : utc(inici(e)), f: tot ? local(fi(e)) : utc(fi(e)),
+    };
+    return base.replace(/\/$/, '') + '/functions/v1/ics?p=' + codifica(p);
+  }
+
+  return { codifica, descodifica, ics, google, outlook, mapa, baixaIcs, urlIcs, inici, fi, totElDia };
 })();

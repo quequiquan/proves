@@ -623,7 +623,9 @@ function obreAlCalendari(p) {
     <div class="dlg-cos">
       <p class="help">On vols afegir «${esc(titolPla(p))}»? Si és un pla amb hora, t'avisarà una hora abans.</p>
       <div class="accions-cal">
-        <button type="button" class="btn primary" id="cIcs">📱 Calendari de l'iPhone / Mac</button>
+        ${Cal.urlIcs(e)
+          ? `<a class="btn primary" href="${esc(Cal.urlIcs(e))}" target="_blank" rel="noopener">📱 Calendari de l'iPhone / Mac</a>`
+          : '<button type="button" class="btn primary" id="cIcs">📱 Calendari de l\'iPhone / Mac</button>'}
         <a class="btn" href="${esc(Cal.google(e))}" target="_blank" rel="noopener">Google Calendar</a>
         <a class="btn" href="${esc(Cal.outlook(e))}" target="_blank" rel="noopener">Outlook</a>
       </div>
