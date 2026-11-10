@@ -1,0 +1,8 @@
+<svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Què (corall) · Qui (groc) · Quan (verd): tres cercles que es troben -->
+  <rect width="1024" height="1024" fill="#221C18"/>
+  <circle cx="512" cy="392" r="200" fill="#FF5A47" opacity=".92"/>
+  <circle cx="392" cy="600" r="200" fill="#FFC23D" opacity=".88"/>
+  <circle cx="632" cy="600" r="200" fill="#1FB39C" opacity=".88"/>
+  <circle cx="512" cy="528" r="34" fill="#FBF6EE"/>
+</svg>

@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ca">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Afegeix al calendari · Què · Qui · Quan</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#221C18">
+  <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body { display: flex; flex-direction: column; align-items: center; padding: 24px 16px calc(24px + var(--safe-b)); }
+    .targeta { width: min(460px, 100%); background: var(--surface); border: 1px solid var(--border); border-radius: 22px; box-shadow: var(--shadow); overflow: hidden; }
+    .franja { height: 8px; background: linear-gradient(90deg, var(--que) 0 33.3%, var(--qui) 33.3% 66.6%, var(--quan) 66.6%); }
+    .dins { padding: 22px 20px 20px; }
+    .de { color: var(--muted); font-size: 14px; margin: 0 0 6px; }
+    .gran-emoji { font-size: 46px; line-height: 1; }
+    h1 { font-family: var(--font-title); font-weight: 600; font-size: 26px; line-height: 1.2; margin: 8px 0 12px; }
+    .accions { display: grid; gap: 8px; margin-top: 16px; }
+    .accions .btn { min-height: 48px; font-size: 16px; }
+    .peu { margin-top: 18px; color: var(--muted); font-size: 13px; text-align: center; }
+    .peu b { font-family: var(--font-title); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="targeta"><div class="franja"></div><div class="dins" id="dins"></div></div>
+  <p class="peu">Enviat amb <b><span class="w-que">Què</span> · <span class="w-qui">Qui</span> · <span class="w-quan">Quan</span></b></p>
+
+  <script src="calendari.js"></script>
+  <script>
+    'use strict';
+    const MESOS = ['gener', 'febrer', 'març', 'abril', 'maig', 'juny', 'juliol', 'agost', 'setembre', 'octubre', 'novembre', 'desembre'];
+    const DIES = ['diumenge', 'dilluns', 'dimarts', 'dimecres', 'dijous', 'divendres', 'dissabte'];
+    const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const e = Cal.descodifica(location.hash.slice(1));
+    const dins = document.getElementById('dins');
+    if (!e) {
+      dins.innerHTML = '<div class="gran-emoji">🤔</div><h1>Aquest enllaç no és complet</h1><p class="help">Demana a qui te l\'ha enviat que te\'l torni a passar.</p>';
+    } else {
+      const d = Cal.inici(e);
+      const data = `${DIES[d.getDay()]} ${d.getDate()} de ${MESOS[d.getMonth()]} de ${d.getFullYear()}`.replace(/de ([ao])/, "d'$1");
+      const hora = Cal.totElDia(e) ? 'Tot el dia' : e.f ? `${e.h} – ${e.f}` : e.h;
+      document.title = `${e.t} · Afegeix al calendari`;
+      dins.innerHTML = `
+        ${e.o ? `<p class="de">${esc(e.o)} t'envia aquest pla</p>` : ''}
+        <div class="gran-emoji">${esc(e.e || '📅')}</div>
+        <h1>${esc(e.t)}</h1>
+        <ul class="det">
+          <li><span>📅</span>${esc(data.charAt(0).toUpperCase() + data.slice(1))}</li>
+          <li><span>🕘</span>${esc(hora)}</li>
+          ${e.l ? `<li><span>📍</span><a href="${esc(Cal.mapa(e.l))}" target="_blank" rel="noopener">${esc(e.l)}</a></li>` : ''}
+          ${e.n ? `<li class="notes"><span>📝</span><div>${esc(e.n).replace(/\n/g, '<br>')}</div></li>` : ''}
+        </ul>
+        <div class="accions">
+          <button class="btn primary" id="bIcs">📆 Afegeix al calendari (iPhone, Mac…)</button>
+          <a class="btn" href="${esc(Cal.google(e))}" target="_blank" rel="noopener">Google Calendar</a>
+          <a class="btn" href="${esc(Cal.outlook(e))}" target="_blank" rel="noopener">Outlook</a>
+        </div>`;
+      document.getElementById('bIcs').addEventListener('click', () => Cal.baixaIcs(e));
+    }
+  </script>
+</body>
+</html>
