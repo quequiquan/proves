@@ -21,12 +21,15 @@
     h1 { font-family: var(--font-title); font-weight: 600; font-size: 26px; line-height: 1.2; margin: 8px 0 12px; }
     .accions { display: grid; gap: 8px; margin-top: 16px; }
     .accions .btn { min-height: 48px; font-size: 16px; }
+    .torna { width: min(460px, 100%); margin-top: 14px; min-height: 48px; }
     .peu { margin-top: 18px; color: var(--muted); font-size: 13px; text-align: center; }
     .peu b { font-family: var(--font-title); font-weight: 600; }
   </style>
 </head>
 <body>
   <div class="targeta"><div class="franja"></div><div class="dins" id="dins"></div></div>
+  <!-- Si s'ha obert des de l'app instal·lada (on no hi ha botó d'enrere), es pot tornar a l'app -->
+  <a class="btn torna" id="torna" href="./" hidden>‹ Torna a Què · Qui · Quan</a>
   <p class="peu">Enviat amb <b><span class="w-que">Què</span> · <span class="w-qui">Qui</span> · <span class="w-quan">Quan</span></b></p>
 
   <script src="calendari.js"></script>
@@ -35,6 +38,7 @@
     const MESOS = ['gener', 'febrer', 'març', 'abril', 'maig', 'juny', 'juliol', 'agost', 'setembre', 'octubre', 'novembre', 'desembre'];
     const DIES = ['diumenge', 'dilluns', 'dimarts', 'dimecres', 'dijous', 'divendres', 'dissabte'];
     const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    if (navigator.standalone || matchMedia('(display-mode: standalone)').matches) document.getElementById('torna').hidden = false;
     const e = Cal.descodifica(location.hash.slice(1));
     const dins = document.getElementById('dins');
     if (!e) {

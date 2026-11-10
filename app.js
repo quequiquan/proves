@@ -593,7 +593,7 @@ function obreDetall(p) {
     if (!b) return;
     if (b.dataset.respon) { respon(p, b.dataset.respon); return; }
     if (b.id === 'dComparteix') obreComparteix(p);
-    if (b.id === 'dCalendari') window.open(enllacPla(p, false), '_blank', 'noopener');
+    if (b.id === 'dCalendari') obreAlCalendari(p);
     if (b.id === 'dEdita') obreForm(p);
     if (b.id === 'dDuplica') {
       const { id: _id, versio, modificat, compartit, ...resta } = p;
@@ -604,15 +604,37 @@ function obreDetall(p) {
 }
 
 /* ---------- Compartir ---------- */
-function enllacPla(p, perAltres) {
-  const e = {
+function dadesCal(p, perAltres) {
+  return {
     u: p.rebut ? p.rebut.pla_id : p.id, v: p.versio || 1, t: titolPla(p), e: tipDe(p).emoji, d: p.data,
     h: p.totElDia ? undefined : p.hora || undefined, f: p.totElDia ? undefined : p.horaFi || undefined,
     a: p.totElDia ? 1 : undefined, l: p.lloc || undefined,
     n: perAltres ? undefined : p.notes || undefined,
     o: perAltres ? nomPropi() : undefined,
   };
-  return new URL('afegir.html', location.href).href.split('#')[0] + '#' + Cal.codifica(e);
+}
+function enllacPla(p, perAltres) {
+  return new URL('afegir.html', location.href).href.split('#')[0] + '#' + Cal.codifica(dadesCal(p, perAltres));
+}
+// «Al meu calendari»: s'escull el calendari aquí mateix, sense sortir de l'app
+function obreAlCalendari(p) {
+  const e = dadesCal(p, false);
+  obreDlg(`<header class="dlg-cap"><h2>Al meu calendari</h2><button type="button" class="x" data-tanca aria-label="Tanca">×</button></header>
+    <div class="dlg-cos">
+      <p class="help">On vols afegir «${esc(titolPla(p))}»? Si és un pla amb hora, t'avisarà una hora abans.</p>
+      <div class="accions-cal">
+        <button type="button" class="btn primary" id="cIcs">📱 Calendari de l'iPhone / Mac</button>
+        <a class="btn" href="${esc(Cal.google(e))}" target="_blank" rel="noopener">Google Calendar</a>
+        <a class="btn" href="${esc(Cal.outlook(e))}" target="_blank" rel="noopener">Outlook</a>
+      </div>
+    </div>
+    <footer class="dlg-peu"><button type="button" class="btn" id="torna">‹ Torna al pla</button></footer>`, 'form');
+  dlgForm.onclick = (ev) => {
+    const b = ev.target.closest('button');
+    if (!b) return;
+    if (b.id === 'cIcs') Cal.baixaIcs(e);
+    if (b.id === 'torna') obreDetall(p);
+  };
 }
 // Finestra «Comparteix»: a l'app d'altres persones (pel correu) o amb un enllaç (WhatsApp…)
 function obreComparteix(p) {
