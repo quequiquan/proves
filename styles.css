@@ -293,8 +293,14 @@ fieldset > input { margin-top: 8px; }
   .marques i { font-size: 12px; }
   .fila { grid-template-columns: 1fr 1fr; }
   .fila label:first-child { grid-column: 1 / -1; }
-  dialog { width: 100vw; max-width: 100vw; max-height: 94vh; margin: auto 0 0; border-radius: 22px 22px 0 0; }
-  #dlgForm { max-height: 94vh; }
+  /* Al mòbil, les finestres ocupen tota la pantalla (a l'iPhone, amb el teclat obert, una finestra
+     enganxada a baix pot quedar fora de la pantalla i semblar que l'app s'ha penjat) */
+  dialog {
+    position: fixed; inset: 0; width: 100%; max-width: 100%; height: 100%; max-height: 100%;
+    height: 100dvh; max-height: 100dvh; margin: 0; border-radius: 0; box-shadow: none;
+  }
+  #dlgForm { height: 100%; max-height: 100%; }
+  .dlg-cap, .det-cap { padding-top: calc(14px + var(--safe-t)); }
 }
 @media (max-width: 380px) {
   .brand-nom b { font-size: 17px; }
