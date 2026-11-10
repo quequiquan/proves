@@ -151,12 +151,19 @@ function falten(ds) {
 
 /* ---------- Toast ---------- */
 let toastT = null;
-function toast(msg) {
+function toast(msg, ms = 3200) {
   const t = $('#toast');
+  // Si hi ha una finestra oberta, l'avís hi va a dins (si no, quedaria amagat al darrere)
+  const dl = $('#dlg');
+  const pare = dl && dl.open ? dl : document.body;
+  if (t.parentNode !== pare) pare.appendChild(t);
   t.textContent = msg; t.hidden = false;
   clearTimeout(toastT);
-  toastT = setTimeout(() => { t.hidden = true; }, 3200);
+  toastT = setTimeout(() => { t.hidden = true; }, ms);
 }
+// Qualsevol error inesperat es mostra a la pantalla (així es pot saber què ha passat al mòbil)
+addEventListener('error', (e) => { try { toast('⚠️ Error: ' + (e.message || 'desconegut'), 8000); } catch (x) { /* res */ } });
+addEventListener('unhandledrejection', (e) => { try { toast('⚠️ Error: ' + (e.reason?.message || e.reason || 'desconegut'), 8000); } catch (x) { /* res */ } });
 
 /* ---------- Targeta d'un pla ---------- */
 function targeta(p, ambData = false) {
