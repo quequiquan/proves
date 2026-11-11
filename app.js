@@ -214,6 +214,57 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && e.target.closest('.emoji-altre')) { e.preventDefault(); posaEmoji(e.target.value.trim()); }
 });
 
+/* ---------- Cercar llocs (camp «On») ---------- */
+// Fa servir Photon (komoot), un cercador gratuït basat en OpenStreetMap. Només s'hi envia el text que s'escriu.
+async function cercaLlocs(q) {
+  const u = 'https://photon.komoot.io/api/?' + new URLSearchParams({ q, limit: '6', lat: '41.9', lon: '2.3', location_bias_scale: '0.3' });
+  const r = await fetch(u);
+  if (!r.ok) return [];
+  const j = await r.json();
+  const vist = new Set();
+  return (j.features || []).map(({ properties: p }) => {
+    const carrer = [p.street, p.housenumber].filter(Boolean).join(', ');
+    return [p.name, carrer, p.city || p.town || p.village || p.locality || p.county]
+      .filter(Boolean).filter((x, i, a) => a.indexOf(x) === i).join(', ');
+  }).filter((x) => x && !vist.has(x) && vist.add(x));
+}
+
+/* ---------- Contactes del mòbil ---------- */
+// Selector de contactes del navegador (Android; a l'iPhone, només si s'activa a Safari)
+const potContactes = () => 'contacts' in navigator && typeof navigator.contacts.select === 'function';
+async function triaContactes() {
+  const res = await navigator.contacts.select(['name', 'email'], { multiple: true });
+  return res.map((c) => ({ nom: String((c.name || [])[0] || '').trim(), email: String((c.email || [])[0] || '').trim().toLowerCase() }))
+    .map((c) => ({ nom: c.nom || c.email.split('@')[0], email: emailValid(c.email) ? c.email : '' }))
+    .filter((c) => c.nom);
+}
+// Targetes de contacte (.vcf), com les que es comparteixen des de l'app Contactes de l'iPhone
+function llegeixVcf(text) {
+  const net = String(text).replace(/\r?\n[ \t]/g, '');
+  return net.split(/BEGIN:VCARD/i).slice(1).map((bloc) => {
+    const camp = (re) => { const m = bloc.match(re); return m ? m[1].trim() : ''; };
+    let nom = camp(/^FN[^:\n]*:(.*)$/mi);
+    if (!nom) { const n = camp(/^N[^:\n]*:(.*)$/mi).split(';'); nom = [n[1], n[0]].filter(Boolean).join(' '); }
+    const email = camp(/^(?:item\d+\.)?EMAIL[^:\n]*:(.*)$/mi).toLowerCase();
+    return { nom: nom.replace(/\\([,;])/g, '$1'), email: emailValid(email) ? email : '' };
+  }).filter((c) => c.nom || c.email).map((c) => ({ nom: c.nom || c.email.split('@')[0], email: c.email }));
+}
+// Converteix contactes en fitxes de persona (si ja hi són, només hi afegeix el correu)
+function incorporaContactes(llista, existents, onAfegir) {
+  return llista.map((c) => {
+    let pe = existents.find((x) => (c.email && normal(x.email) === c.email) || normal(x.nom) === normal(c.nom));
+    if (!pe) { pe = { id: 'pe-' + uid(), nom: c.nom }; onAfegir.push(pe); existents.push(pe); }
+    if (c.email && !pe.email) pe.email = c.email;
+    return pe;
+  });
+}
+const AJUDA_CONTACTES = `<details class="ajuda"><summary>Com puc afegir gent dels contactes de l'iPhone?</summary>
+    <p><b>Opció 1 (sempre funciona):</b> a l'app <b>Contactes</b>, obre un contacte → <b>Comparteix el contacte</b> → <b>Desa a Arxius</b>.
+      Després, aquí, prem <b>Importa contactes</b> i tria el fitxer. (També pots seleccionar una llista sencera de contactes i compartir-la de cop.)</p>
+    <p><b>Opció 2:</b> a <b>Configuració → Apps → Safari → Avançat → Feature Flags</b>, activa <b>Contact Picker API</b>.
+      Tanca i torna a obrir l'app: apareixerà el botó <b>Tria dels contactes</b>.</p>
+  </details>`;
+
 /* ---------- Toast ---------- */
 let toastT = null;
 function toast(msg, ms = 3200) {
@@ -377,6 +428,11 @@ function vistaGent() {
       <input name="nom" placeholder="Nom d'una persona" autocomplete="off">
       <button class="btn primary">Afegeix</button>
     </form>
+    <div class="grp">
+      ${potContactes() ? '<button class="btn" id="gContactes">📇 Tria dels contactes</button>' : ''}
+      <label class="btn">📥 Importa contactes<input type="file" id="gVcf" accept=".vcf,text/vcard,text/x-vcard" multiple hidden></label>
+    </div>
+    ${potContactes() ? '' : AJUDA_CONTACTES}
     ${llista.length ? `<div class="gent">${llista.map((pe) => {
       const seus = state.plans.filter((p) => (p.qui || []).includes(pe.id)).sort(perOrdre);
       const prox = seus.find((p) => p.data >= avui());
@@ -643,6 +699,25 @@ $('#main').addEventListener('submit', async (e) => {
   }
 });
 
+// Gent: afegir persones des dels contactes del mòbil o d'un fitxer .vcf
+function contactesAfegits(n, total) {
+  save(); render();
+  toast(total ? (n ? `${n} ${n === 1 ? 'persona afegida' : 'persones afegides'}` : 'Ja les tenies totes (he afegit els correus que faltaven)') : 'No hi he trobat cap contacte');
+}
+$('#main').addEventListener('click', (e) => {
+  if (!e.target.closest('#gContactes')) return;
+  triaContactes().then((cs) => { const nous = []; incorporaContactes(cs, [...state.persones], nous); state.persones.push(...nous); contactesAfegits(nous.length, cs.length); }).catch(() => {});
+});
+$('#main').addEventListener('change', async (e) => {
+  if (e.target.id !== 'gVcf' || !e.target.files.length) return;
+  const cs = [];
+  for (const f of e.target.files) cs.push(...llegeixVcf(await f.text()));
+  const nous = [];
+  incorporaContactes(cs, [...state.persones], nous);
+  state.persones.push(...nous);
+  contactesAfegits(nous.length, cs.length);
+});
+
 /* ---------- Diàleg ---------- */
 const dlg = $('#dlg'), dlgForm = $('#dlgForm');
 function tancaDlg() { if (dlg.open) dlg.close(); }
@@ -875,7 +950,7 @@ function obreForm(p, base = {}) {
       </fieldset>
       <fieldset><legend><span class="w-qui">Qui</span></legend>
         <div class="xips" id="quiXips">${xips()}</div>
-        <div class="afegeix"><input id="quiNou" placeholder="Afegeix una persona" autocomplete="off" enterkeyhint="done"><button type="button" class="btn" id="quiAfegeix">Afegeix</button></div>
+        <div class="afegeix"><input id="quiNou" placeholder="Afegeix una persona" autocomplete="off" enterkeyhint="done"><button type="button" class="btn" id="quiAfegeix">Afegeix</button>${potContactes() ? '<button type="button" class="btn" id="quiContactes" aria-label="Tria dels contactes"><span class="ms">contacts</span></button>' : ''}</div>
       </fieldset>
       <fieldset><legend><span class="w-quan">Quan</span></legend>
         <div class="fila">
@@ -886,7 +961,10 @@ function obreForm(p, base = {}) {
         <label class="check"><input type="checkbox" name="totElDia" ${d.totElDia ? 'checked' : ''}> Tot el dia</label>
       </fieldset>
       <fieldset><legend>On</legend>
-        <input name="lloc" value="${esc(d.lloc || '')}" placeholder="Restaurant, sala, ciutat…" autocomplete="off">
+        <div class="lloc-cerca">
+          <input name="lloc" value="${esc(d.lloc || '')}" placeholder="Cerca un lloc o escriu-lo" autocomplete="off" enterkeyhint="done">
+          <div class="sugg" id="llocSugg" hidden></div>
+        </div>
       </fieldset>
       <fieldset><legend>Estat</legend>
         <div class="seg">${ESTATS.map(([v, n]) => `<label><input type="radio" name="estat" value="${v}" ${d.estat === v ? 'checked' : ''}><span>${n}</span></label>`).join('')}</div>
@@ -928,8 +1006,31 @@ function obreForm(p, base = {}) {
     toast(ja ? `«${t.nom}» ja existia: l'he triat` : `Tipus «${nom}» creat`);
   };
   $('#ntNom').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); creaTipus(); } });
+  // Suggeriments d'adreces mentre s'escriu al camp «On»
+  const llocInp = dlgForm.elements.lloc, sugg = $('#llocSugg');
+  let tLloc = null;
+  llocInp.addEventListener('input', () => {
+    clearTimeout(tLloc);
+    const q = llocInp.value.trim();
+    if (q.length < 3) { sugg.hidden = true; return; }
+    tLloc = setTimeout(() => cercaLlocs(q).then((ll) => {
+      if (llocInp.value.trim() !== q) return;
+      sugg.innerHTML = ll.map((x) => `<button type="button" data-lloc="${esc(x)}"><span class="ms">location_on</span><span>${esc(x)}</span></button>`).join('');
+      sugg.hidden = !ll.length;
+    }).catch(() => { sugg.hidden = true; }), 400);
+  });
+  llocInp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); sugg.hidden = true; llocInp.blur(); } });
 
   dlgForm.onclick = (e) => {
+    const ll = e.target.closest('[data-lloc]');
+    if (ll) { llocInp.value = ll.dataset.lloc; sugg.hidden = true; return; }
+    if (e.target.closest('#quiContactes')) {
+      triaContactes().then((cs) => {
+        incorporaContactes(cs, totes(), nousPers).forEach((pe) => { if (!d.qui.includes(pe.id)) d.qui.push(pe.id); });
+        $('#quiXips').innerHTML = xips();
+      }).catch(() => {});
+      return;
+    }
     if (e.target.closest('#tNou')) { $('#nouTipusFila').hidden = false; $('#ntNom').focus(); return; }
     if (e.target.id === 'ntCrea') { creaTipus(); return; }
     if (e.target.id === 'tGestiona') {

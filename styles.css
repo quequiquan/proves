@@ -403,3 +403,22 @@ fieldset > .help { margin: 10px 2px 6px; }
   width: 100%; min-height: 46px; border: 1px dashed var(--border); background: none; border-radius: 12px;
   color: var(--muted); cursor: pointer; font-weight: 700;
 }
+
+/* ---------- Cercador de llocs ---------- */
+.lloc-cerca { position: relative; }
+.sugg { margin-top: 6px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; box-shadow: var(--shadow); }
+.sugg button {
+  display: flex; gap: 10px; align-items: center; width: 100%; text-align: left; padding: 10px 12px;
+  border: 0; border-bottom: 1px solid var(--border); background: none; cursor: pointer; font-size: 14.5px;
+}
+.sugg button:last-child { border-bottom: 0; }
+.sugg button:hover, .sugg button:active { background: var(--surface-2); }
+.sugg .ms { color: var(--accent); font-size: 20px; flex: none; }
+
+/* ---------- Contactes ---------- */
+#quiContactes { padding: 0 12px; }
+#quiContactes .ms { font-size: 22px; }
+.ajuda { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 10px 14px; margin: 4px 0 14px; font-size: 14px; }
+.ajuda summary { cursor: pointer; font-weight: 700; }
+.ajuda p { margin: 8px 0 0; color: var(--muted); }
+.ajuda b { color: var(--text); }
