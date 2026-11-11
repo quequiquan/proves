@@ -1591,7 +1591,9 @@ function obreForm(p, base = {}) {
     }
     const boto = (pe) => `<button type="button" class="xip" data-qui="${esc(pe.id)}" aria-pressed="${d.qui.includes(pe.id)}">${esc(pe.nom)}</button>`;
     const exacte = q && totes().some((pe) => normal(pe.nom) === q);
-    return (triades.map(boto).join('') + altres.map(boto).join(''))
+    // A dalt, qui ve al pla (groc). A sota, separades, les dreceres per afegir-ne més amb un toc
+    const rotol = altres.length ? `<div class="qui-rotol">${q ? 'Toca per afegir:' : (triades.length ? 'Afegeix-ne amb un toc:' : 'Els habituals (toca per afegir):')}</div>` : '';
+    return (triades.map(boto).join('') + rotol + altres.map((pe) => boto(pe).replace('class="xip"', 'class="xip suggerit"')).join(''))
       + (q && !exacte ? `<button type="button" class="xip xip-nou" id="quiAfegeix">+ Afegeix «${esc($('#quiNou').value.trim())}»</button>` : '')
       || `<span class="help">${totes().length ? 'Escriu per cercar entre els teus contactes.' : 'Encara no hi ha ningú: escriu un nom per afegir-lo.'}</span>`;
   };

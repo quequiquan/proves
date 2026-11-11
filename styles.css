@@ -604,3 +604,7 @@ body.mode-inici .top .nou { display: none; }   /* a la portada ja hi ha el botó
 @media (max-width: 560px) {
   .fila, .fila.fila2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 }
+
+/* «Qui»: rètol que separa les persones del pla de les dreceres */
+.qui-rotol { grid-column: 1 / -1; flex-basis: 100%; margin: 8px 2px 0; font-size: 13px; font-weight: 700; color: var(--muted); }
+.xip.suggerit[aria-pressed="false"] { background: transparent; border-style: dashed; color: var(--muted); font-weight: 600; }
