@@ -522,3 +522,8 @@ fieldset > .help { margin: 10px 2px 6px; }
 #formExtern { margin-top: 10px; }
 #formExtern input[name="url"] { flex: 1 1 100%; }
 #extActualitza { margin-top: 8px; }
+
+/* Ubicació: enllaç i botons */
+fieldset input[name="llocUrl"] { margin-top: 8px; font-size: 14px; }
+.lloc-botons { margin: 8px 0 0; }
+.lloc-botons .btn { flex: 1; font-size: 14px; }

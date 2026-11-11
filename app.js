@@ -156,6 +156,8 @@ const ALTRES = { id: '', nom: 'Altres', emoji: '✨', icona: 'auto_awesome', col
 const tipusOrdenats = () => state.tipus.map((t, i) => [t, i])
   .sort((a, b) => ((a[0].ordre ?? a[1]) - (b[0].ordre ?? b[1]))).map((x) => x[0]);
 const grupDe = (t) => (GRUPS.some(([x]) => x === t.grup) ? t.grup : 'altres');
+const esUrl = (t) => /^https?:\/\/\S+$/i.test(String(t || '').trim());
+const mapaDe = (p) => p.llocUrl || (p.lloc ? Cal.mapa(p.lloc) : '');
 const tip = (id) => state.tipus.find((t) => t.id === id) || state.tipus.find((t) => t.id === 't-altres') || ALTRES;
 const pers = (id) => state.persones.find((p) => p.id === id);
 const nomCurt = (t) => t.nom.split(' / ')[0];
@@ -176,7 +178,7 @@ function planRebut(r) {
   const s = r.pla || {};
   return {
     id: 'r|' + r.de + '|' + r.pla_id, rebut: r, titol: s.titol || '', data: s.data, hora: s.hora || '', horaFi: s.horaFi || '',
-    totElDia: Boolean(s.totElDia), lloc: s.lloc || '', estat: s.estat || 'confirmat', versio: s.versio || 1, qui: [],
+    totElDia: Boolean(s.totElDia), lloc: s.lloc || '', llocUrl: s.llocUrl || '', estat: s.estat || 'confirmat', versio: s.versio || 1, qui: [],
     _t: { nom: s.tipusNom || 'Pla', emoji: s.emoji || '✨', icona: s.icona || '', color: s.color || '#868E96' }, _amb: s.amb || [],
   };
 }
@@ -263,7 +265,7 @@ function snapshotPla(p, em) {
   return {
     tipusNom: t.nom, emoji: t.emoji, icona: iconaDe(t), color: t.color, titol: p.titol || '', amb, data: p.data,
     hora: p.totElDia ? '' : p.hora || '', horaFi: p.totElDia ? '' : p.horaFi || '', totElDia: Boolean(p.totElDia),
-    lloc: p.lloc || '', estat: p.estat || 'confirmat', versio: p.versio || 1,
+    lloc: p.lloc || '', llocUrl: p.llocUrl || '', estat: p.estat || 'confirmat', versio: p.versio || 1,
   };
 }
 const nomDeCorreu = (em) => state.persones.find((x) => normal(x.email) === em)?.nom || em;
@@ -1170,7 +1172,7 @@ function obreExtern(p) {
       <ul class="det">
         <li><span>📅</span>${esc(cap(dataLlarga(p.data)))}</li>
         <li><span>🕘</span>${esc(horaText(p))}</li>
-        ${p.lloc ? `<li><span>📍</span>${esc(p.lloc)}</li>` : ''}
+        ${p.lloc ? `<li><span>📍</span><a href="${esc(mapaDe(p))}" target="_blank" rel="noopener">${esc(p.lloc)}</a></li>` : ''}
         ${p.notes ? `<li class="notes"><span>📝</span><div>${esc(p.notes).replace(/\n/g, '<br>')}</div></li>` : ''}
       </ul>
       <p class="help">Ve del calendari «${esc(p.extern.nom)}». Per canviar-lo, fes-ho a la seva app.</p>
@@ -1234,7 +1236,7 @@ function obreDetall(p) {
         ${r ? `<li><span>💌</span>De part de <b>&nbsp;${esc(r.de_nom || r.de_email)}</b></li>` : ''}
         <li><span>📅</span>${esc(etiquetaDia(p.data) === cap(dataLlarga(p.data)) ? etiquetaDia(p.data) : etiquetaDia(p.data) + ', ' + dataLlarga(p.data))}</li>
         <li><span>🕘</span>${esc(horaText(p))}</li>
-        ${p.lloc ? `<li><span>📍</span><a href="${esc(Cal.mapa(p.lloc))}" target="_blank" rel="noopener">${esc(p.lloc)}</a></li>` : ''}
+        ${p.lloc || p.llocUrl ? `<li><span>📍</span><a href="${esc(mapaDe(p))}" target="_blank" rel="noopener">${esc(p.lloc || 'Obre la ubicació al mapa')}</a></li>` : ''}
         ${n.length ? `<li><span>👥</span>${esc(llistaNoms(n))}</li>` : ''}
         ${p.estat !== 'confirmat' ? `<li><span>${p.estat === 'cancellat' ? '🚫' : '⏳'}</span>${esc((ESTATS.find((e) => e[0] === p.estat) || [, ''])[1])}</li>` : ''}
         ${p.notes ? `<li class="notes"><span>📝</span><div>${esc(p.notes).replace(/\n/g, '<br>')}</div></li>` : ''}
@@ -1272,16 +1274,17 @@ function textPla(p, pe) {
     titolPer(p, pe),
     `📅 ${quan}${p.totElDia || !p.hora ? '' : ' · ' + horaText(p)}`,
     p.lloc ? `📍 ${p.lloc}` : '',
+    p.llocUrl ? `🗺️ ${p.llocUrl}` : '',
     '',
     'Afegeix-ho al teu calendari:',
     enllacPla(p, true, pe),
-  ].filter((x, i) => x !== '' || i === 3).join('\n');
+  ].filter((x, i) => x !== '' || i === 4).join('\n');
 }
 function dadesCal(p, perAltres, pe) {
   return {
     u: p.rebut ? p.rebut.pla_id : p.id, v: p.versio || 1, t: perAltres ? titolPer(p, pe) : titolPla(p), e: tipDe(p).emoji, d: p.data,
     h: p.totElDia ? undefined : p.hora || undefined, f: p.totElDia ? undefined : p.horaFi || undefined,
-    a: p.totElDia ? 1 : undefined, l: p.lloc || undefined,
+    a: p.totElDia ? 1 : undefined, l: p.lloc || p.llocUrl || undefined,
     n: perAltres ? undefined : p.notes || undefined,
     o: perAltres ? nomPropi() : undefined,
   };
@@ -1475,6 +1478,11 @@ function obreForm(p, base = {}) {
           <input name="lloc" value="${esc(d.lloc || '')}" placeholder="Cerca un lloc o escriu-lo" autocomplete="off" enterkeyhint="done">
           <div class="sugg" id="llocSugg" hidden></div>
         </div>
+        <input name="llocUrl" type="url" value="${esc(d.llocUrl || '')}" placeholder="🔗 Enllaç de la ubicació (Google Maps, Apple Maps…)" autocomplete="off" autocapitalize="off" spellcheck="false" inputmode="url">
+        <div class="grp lloc-botons">
+          <button type="button" class="btn" id="llocMaps">🔎 Cerca a Maps</button>
+          <button type="button" class="btn" id="llocAra">📍 On soc ara</button>
+        </div>
       </fieldset>
       <fieldset><legend>Estat</legend>
         <div class="seg">${ESTATS.map(([v, n]) => `<label><input type="radio" name="estat" value="${v}" ${d.estat === v ? 'checked' : ''}><span>${n}</span></label>`).join('')}</div>
@@ -1523,6 +1531,7 @@ function obreForm(p, base = {}) {
   llocInp.addEventListener('input', () => {
     clearTimeout(tLloc);
     const q = llocInp.value.trim();
+    if (esUrl(q)) { dlgForm.elements.llocUrl.value = q; llocInp.value = ''; sugg.hidden = true; toast("Enllaç de la ubicació afegit. Si vols, escriu el nom del lloc."); return; }
     if (q.length < 3) { sugg.hidden = true; return; }
     tLloc = setTimeout(() => cercaLlocs(q).then((ll) => {
       if (llocInp.value.trim() !== q) return;
@@ -1535,6 +1544,29 @@ function obreForm(p, base = {}) {
   dlgForm.onclick = (e) => {
     const ll = e.target.closest('[data-lloc]');
     if (ll) { llocInp.value = ll.dataset.lloc; sugg.hidden = true; return; }
+    if (e.target.closest('#llocMaps')) {
+      const q = llocInp.value.trim();
+      window.open(q ? Cal.mapa(q) : 'https://www.google.com/maps', '_blank', 'noopener');
+      toast("Quan el trobis, prem «Comparteix» → «Copia l'enllaç» i enganxa'l a «Enllaç de la ubicació»", 7000);
+      return;
+    }
+    if (e.target.closest('#llocAra')) {
+      if (!navigator.geolocation) { toast('Aquest dispositiu no pot saber on ets'); return; }
+      toast('Buscant on ets…');
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+        const lat = pos.coords.latitude.toFixed(6), lon = pos.coords.longitude.toFixed(6);
+        dlgForm.elements.llocUrl.value = `https://maps.google.com/?q=${lat},${lon}`;
+        try {
+          const r = await fetch(`https://photon.komoot.io/reverse?lat=${lat}&lon=${lon}`);
+          const p = ((await r.json()).features || [])[0]?.properties || {};
+          const carrer = [p.street, p.housenumber].filter(Boolean).join(', ');
+          const nom = [p.name, carrer, p.city || p.town || p.village || p.locality].filter(Boolean).filter((x, i, a) => a.indexOf(x) === i).join(', ');
+          if (nom && !llocInp.value.trim()) llocInp.value = nom;
+        } catch (err) { /* sense adreça: ja hi ha l'enllaç */ }
+        toast('Ubicació afegida 📍');
+      }, () => toast("No s'ha pogut saber on ets. Cal donar permís d'ubicació a l'app."), { enableHighAccuracy: true, timeout: 15000 });
+      return;
+    }
     if (e.target.closest('#quiContactes')) {
       triaContactes().then((cs) => {
         incorporaContactes(cs, totes(), nousPers).forEach((pe) => { if (!d.qui.includes(pe.id)) d.qui.push(pe.id); });
@@ -1597,7 +1629,7 @@ function obreForm(p, base = {}) {
     const dades = {
       tipusId: d.tipusId, titol: f.titol.value.trim(), data: f.data.value,
       totElDia: f.totElDia.checked, hora: f.totElDia.checked ? '' : f.hora.value, horaFi: f.totElDia.checked ? '' : f.horaFi.value,
-      lloc: f.lloc.value.trim(), notes: f.notes.value.trim(), estat: f.estat.value || 'confirmat',
+      lloc: f.lloc.value.trim(), llocUrl: esUrl(f.llocUrl.value) ? f.llocUrl.value.trim() : '', notes: f.notes.value.trim(), estat: f.estat.value || 'confirmat',
       qui: d.qui.filter((id) => totes().some((x) => x.id === id)),
     };
     nousPers.filter((pe) => dades.qui.includes(pe.id)).forEach((pe) => state.persones.push(pe));
