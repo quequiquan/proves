@@ -32,7 +32,9 @@ const Cal = (() => {
   const amb = (s, h) => { const d = dia(s); const [a, b] = h.split(':').map(Number); d.setHours(a, b || 0, 0, 0); return d; };
   function inici(e) { return totElDia(e) ? dia(e.d) : amb(e.d, e.h); }
   function fi(e) {
-    if (totElDia(e)) { const d = dia(e.d); d.setDate(d.getDate() + 1); return d; }
+    const ultim = e.df && e.df > e.d ? e.df : e.d;   // plans de diversos dies: acaben l'últim dia
+    if (totElDia(e)) { const d = dia(ultim); d.setDate(d.getDate() + 1); return d; }
+    if (ultim !== e.d) return e.f ? amb(ultim, e.f) : new Date(amb(ultim, e.h).getTime() + 2 * 3600 * 1000);
     if (e.f) {
       const f = amb(e.d, e.f);
       if (f <= inici(e)) f.setDate(f.getDate() + 1);   // acaba passada la mitjanit
@@ -69,6 +71,7 @@ const Cal = (() => {
     else ll.push(`DTSTART:${utc(inici(e))}`, `DTEND:${utc(fi(e))}`);
     ll.push(`SUMMARY:${escIcs(titol(e))}`);
     if (e.l) ll.push(`LOCATION:${escIcs(e.l)}`);
+    if (regla(e)) ll.push(regla(e));
     const desc = descripcio(e);
     if (desc) ll.push(`DESCRIPTION:${escIcs(desc)}`);
     if (!totElDia(e)) ll.push('BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${escIcs(titol(e))}`, 'TRIGGER:-PT1H', 'END:VALARM');
@@ -77,10 +80,14 @@ const Cal = (() => {
   }
 
   /* ---------- Enllaços directes ---------- */
+  // Repetició: cada setmana, mes o any (i fins quan)
+  const FREQ = { setmana: 'WEEKLY', mes: 'MONTHLY', any: 'YEARLY' };
+  const regla = (e) => (FREQ[e.r] ? `RRULE:FREQ=${FREQ[e.r]}${/^\d{4}-\d{2}-\d{2}$/.test(e.ru || '') ? ';UNTIL=' + e.ru.replace(/-/g, '') + 'T235959Z' : ''}` : '');
   function google(e) {
     const dates = totElDia(e) ? `${local(inici(e))}/${local(fi(e))}` : `${utc(inici(e))}/${utc(fi(e))}`;
     const q = new URLSearchParams({ action: 'TEMPLATE', text: titol(e), dates });
     if (e.l) q.set('location', e.l);
+    if (regla(e)) q.set('recur', regla(e));
     const desc = descripcio(e);
     if (desc) q.set('details', desc);
     return 'https://calendar.google.com/calendar/render?' + q.toString();
@@ -119,7 +126,7 @@ const Cal = (() => {
     if (!base) return '';
     const tot = totElDia(e);
     const p = {
-      u: e.u, v: e.v, t: titol(e), l: e.l, n: descripcio(e) || undefined,
+      u: e.u, v: e.v, t: titol(e), l: e.l, n: descripcio(e) || undefined, r: e.r, ru: e.ru,
       s: tot ? local(inici(e)) : utc(inici(e)), f: tot ? local(fi(e)) : utc(fi(e)),
     };
     return base.replace(/\/$/, '') + '/functions/v1/ics?p=' + codifica(p);

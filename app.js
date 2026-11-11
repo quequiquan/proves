@@ -166,7 +166,34 @@ const emailValid = (s) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(s || '').trim
 const tipDe = (p) => p._t || tip(p.tipusId);
 const noms = (p) => p._amb || (p.qui || []).map(pers).filter(Boolean).map((x) => x.nom);
 const titolPla = (p) => (p.titol || '').trim() || nomCurt(tipDe(p)) + (noms(p).length ? ' amb ' + llistaNoms(noms(p)) : '');
-const horaText = (p) => (p.totElDia ? 'Tot el dia' : p.hora ? (p.horaFi ? `${p.hora} – ${p.horaFi}` : p.hora) : 'Sense hora');
+const REPETICIONS = [['', 'No es repeteix'], ['setmana', 'Cada setmana'], ['mes', 'Cada mes'], ['any', 'Cada any']];
+const nomRepeticio = (r) => (REPETICIONS.find((x) => x[0] === r) || ['', ''])[1];
+const diesPla = (p) => (p.dataFi && p.dataFi > p.data ? p.dataFi : p.data);   // últim dia del pla
+const cobreix = (p, ds) => p.data <= ds && ds <= diesPla(p);
+const horaSola = (p) => (p.totElDia ? 'Tot el dia' : p.hora ? (p.horaFi ? `${p.hora} – ${p.horaFi}` : p.hora) : 'Sense hora');
+const horaText = (p) => (p.dataFi && p.dataFi > p.data
+  ? `${dataCurta(p.data)} → ${dataCurta(p.dataFi)}${p.totElDia || !p.hora ? '' : ' · ' + horaSola(p)}`
+  : horaSola(p));
+// Data següent d'una repetició (el dia 31 passa a l'últim dia dels mesos que no en tenen)
+function sumaPeriode(ds, freq, n) {
+  const d = parseYmd(ds);
+  if (freq === 'setmana') return ymd(addDays(d, 7 * n));
+  const y = d.getFullYear() + (freq === 'any' ? n : 0), m = d.getMonth() + (freq === 'mes' ? n : 0);
+  return ymd(new Date(y, m, Math.min(d.getDate(), new Date(y, m + 1, 0).getDate())));
+}
+// Totes les vegades que surt un pla que es repeteix (fins a la data «fins»); la primera és el pla mateix
+function instancies(p, fins) {
+  if (!p.repeteix || !p.data) return [p];
+  const durada = p.dataFi && p.dataFi > p.data ? Math.round((parseYmd(p.dataFi) - parseYmd(p.data)) / 86400000) : 0;
+  const limit = p.repeteixFins && p.repeteixFins < fins ? p.repeteixFins : fins;
+  const out = [];
+  for (let n = 0; n < 800; n++) {
+    const ds = sumaPeriode(p.data, p.repeteix, n);
+    if (ds > limit) break;
+    out.push(n === 0 ? p : { ...p, id: p.id + '@' + ds, base: p, data: ds, dataFi: durada ? ymd(addDays(parseYmd(ds), durada)) : '' });
+  }
+  return out;
+}
 const clau = (p) => p.data + (p.totElDia ? ' 00:00' : ' ' + (p.hora || '99:99'));
 const perOrdre = (a, b) => (clau(a) < clau(b) ? -1 : clau(a) > clau(b) ? 1 : 0);
 const usos = (pid) => state.plans.filter((p) => (p.qui || []).includes(pid)).length;
@@ -178,7 +205,7 @@ function planRebut(r) {
   const s = r.pla || {};
   return {
     id: 'r|' + r.de + '|' + r.pla_id, rebut: r, titol: s.titol || '', data: s.data, hora: s.hora || '', horaFi: s.horaFi || '',
-    totElDia: Boolean(s.totElDia), lloc: s.lloc || '', llocUrl: s.llocUrl || '', estat: s.estat || 'confirmat', versio: s.versio || 1, qui: [],
+    totElDia: Boolean(s.totElDia), lloc: s.lloc || '', llocUrl: s.llocUrl || '', dataFi: s.dataFi || '', repeteix: s.repeteix || '', repeteixFins: s.repeteixFins || '', estat: s.estat || 'confirmat', versio: s.versio || 1, qui: [],
     _t: { nom: s.tipusNom || 'Pla', emoji: s.emoji || '✨', icona: s.icona || '', color: s.color || '#868E96' }, _amb: s.amb || [],
   };
 }
@@ -254,10 +281,21 @@ async function actualitzaExterns(avisa = false) {
   if (avisa) toast(error ? 'No s\'ha pogut llegir ' + error : 'Calendaris actualitzats');
   if ((canvi || avisa) && !document.querySelector('#dlg[open]')) render();
 }
-const totsPlans = (ambAniv = true) => [...state.plans, ...plansExterns(), ...rebuts().filter((p) => p.rebut.resposta === 'si'), ...(ambAniv ? aniversaris(anysAniv()) : [])];
+const finsRepeticions = () => `${Math.max(...anysAniv())}-12-31`;
+const totsPlans = (ambAniv = true) => {
+  const fins = finsRepeticions();
+  return [...[...state.plans, ...rebuts().filter((p) => p.rebut.resposta === 'si')].flatMap((p) => instancies(p, fins)),
+    ...plansExterns(), ...(ambAniv ? aniversaris(anysAniv()) : [])];
+};
 const trobaPla = (id) => state.plans.find((p) => p.id === id) || rebuts().find((p) => p.id === id) || plansExterns().find((p) => p.id === id)
-  || (id.startsWith('an|') ? aniversaris([Number(id.split('|')[2])]).find((p) => p.id === id) : null);
-const delDia = (ds) => totsPlans().filter((p) => p.data === ds).sort(perOrdre);
+  || (id.startsWith('an|') ? aniversaris([Number(id.split('|')[2])]).find((p) => p.id === id) : null)
+  || (() => {   // una de les repeticions d'un pla: «idDelPla@AAAA-MM-DD»
+    const i = id.lastIndexOf('@');
+    if (i < 0) return null;
+    const b = state.plans.find((p) => p.id === id.slice(0, i)) || rebuts().find((p) => p.id === id.slice(0, i));
+    return b ? instancies(b, id.slice(i + 1)).find((x) => x.id === id) || null : null;
+  })();
+const delDia = (ds) => totsPlans().filter((p) => cobreix(p, ds)).sort(perOrdre);
 // Còpia del pla que rep cada persona (sense notes; «amb» des del seu punt de vista)
 function snapshotPla(p, em) {
   const t = tip(p.tipusId);
@@ -266,6 +304,7 @@ function snapshotPla(p, em) {
     tipusNom: t.nom, emoji: t.emoji, icona: iconaDe(t), color: t.color, titol: p.titol || '', amb, data: p.data,
     hora: p.totElDia ? '' : p.hora || '', horaFi: p.totElDia ? '' : p.horaFi || '', totElDia: Boolean(p.totElDia),
     lloc: p.lloc || '', llocUrl: p.llocUrl || '', estat: p.estat || 'confirmat', versio: p.versio || 1,
+    dataFi: p.dataFi || '', repeteix: p.repeteix || '', repeteixFins: p.repeteixFins || '',
   };
 }
 const nomDeCorreu = (em) => state.persones.find((x) => normal(x.email) === em)?.nom || em;
@@ -430,7 +469,7 @@ function targeta(p, ambData = false) {
   const de = p.rebut ? `<small class="pla-de">📨 De part de ${esc(p.rebut.de_nom || p.rebut.de_email)}</small>` : '';
   const env = (p.compartit || []).length ? '<span class="env" title="Enviat a altres persones">📨</span>' : '';
   const estat = p.estat !== 'confirmat' ? `<span class="badge ${p.estat}">${esc((ESTATS.find((e) => e[0] === p.estat) || [, p.estat])[1])}</span>` : '';
-  return `<button class="pla ${esc(p.estat)}${p.data < avui() ? ' passat' : ''}${p.rebut ? ' rebut' : ''}" data-pla="${esc(p.id)}" style="--c:${esc(t.color)}">
+  return `<button class="pla ${esc(p.estat)}${diesPla(p) < avui() ? ' passat' : ''}${p.rebut ? ' rebut' : ''}" data-pla="${esc(p.id)}" style="--c:${esc(t.color)}">
     <span class="pla-emoji">${ico(t)}</span>
     <span class="pla-cos"><b>${esc(titolPla(p))}</b><small>${esc(info.join(' · '))}</small>${gent}${de}</span>
     ${env}${estat}
@@ -438,7 +477,8 @@ function targeta(p, ambData = false) {
 }
 function llistaPerDies(plans, ordreInvers = false) {
   const grups = new Map();
-  plans.forEach((p) => { if (!grups.has(p.data)) grups.set(p.data, []); grups.get(p.data).push(p); });
+  const clauDia = (p) => (!ordreInvers && p.data < avui() && diesPla(p) >= avui() ? avui() : p.data);
+  plans.forEach((p) => { const k = clauDia(p); if (!grups.has(k)) grups.set(k, []); grups.get(k).push(p); });
   const dies = [...grups.keys()].sort();
   if (ordreInvers) dies.reverse();
   return dies.map((ds) => `<section class="dia${ds === avui() ? ' avui' : ''}">
@@ -460,7 +500,9 @@ function vistaPropers() {
     invers = true;
     buit = 'Encara no hi ha cap pla passat.';
   } else {
-    plans = totsPlans().filter((p) => p.data >= avui() && (!p.aniversari || p.data <= ymd(addDays(new Date(), 45))));
+    // Les repeticions i els aniversaris, només de les properes setmanes (si no, la llista seria infinita)
+    plans = totsPlans().filter((p) => diesPla(p) >= avui()
+      && (!(p.aniversari || p.base) || p.data <= ymd(addDays(new Date(), p.aniversari ? 45 : 31))));
     buit = '';
   }
   const setmana = totsPlans().filter((p) => p.data >= avui() && p.data <= ymd(addDays(mondayOf(new Date()), 6)) && p.estat !== 'cancellat').length;
@@ -495,7 +537,15 @@ function vistaCalendari() {
   const sel = parseYmd(ui.diaSel);
   // Tots els plans agrupats per dia, calculats una sola vegada (la vista anual en mira 365)
   const perDia = new Map();
-  totsPlans().forEach((p) => { if (!perDia.has(p.data)) perDia.set(p.data, []); perDia.get(p.data).push(p); });
+  totsPlans().forEach((p) => {
+    // Els plans de diversos dies surten a cada dia (com a molt, 62 dies)
+    let ds = p.data;
+    for (let i = 0; i < 62 && ds <= diesPla(p); i++) {
+      if (!perDia.has(ds)) perDia.set(ds, []);
+      perDia.get(ds).push(p);
+      ds = ymd(addDays(parseYmd(ds), 1));
+    }
+  });
   const delDia = (ds) => (perDia.get(ds) || []).slice().sort(perOrdre);
   let titol, cos;
   if (mode === 'dia') {
@@ -770,12 +820,12 @@ function vistaInici() {
   const ara = new Date(), minutsAra = ara.getHours() * 60 + ara.getMinutes();
   const minuts = (h) => { const [a, b] = h.split(':').map(Number); return a * 60 + (b || 0); };
   const pendent = (p) => {
-    if (p.totElDia || !p.hora) return true;
+    if (p.totElDia || !p.hora || diesPla(p) > avui() || p.data < avui()) return true;
     const ini = minuts(p.hora);
     const fi = p.horaFi ? (minuts(p.horaFi) > ini ? minuts(p.horaFi) : 24 * 60) : ini + 60;
     return fi > minutsAra;
   };
-  const totsAvui = totsPlans().filter((p) => p.data === avui() && p.estat !== 'cancellat');
+  const totsAvui = totsPlans().filter((p) => cobreix(p, avui()) && p.estat !== 'cancellat');
   const dAvui = totsAvui.filter(pendent).sort(perOrdre);
   const inv = rebuts().filter((p) => p.rebut.resposta === 'pendent' && p.data >= avui()).length;
   const encara = totsAvui.length > dAvui.length ? 'encara ' : '';
@@ -1082,11 +1132,12 @@ $('#main').addEventListener('change', async (e) => {
 
 /* ---------- Mantenir premut un pla (o botó dret) per eliminar-lo ---------- */
 function eliminaPla(p) {
-  if (!p || p.rebut || p.aniversari) {
+  p = p?.base || p;
+  if (!p || p.rebut || p.aniversari || p.extern) {
     if (p?.rebut) toast("Aquest pla te l'han enviat: no el pots eliminar, però pots dir que no hi vas.");
     return;
   }
-  if (!confirm(`Vols eliminar «${titolPla(p)}»?`)) return;
+  if (!confirm(p.repeteix ? `Vols eliminar «${titolPla(p)}» i totes les seves repeticions?` : `Vols eliminar «${titolPla(p)}»?`)) return;
   state.plans = state.plans.filter((x) => x.id !== p.id);
   save(); render(); toast('Pla eliminat');
 }
@@ -1170,7 +1221,7 @@ function diesLlista(quin) {
   return Array.from({ length: 7 }, (_, i) => ymd(addDays(dl, i)));
 }
 function activitatsDe(ds) {
-  return totsPlans().filter((p) => p.data === ds && p.estat !== 'cancellat').sort(perOrdre);
+  return totsPlans().filter((p) => cobreix(p, ds) && p.estat !== 'cancellat').sort(perOrdre);
 }
 function htmlLlista(dies) {
   const blocs = dies.map((ds) => {
@@ -1315,6 +1366,9 @@ const waNum = (t) => { let n = String(t || '').replace(/[^\d+]/g, '').replace(/^
 
 /* ---------- Detall d'un pla ---------- */
 function obreDetall(p) {
+  // Si és una de les repeticions, es mostra aquell dia però s'editen totes (el pla original)
+  const vista = p;
+  p = p.base || p;
   const t = tipDe(p);
   const n = noms(p);
   const r = p.rebut;
@@ -1344,8 +1398,9 @@ function obreDetall(p) {
     <div class="dlg-cos">
       <ul class="det">
         ${r ? `<li><span>💌</span>De part de <b>&nbsp;${esc(r.de_nom || r.de_email)}</b></li>` : ''}
-        <li><span>📅</span>${esc(etiquetaDia(p.data) === cap(dataLlarga(p.data)) ? etiquetaDia(p.data) : etiquetaDia(p.data) + ', ' + dataLlarga(p.data))}</li>
-        <li><span>🕘</span>${esc(horaText(p))}</li>
+        <li><span>📅</span>${esc(etiquetaDia(vista.data) === cap(dataLlarga(vista.data)) ? etiquetaDia(vista.data) : etiquetaDia(vista.data) + ', ' + dataLlarga(vista.data))}${vista.dataFi && vista.dataFi > vista.data ? esc(' → ' + dataLlarga(vista.dataFi)) : ''}</li>
+        ${p.repeteix ? `<li><span>🔁</span>${esc(nomRepeticio(p.repeteix))}${p.repeteixFins ? esc(', fins al ' + dataLlarga(p.repeteixFins)) : ''}</li>` : ''}
+        <li><span>🕘</span>${esc(horaSola(p))}</li>
         ${p.lloc || p.llocUrl ? `<li><span>📍</span><a href="${esc(mapaDe(p))}" target="_blank" rel="noopener">${esc(p.lloc || 'Obre la ubicació al mapa')}</a></li>` : ''}
         ${n.length ? `<li><span>👥</span>${esc(llistaNoms(n))}</li>` : ''}
         ${p.estat !== 'confirmat' ? `<li><span>${p.estat === 'cancellat' ? '🚫' : '⏳'}</span>${esc((ESTATS.find((e) => e[0] === p.estat) || [, ''])[1])}</li>` : ''}
@@ -1395,6 +1450,7 @@ function dadesCal(p, perAltres, pe) {
     u: p.rebut ? p.rebut.pla_id : p.id, v: p.versio || 1, t: perAltres ? titolPer(p, pe) : titolPla(p), e: tipDe(p).emoji, d: p.data,
     h: p.totElDia ? undefined : p.hora || undefined, f: p.totElDia ? undefined : p.horaFi || undefined,
     a: p.totElDia ? 1 : undefined, l: p.lloc || p.llocUrl || undefined,
+    df: p.dataFi && p.dataFi > p.data ? p.dataFi : undefined, r: p.repeteix || undefined, ru: p.repeteix && p.repeteixFins ? p.repeteixFins : undefined,
     n: perAltres ? undefined : p.notes || undefined,
     o: perAltres ? nomPropi() : undefined,
   };
@@ -1581,6 +1637,12 @@ function obreForm(p, base = {}) {
           <label>Hora<input type="time" name="hora" value="${esc(d.hora || '')}" ${d.totElDia ? 'disabled' : ''}></label>
           <label>Fins a<input type="time" name="horaFi" value="${esc(d.horaFi || '')}" ${d.totElDia ? 'disabled' : ''}></label>
         </div>
+        <div class="fila fila2">
+          <label>Fins al dia <small>(si dura més d'un dia)</small><input type="date" name="dataFi" value="${esc(d.dataFi || '')}"></label>
+          <label>Es repeteix<select name="repeteix">${REPETICIONS.map(([v, n]) => `<option value="${v}"${(d.repeteix || '') === v ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
+        </div>
+        <label class="camp rep-fins" ${d.repeteix ? '' : 'hidden'}>Fins quan es repeteix <small>(opcional; si no hi poses res, sempre)</small>
+          <input type="date" name="repeteixFins" value="${esc(d.repeteixFins || '')}"></label>
         <label class="check"><input type="checkbox" name="totElDia" ${d.totElDia ? 'checked' : ''}> Tot el dia</label>
       </fieldset>
       <fieldset><legend>On</legend>
@@ -1714,7 +1776,15 @@ function obreForm(p, base = {}) {
       save(); tancaDlg(); render(); toast('Pla esborrat');
     }
   };
+  const hi = dlgForm.elements.hora, hf = dlgForm.elements.horaFi;
+  const mesUna = (h) => { const [a, b] = h.split(':').map(Number); return `${pad((a + 1) % 24)}:${pad(b)}`; };
+  const posaHora = (el, valor) => { if (!el.value && !el.disabled) el.value = valor; };
+  ['pointerdown', 'touchstart', 'focus'].forEach((ev) => {
+    hi.addEventListener(ev, () => posaHora(hi, '09:00'), { passive: true });
+    hf.addEventListener(ev, () => posaHora(hf, hi.value ? mesUna(hi.value) : '10:00'), { passive: true });
+  });
   dlgForm.onchange = (e) => {
+    if (e.target.name === 'repeteix') dlgForm.querySelector('.rep-fins').hidden = !e.target.value;
     if (e.target.name === 'totElDia') {
       dlgForm.elements.hora.disabled = e.target.checked;
       dlgForm.elements.horaFi.disabled = e.target.checked;
@@ -1725,11 +1795,12 @@ function obreForm(p, base = {}) {
     const f = dlgForm.elements;
     if (!d.tipusId && !f.titol.value.trim()) { toast('Escriu què faràs o tria un tipus'); f.titol.focus(); return; }
     if (!f.data.value) { toast('Falta el dia'); f.data.focus(); return; }
+    if (f.dataFi.value && f.dataFi.value < f.data.value) { toast("«Fins al dia» ha de ser després del primer dia"); f.dataFi.focus(); return; }
     // Coincideix amb una altra activitat amb hora el mateix dia?
     if (!f.totElDia.checked && f.hora.value && !dlgForm.dataset.solapOk) {
       const min = (h) => { const [a, b] = h.split(':').map(Number); return a * 60 + b; };
       const ini = min(f.hora.value), fi = f.horaFi.value && min(f.horaFi.value) > ini ? min(f.horaFi.value) : ini + 60;
-      const xoc = totsPlans(false).filter((x) => x.data === f.data.value && x.id !== p?.id && !x.totElDia && x.hora && x.estat !== 'cancellat')
+      const xoc = totsPlans(false).filter((x) => x.data === f.data.value && !(x.dataFi > x.data) && (x.base || x).id !== p?.id && !x.totElDia && x.hora && x.estat !== 'cancellat')
         .filter((x) => { const a = min(x.hora), b = x.horaFi && min(x.horaFi) > a ? min(x.horaFi) : a + 60; return a < fi && ini < b; });
       if (xoc.length) {
         const llista = xoc.map((x) => `• ${titolPla(x)} (${horaText(x)})`).join('\n');
@@ -1739,6 +1810,8 @@ function obreForm(p, base = {}) {
     const dades = {
       tipusId: d.tipusId, titol: f.titol.value.trim(), data: f.data.value,
       totElDia: f.totElDia.checked, hora: f.totElDia.checked ? '' : f.hora.value, horaFi: f.totElDia.checked ? '' : f.horaFi.value,
+      dataFi: f.dataFi.value > f.data.value ? f.dataFi.value : '',
+      repeteix: f.repeteix.value || '', repeteixFins: f.repeteix.value && f.repeteixFins.value >= f.data.value ? f.repeteixFins.value : '',
       lloc: f.lloc.value.trim(), llocUrl: esUrl(f.llocUrl.value) ? f.llocUrl.value.trim() : '', notes: f.notes.value.trim(), estat: f.estat.value || 'confirmat',
       qui: d.qui.filter((id) => totes().some((x) => x.id === id)),
     };

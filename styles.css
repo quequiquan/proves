@@ -587,3 +587,9 @@ main { width: 100%; max-width: min(760px, 100vw); }
 .portada-veure { display: block; margin: 12px auto 0; }
 body.mode-inici .top .nou { display: none; }   /* a la portada ja hi ha el botó gran */
 .brand { cursor: pointer; }
+
+/* Plans de diversos dies i repeticions */
+.fila.fila2 { grid-template-columns: 1fr 1fr; margin-top: 8px; }
+.fila.fila2 label:first-child { grid-column: auto; }
+.fila label small { font-weight: 600; color: var(--muted); }
+.rep-fins { margin-top: 8px; font-size: 13px; color: var(--muted); }
