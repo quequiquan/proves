@@ -341,3 +341,9 @@ body.mode-entrada main { padding-bottom: 40px; }
 @media (max-width: 760px) { .dest { grid-template-columns: 1fr; gap: 4px; } }
 .accions-cal { display: grid; gap: 8px; margin-top: 10px; }
 .accions-cal .btn { min-height: 48px; font-size: 16px; }
+
+/* Tipus nou des del formulari */
+.txip.nou-tipus { border-style: dashed; color: var(--muted); }
+.nou-tipus-fila { display: flex; gap: 6px; align-items: center; margin-top: 8px; }
+.nou-tipus-fila input:not(.emoji-in) { flex: 1; min-width: 0; }
+fieldset > .help { margin: 10px 2px 6px; }

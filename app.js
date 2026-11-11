@@ -31,6 +31,8 @@ const TIPUS_INICIALS = [
   { id: 't-festival', nom: 'Festival / Fira', emoji: '🎪', color: '#BE4BDB', grup: 'sortides' },
   { id: 't-altres', nom: 'Altres', emoji: '✨', color: '#868E96', grup: 'altres' },
 ];
+// Colors per als tipus nous que es creen des del formulari
+const COLORS_NOUS = ['#5C7CFA', '#20C997', '#FF922B', '#CC5DE8', '#F06595', '#339AF0', '#94D82D', '#FAB005'];
 const ESTATS = [['confirmat', 'Confirmat'], ['pendent', 'Per confirmar'], ['cancellat', 'Cancel·lat']];
 
 /* ---------- Utilitats ---------- */
@@ -312,7 +314,7 @@ function vistaAjustos() {
       <p class="help">És el que veuen les persones a qui envies plans («De part de…»).</p>
       <input id="nomMeu" value="${esc(state.ajustos.nom || '')}" placeholder="El teu nom">
     </div>
-    <div class="section">
+    <div class="section" id="seccioTipus">
       <h2>Tipus de pla</h2>
       <p class="help">Canvia l'emoji, el nom o el color. Els canvis es desen sols.</p>
       ${files}
@@ -748,14 +750,22 @@ function obreForm(p, base = {}) {
     return ord.map((pe) => `<button type="button" class="xip" data-qui="${esc(pe.id)}" aria-pressed="${d.qui.includes(pe.id)}">${esc(pe.nom)}</button>`).join('')
       || '<span class="help">Encara no hi ha ningú: escriu un nom a sota.</span>';
   };
-  const tipusXips = GRUPS.map(([g]) => state.tipus.filter((t) => (t.grup || 'altres') === g)).flat()
-    .map((t) => `<button type="button" class="txip" data-tipus="${esc(t.id)}" aria-pressed="${d.tipusId === t.id}" style="--c:${esc(t.color)}"><span>${esc(t.emoji)}</span>${esc(nomCurt(t))}</button>`).join('');
+  const tipusXips = () => GRUPS.map(([g]) => state.tipus.filter((t) => (t.grup || 'altres') === g)).flat()
+    .map((t) => `<button type="button" class="txip" data-tipus="${esc(t.id)}" aria-pressed="${d.tipusId === t.id}" style="--c:${esc(t.color)}"><span>${esc(t.emoji)}</span>${esc(nomCurt(t))}</button>`).join('')
+    + '<button type="button" class="txip nou-tipus" id="tNou"><span>＋</span>Nou tipus</button>';
 
   obreDlg(`<header class="dlg-cap"><h2>${nou ? 'Nou pla' : 'Edita el pla'}</h2><button type="button" class="x" data-tanca aria-label="Tanca">×</button></header>
     <div class="dlg-cos">
       <fieldset><legend><span class="w-que">Què</span></legend>
-        <div class="tipus-grid">${tipusXips}</div>
-        <input name="titol" value="${esc(d.titol)}" placeholder="Títol (opcional) · p. ex. Aniversari de la Marta" autocomplete="off">
+        <input name="titol" value="${esc(d.titol)}" placeholder="Què faràs? Escriu-ho com vulguis" autocomplete="off">
+        <p class="help">I, si vols, tria'n el tipus (o crea'n un de nou):</p>
+        <div class="tipus-grid" id="tipusGrid">${tipusXips()}</div>
+        <div class="nou-tipus-fila" id="nouTipusFila" hidden>
+          <input id="ntEmoji" class="emoji-in" placeholder="🎯" aria-label="Emoji del tipus nou" autocomplete="off">
+          <input id="ntNom" placeholder="Nom del tipus (p. ex. Karaoke)" autocomplete="off" enterkeyhint="done">
+          <button type="button" class="btn primary" id="ntCrea">Crea</button>
+        </div>
+        <button type="button" class="enllac" id="tGestiona">✏️ Canvia o esborra els tipus</button>
       </fieldset>
       <fieldset><legend><span class="w-qui">Qui</span></legend>
         <div class="xips" id="quiXips">${xips()}</div>
@@ -798,12 +808,36 @@ function obreForm(p, base = {}) {
     inp.focus();
   };
   $('#quiNou').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); afegeixPersona(); } });
+  // Tipus nou creat des del mateix formulari (queda guardat per a la propera vegada)
+  const creaTipus = () => {
+    const nom = $('#ntNom').value.trim();
+    if (!nom) { toast('Escriu el nom del tipus'); $('#ntNom').focus(); return; }
+    const ja = state.tipus.find((t) => normal(t.nom) === normal(nom));
+    const t = ja || { id: 't-' + uid(), nom, emoji: $('#ntEmoji').value.trim() || '✨', color: COLORS_NOUS[state.tipus.length % COLORS_NOUS.length], grup: 'altres' };
+    if (!ja) { state.tipus.push(t); save(); }
+    d.tipusId = t.id;
+    $('#tipusGrid').innerHTML = tipusXips();
+    $('#nouTipusFila').hidden = true;
+    $('#ntNom').value = ''; $('#ntEmoji').value = '';
+    toast(ja ? `«${t.nom}» ja existia: l'he triat` : `Tipus «${nom}» creat`);
+  };
+  $('#ntNom').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); creaTipus(); } });
 
   dlgForm.onclick = (e) => {
+    if (e.target.closest('#tNou')) { $('#nouTipusFila').hidden = false; $('#ntNom').focus(); return; }
+    if (e.target.id === 'ntCrea') { creaTipus(); return; }
+    if (e.target.id === 'tGestiona') {
+      if (!confirm("Vols anar a Ajustos per canviar els tipus? Aquest pla encara no s'ha desat.")) return;
+      tancaDlg(); ui.view = 'ajustos'; desaPref('view', ui.view); render();
+      $('#seccioTipus')?.scrollIntoView({ block: 'start' });
+      return;
+    }
     const tx = e.target.closest('[data-tipus]');
     if (tx) {
-      d.tipusId = tx.dataset.tipus;
-      $$('#dlgForm [data-tipus]').forEach((b) => b.setAttribute('aria-pressed', b === tx));
+      // Tornar a tocar el tipus triat el treu (el tipus és opcional)
+      d.tipusId = d.tipusId === tx.dataset.tipus ? '' : tx.dataset.tipus;
+      $('#dlgForm [data-tipus]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.tipus === d.tipusId));
+      if (!d.tipusId) return;
       // Hora habitual del tipus (dinar a les 14 h, sopar a les 21 h…) si encara no n'hi ha
       const h = tip(d.tipusId).hora, hi = dlgForm.elements.hora;
       if (h && !hi.value && !dlgForm.elements.totElDia.checked) hi.value = h;
@@ -833,7 +867,7 @@ function obreForm(p, base = {}) {
     e.preventDefault();
     if ($('#quiNou').value.trim()) afegeixPersona();
     const f = dlgForm.elements;
-    if (!d.tipusId) { toast('Tria què és: sopar, concert…'); dlgForm.querySelector('.tipus-grid').scrollIntoView({ block: 'center', behavior: 'smooth' }); return; }
+    if (!d.tipusId && !f.titol.value.trim()) { toast('Escriu què faràs o tria un tipus'); f.titol.focus(); return; }
     if (!f.data.value) { toast('Falta el dia'); f.data.focus(); return; }
     const dades = {
       tipusId: d.tipusId, titol: f.titol.value.trim(), data: f.data.value,
