@@ -915,8 +915,8 @@ function obreForm(p, base = {}) {
       || '<span class="help">Encara no hi ha ningú: escriu un nom a sota.</span>';
   };
   const tipusXips = () => GRUPS.map(([g]) => state.tipus.filter((t) => (t.grup || 'altres') === g)).flat()
-    .map((t) => `<button type="button" class="txip" data-tipus="${esc(t.id)}" aria-pressed="${d.tipusId === t.id}" style="--c:${esc(t.color)}">${ico(t)}${esc(nomCurt(t))}</button>`).join('')
-    + '<button type="button" class="txip nou-tipus" id="tNou"><span class="ms">add</span>Nou tipus</button>';
+    .map((t) => `<button type="button" class="txip" data-tipus="${esc(t.id)}" aria-pressed="${d.tipusId === t.id}" style="--c:${esc(t.color)}">${ico(t)}<span class="txip-nom">${esc(nomCurt(t))}</span></button>`).join('')
+    + '<button type="button" class="txip nou-tipus" id="tNou"><span class="ms">add</span><span class="txip-nom">Nou tipus</span></button>';
 
   obreDlg(`<header class="dlg-cap"><h2>${nou ? 'Nou pla' : 'Edita el pla'}</h2><button type="button" class="x" data-tanca aria-label="Tanca">×</button></header>
     <div class="dlg-cos">
