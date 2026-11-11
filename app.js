@@ -151,6 +151,50 @@ function falten(ds) {
   return dies < 14 ? `d'aquí a ${dies} dies` : `d'aquí a ${Math.round(dies / 7)} setmanes`;
 }
 
+/* ---------- Triar un emoji ---------- */
+// Graella d'icones d'oci per triar amb un toc (a l'iPhone, escriure un emoji vol dir canviar de teclat)
+const EMOJIS = [
+  '🍽️', '🍷', '🍸', '🍺', '🥂', '🍹', '☕', '🥐', '🍕', '🍣', '🍔', '🥘', '🍝', '🥗', '🍰', '🎂',
+  '🎉', '🎈', '🎁', '🎊', '💐', '💍', '❤️', '👶', '🙌', '🫂', '👨‍👩‍👧‍👦', '🐶',
+  '🎸', '🎤', '🎧', '🎵', '🎹', '🎻', '🎷', '🥁', '🎭', '🎬', '🍿', '🎨', '🖼️', '📚', '🏛️', '🎪', '🎡', '🎟️',
+  '⚽', '🏀', '🎾', '⛳', '🏊', '🚴', '🏃', '🧘', '⛷️', '🥾', '🏔️', '🏖️', '⛵', '🚗', '✈️', '🧳', '🏕️', '🌳',
+  '🎮', '🃏', '🎲', '🛍️', '💃', '🕺', '🎯', '✨', '⭐', '🔥', '🌞', '🌙',
+];
+const botoEmoji = (valor, attrs) => `<button type="button" class="emoji-btn" aria-label="Tria la icona">${esc(valor || '🎯')}</button><input type="hidden" ${attrs} value="${esc(valor || '')}">`;
+let botoEmojiActiu = null;
+function tancaPanellEmoji() { $$('.emoji-panel').forEach((x) => x.remove()); botoEmojiActiu = null; }
+function obrePanellEmoji(b) {
+  const mateix = botoEmojiActiu === b;
+  tancaPanellEmoji();
+  if (mateix) return;
+  botoEmojiActiu = b;
+  const fila = b.closest('.tipus-fila, .barra, .nou-tipus-fila') || b.parentElement;
+  fila.insertAdjacentHTML('afterend', `<div class="emoji-panel">
+      <p class="help">Toca la icona que vulguis:</p>
+      <div class="emoji-grid">${EMOJIS.map((x) => `<button type="button" data-posa-emoji="${x}">${x}</button>`).join('')}</div>
+      <div class="emoji-altre"><input placeholder="O escriu-ne una altra" autocomplete="off" enterkeyhint="done"><button type="button" class="btn emoji-ok">D'acord</button></div>
+    </div>`);
+}
+function posaEmoji(v) {
+  const b = botoEmojiActiu;
+  tancaPanellEmoji();
+  if (!b || !v) return;
+  b.textContent = v;
+  const inp = b.nextElementSibling;
+  inp.value = v;
+  inp.dispatchEvent(new Event('change', { bubbles: true }));
+}
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('.emoji-btn');
+  if (b) { obrePanellEmoji(b); return; }
+  const em = e.target.closest('[data-posa-emoji]');
+  if (em) { posaEmoji(em.dataset.posaEmoji); return; }
+  if (e.target.closest('.emoji-ok')) posaEmoji(e.target.closest('.emoji-panel').querySelector('input').value.trim());
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && e.target.closest('.emoji-altre')) { e.preventDefault(); posaEmoji(e.target.value.trim()); }
+});
+
 /* ---------- Toast ---------- */
 let toastT = null;
 function toast(msg, ms = 3200) {
@@ -302,7 +346,7 @@ function vistaAjustos() {
     const ts = state.tipus.filter((t) => (t.grup || 'altres') === g);
     if (!ts.length) return '';
     return `<h3 class="sub">${esc(nomG)}</h3>` + ts.map((t) => `<div class="tipus-fila" data-tid="${esc(t.id)}">
-        <input class="emoji-in" data-camp="emoji" value="${esc(t.emoji)}" aria-label="Emoji">
+        ${botoEmoji(t.emoji, 'data-camp="emoji"')}
         <input data-camp="nom" value="${esc(t.nom)}" aria-label="Nom">
         <input type="color" data-camp="color" value="${esc(t.color)}" aria-label="Color">
         <button class="btn icona" data-treu="${esc(t.id)}" aria-label="Treu ${esc(t.nom)}">×</button>
@@ -319,7 +363,7 @@ function vistaAjustos() {
       <p class="help">Canvia l'emoji, el nom o el color. Els canvis es desen sols.</p>
       ${files}
       <form class="barra" id="formTipus">
-        <input name="emoji" class="emoji-in" placeholder="🎯" aria-label="Emoji">
+        ${botoEmoji('', 'name="emoji"')}
         <input name="nom" placeholder="Nou tipus (p. ex. Karaoke)" autocomplete="off">
         <select name="grup" aria-label="Grup">${GRUPS.map(([g, n]) => `<option value="${g}"${g === 'altres' ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select>
         <button class="btn primary">Afegeix</button>
@@ -761,7 +805,7 @@ function obreForm(p, base = {}) {
         <p class="help">I, si vols, tria'n el tipus (o crea'n un de nou):</p>
         <div class="tipus-grid" id="tipusGrid">${tipusXips()}</div>
         <div class="nou-tipus-fila" id="nouTipusFila" hidden>
-          <input id="ntEmoji" class="emoji-in" placeholder="🎯" aria-label="Emoji del tipus nou" autocomplete="off">
+          ${botoEmoji('', 'id="ntEmoji"')}
           <input id="ntNom" placeholder="Nom del tipus (p. ex. Karaoke)" autocomplete="off" enterkeyhint="done">
           <button type="button" class="btn primary" id="ntCrea">Crea</button>
         </div>
@@ -818,7 +862,7 @@ function obreForm(p, base = {}) {
     d.tipusId = t.id;
     $('#tipusGrid').innerHTML = tipusXips();
     $('#nouTipusFila').hidden = true;
-    $('#ntNom').value = ''; $('#ntEmoji').value = '';
+    $('#ntNom').value = ''; $('#ntEmoji').value = ''; $('#ntEmoji').previousElementSibling.textContent = '🎯';
     toast(ja ? `«${t.nom}» ja existia: l'he triat` : `Tipus «${nom}» creat`);
   };
   $('#ntNom').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); creaTipus(); } });
@@ -836,7 +880,7 @@ function obreForm(p, base = {}) {
     if (tx) {
       // Tornar a tocar el tipus triat el treu (el tipus és opcional)
       d.tipusId = d.tipusId === tx.dataset.tipus ? '' : tx.dataset.tipus;
-      $('#dlgForm [data-tipus]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.tipus === d.tipusId));
+      $$('#dlgForm [data-tipus]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.tipus === d.tipusId));
       if (!d.tipusId) return;
       // Hora habitual del tipus (dinar a les 14 h, sopar a les 21 h…) si encara no n'hi ha
       const h = tip(d.tipusId).hora, hi = dlgForm.elements.hora;

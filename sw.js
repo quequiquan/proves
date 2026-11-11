@@ -2,7 +2,7 @@
 // Quan canviïs fitxers de l'app, puja el número de VERSIO perquè els dispositius s'actualitzin.
 // La versió de proves i la definitiva tenen còpies separades
 const PREFIX = 'qqq-' + (/proves/i.test(self.location.pathname) ? 'proves-' : 'def-');
-const VERSIO = PREFIX + 'v6';
+const VERSIO = PREFIX + 'v7';
 const FITXERS = [
   './', 'index.html', 'styles.css', 'app.js', 'sync.js', 'calendari.js', 'config.js', 'manifest.webmanifest',
   'afegir.html', 'img/icona.svg', 'img/icona-180.png', 'img/icona-192.png', 'img/icona-512.png', 'img/favicon-32.png',

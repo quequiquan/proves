@@ -347,3 +347,13 @@ body.mode-entrada main { padding-bottom: 40px; }
 .nou-tipus-fila { display: flex; gap: 6px; align-items: center; margin-top: 8px; }
 .nou-tipus-fila input:not(.emoji-in) { flex: 1; min-width: 0; }
 fieldset > .help { margin: 10px 2px 6px; }
+
+/* Triar icona */
+.emoji-btn { flex: none; width: 52px; height: 42px; font-size: 22px; line-height: 1; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); cursor: pointer; padding: 0; }
+.emoji-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 8px 10px 10px; margin: 4px 0 12px; box-shadow: var(--shadow); }
+.emoji-panel .help { margin: 2px 2px 6px; }
+.emoji-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(42px, 1fr)); gap: 2px; }
+.emoji-grid button { font-size: 24px; height: 44px; border: 0; background: none; border-radius: 10px; cursor: pointer; padding: 0; }
+.emoji-grid button:hover, .emoji-grid button:active { background: var(--surface-2); }
+.emoji-altre { display: flex; gap: 6px; margin-top: 8px; }
+.emoji-altre input { flex: 1; min-width: 0; }
