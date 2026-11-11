@@ -357,3 +357,49 @@ fieldset > .help { margin: 10px 2px 6px; }
 .emoji-grid button:hover, .emoji-grid button:active { background: var(--surface-2); }
 .emoji-altre { display: flex; gap: 6px; margin-top: 8px; }
 .emoji-altre input { flex: 1; min-width: 0; }
+
+/* ---------- Icones (Material Symbols) ---------- */
+.ms {
+  font-family: 'Material Symbols Rounded'; font-weight: 500; font-style: normal; font-size: 24px; line-height: 1;
+  letter-spacing: normal; text-transform: none; display: inline-block; white-space: nowrap; direction: ltr;
+  font-feature-settings: 'liga'; -webkit-font-smoothing: antialiased; font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24;
+  overflow: hidden; width: 1em; height: 1em; vertical-align: middle;
+}
+.emo { line-height: 1; }
+.pla-emoji .ms { color: var(--c); font-size: 24px; }
+.det-emoji .ms { color: var(--c); font-size: 32px; }
+.buit-emoji .ms { font-size: 64px; color: var(--qui); }
+.txip .ms { font-size: 19px; color: var(--c); }
+.txip[aria-pressed="true"] .ms { color: #fff; }
+.txip.nou-tipus .ms { color: var(--muted); }
+.marques i { display: inline-flex; }
+.marques .ms { font-size: 15px; color: var(--c); }
+.marques .emo { font-size: 13px; }
+.emoji-btn .ms { color: var(--c); font-size: 24px; }
+.emoji-grid .ms { font-size: 26px; color: var(--text); }
+
+/* ---------- Calendari: Dia / Setmana / Mes ---------- */
+.cal-modes { display: flex; width: 100%; margin-bottom: 12px; }
+.cal-modes button { flex: 1; text-align: center; }
+.cal-cap h2 { font-size: 20px; }
+.vista-dia .franja { display: flex; gap: 10px; align-items: center; }
+.franja-hora { flex: none; width: 62px; text-align: right; font-weight: 800; color: var(--muted); font-size: 14px; }
+.vista-dia .franja .pla { flex: 1; min-width: 0; }
+.afegeix-dia { width: 100%; margin-top: 6px; border-style: dashed; }
+.vista-setmana { display: grid; gap: 8px; }
+.setm-dia { display: flex; gap: 10px; align-items: flex-start; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+.setm-dia:last-child { border-bottom: 0; }
+.setm-cap {
+  flex: none; width: 50px; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 6px 0;
+  border: 1px solid var(--border); background: var(--surface); border-radius: 12px; cursor: pointer;
+}
+.setm-cap b { font-size: 12px; color: var(--muted); font-weight: 800; }
+.setm-cap span { font-family: var(--font-title); font-size: 20px; font-weight: 600; }
+.setm-dia.avui .setm-cap { background: var(--accent); border-color: var(--accent); }
+.setm-dia.avui .setm-cap b, .setm-dia.avui .setm-cap span { color: var(--accent-text); }
+.setm-plans { flex: 1; min-width: 0; }
+.setm-plans .pla { margin-bottom: 6px; }
+.setm-buit {
+  width: 100%; min-height: 46px; border: 1px dashed var(--border); background: none; border-radius: 12px;
+  color: var(--muted); cursor: pointer; font-weight: 700;
+}

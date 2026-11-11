@@ -12,11 +12,11 @@ const GRUPS = [
   ['celebracions', 'Celebracions i trobades'], ['sortides', 'Sortides'], ['altres', 'Altres'],
 ];
 const TIPUS_INICIALS = [
-  { id: 't-esmorzar', nom: 'Esmorzar / Brunch', emoji: '🥐', color: '#F08C00', grup: 'apats', hora: '10:00' },
-  { id: 't-dinar', nom: 'Dinar', emoji: '🍽️', color: '#E8590C', grup: 'apats', hora: '14:00' },
-  { id: 't-sopar', nom: 'Sopar', emoji: '🍷', color: '#C92A2A', grup: 'apats', hora: '21:00' },
-  { id: 't-vermut', nom: 'Vermut / Copes', emoji: '🍸', color: '#E64980', grup: 'apats', hora: '12:30' },
-  { id: 't-cafe', nom: 'Cafè / Berenar', emoji: '☕', color: '#8D6E63', grup: 'apats', hora: '17:30' },
+  { id: 't-esmorzar', nom: 'Esmorzar / Brunch', emoji: '🥐', color: '#F08C00', grup: 'apats' },
+  { id: 't-dinar', nom: 'Dinar', emoji: '🍽️', color: '#E8590C', grup: 'apats' },
+  { id: 't-sopar', nom: 'Sopar', emoji: '🍷', color: '#C92A2A', grup: 'apats' },
+  { id: 't-vermut', nom: 'Vermut / Copes', emoji: '🍸', color: '#E64980', grup: 'apats' },
+  { id: 't-cafe', nom: 'Cafè / Berenar', emoji: '☕', color: '#8D6E63', grup: 'apats' },
   { id: 't-concert', nom: 'Concert', emoji: '🎸', color: '#7048E8', grup: 'cultura' },
   { id: 't-teatre', nom: 'Teatre / Espectacle', emoji: '🎭', color: '#9C36B5', grup: 'cultura' },
   { id: 't-cinema', nom: 'Cinema', emoji: '🎬', color: '#4263EB', grup: 'cultura' },
@@ -33,6 +33,32 @@ const TIPUS_INICIALS = [
 ];
 // Colors per als tipus nous que es creen des del formulari
 const COLORS_NOUS = ['#5C7CFA', '#20C997', '#FF922B', '#CC5DE8', '#F06595', '#339AF0', '#94D82D', '#FAB005'];
+// Icones (Material Symbols) dels tipus de sèrie. Si un tipus té «icona: ''», es mostra el seu emoji.
+const ICONES = {
+  't-esmorzar': 'bakery_dining', 't-dinar': 'lunch_dining', 't-sopar': 'dinner_dining', 't-vermut': 'local_bar',
+  't-cafe': 'local_cafe', 't-concert': 'music_note', 't-teatre': 'theater_comedy', 't-cinema': 'movie',
+  't-exposicio': 'palette', 't-inauguracio': 'wine_bar', 't-festa': 'celebration', 't-amics': 'diversity_3',
+  't-casament': 'favorite', 't-excursio': 'hiking', 't-escapada': 'luggage', 't-esport': 'sports_soccer',
+  't-festival': 'festival', 't-altres': 'auto_awesome',
+};
+// Icones que es poden triar (han de coincidir amb la llista «icon_names» d'index.html)
+const ICONES_TRIA = [
+  'restaurant', 'bakery_dining', 'brunch_dining', 'lunch_dining', 'dinner_dining', 'ramen_dining', 'local_pizza', 'icecream',
+  'cake', 'local_cafe', 'local_bar', 'wine_bar', 'sports_bar', 'liquor', 'celebration', 'nightlife',
+  'music_note', 'headphones', 'piano', 'mic', 'theater_comedy', 'movie', 'palette', 'museum', 'photo_camera', 'menu_book',
+  'festival', 'attractions', 'confirmation_number', 'local_activity', 'stadium', 'emoji_events',
+  'sports_soccer', 'sports_basketball', 'sports_tennis', 'golf_course', 'pool', 'directions_bike', 'directions_run',
+  'self_improvement', 'downhill_skiing', 'hiking', 'kayaking', 'surfing', 'sailing', 'landscape', 'beach_access',
+  'park', 'forest', 'camping', 'local_florist', 'wb_sunny', 'nightlight', 'directions_car', 'flight', 'luggage', 'cottage',
+  'favorite', 'diversity_3', 'groups', 'family_restroom', 'child_care', 'pets', 'handshake', 'volunteer_activism',
+  'redeem', 'church', 'school', 'sports_esports', 'casino', 'shopping_bag', 'storefront', 'spa', 'star', 'auto_awesome',
+];
+const iconaDe = (t) => (t.icona !== undefined ? t.icona : ICONES[t.id] || '');
+const ico = (t) => (iconaDe(t)
+  ? `<span class="ms" aria-hidden="true">${esc(iconaDe(t))}</span>`
+  : `<span class="emo">${esc(t.emoji || '✨')}</span>`);
+// Valor del selector: «ms:nom» (icona) o un emoji escrit a mà
+const llegeixIcona = (v) => (String(v || '').startsWith('ms:') ? { icona: v.slice(3) } : v ? { emoji: v, icona: '' } : {});
 const ESTATS = [['confirmat', 'Confirmat'], ['pendent', 'Per confirmar'], ['cancellat', 'Cancel·lat']];
 
 /* ---------- Utilitats ---------- */
@@ -89,12 +115,12 @@ function reiniciaDades() {
 function llegeixPref(k, def) { try { const v = localStorage.getItem('qqq-pref-' + k); return v === null ? def : JSON.parse(v); } catch (e) { return def; } }
 function desaPref(k, v) { try { localStorage.setItem('qqq-pref-' + k, JSON.stringify(v)); } catch (e) { /* res */ } }
 const ui = {
-  view: llegeixPref('view', 'propers'), cursor: new Date(), diaSel: avui(), cerca: '', passats: false, persona: '',
+  view: llegeixPref('view', 'propers'), calMode: llegeixPref('calMode', 'mes'), cursor: new Date(), diaSel: avui(), cerca: '', passats: false, persona: '',
   entrada: { pas: 'correu', email: '' },
 };
 
 /* ---------- Consultes ---------- */
-const ALTRES = { id: '', nom: 'Altres', emoji: '✨', color: '#868E96' };
+const ALTRES = { id: '', nom: 'Altres', emoji: '✨', icona: 'auto_awesome', color: '#868E96' };
 const tip = (id) => state.tipus.find((t) => t.id === id) || state.tipus.find((t) => t.id === 't-altres') || ALTRES;
 const pers = (id) => state.persones.find((p) => p.id === id);
 const nomCurt = (t) => t.nom.split(' / ')[0];
@@ -116,7 +142,7 @@ function planRebut(r) {
   return {
     id: 'r|' + r.de + '|' + r.pla_id, rebut: r, titol: s.titol || '', data: s.data, hora: s.hora || '', horaFi: s.horaFi || '',
     totElDia: Boolean(s.totElDia), lloc: s.lloc || '', estat: s.estat || 'confirmat', versio: s.versio || 1, qui: [],
-    _t: { nom: s.tipusNom || 'Pla', emoji: s.emoji || '✨', color: s.color || '#868E96' }, _amb: s.amb || [],
+    _t: { nom: s.tipusNom || 'Pla', emoji: s.emoji || '✨', icona: s.icona || '', color: s.color || '#868E96' }, _amb: s.amb || [],
   };
 }
 const rebuts = () => (sync()?.rebuts() || []).filter((r) => r.pla && r.pla.data).map(planRebut);
@@ -129,7 +155,7 @@ function snapshotPla(p, em) {
   const t = tip(p.tipusId);
   const amb = [nomPropi(), ...(p.qui || []).map(pers).filter((x) => x && normal(x.email) !== em).map((x) => x.nom)];
   return {
-    tipusNom: t.nom, emoji: t.emoji, color: t.color, titol: p.titol || '', amb, data: p.data,
+    tipusNom: t.nom, emoji: t.emoji, icona: iconaDe(t), color: t.color, titol: p.titol || '', amb, data: p.data,
     hora: p.totElDia ? '' : p.hora || '', horaFi: p.totElDia ? '' : p.horaFi || '', totElDia: Boolean(p.totElDia),
     lloc: p.lloc || '', estat: p.estat || 'confirmat', versio: p.versio || 1,
   };
@@ -153,14 +179,7 @@ function falten(ds) {
 
 /* ---------- Triar un emoji ---------- */
 // Graella d'icones d'oci per triar amb un toc (a l'iPhone, escriure un emoji vol dir canviar de teclat)
-const EMOJIS = [
-  '🍽️', '🍷', '🍸', '🍺', '🥂', '🍹', '☕', '🥐', '🍕', '🍣', '🍔', '🥘', '🍝', '🥗', '🍰', '🎂',
-  '🎉', '🎈', '🎁', '🎊', '💐', '💍', '❤️', '👶', '🙌', '🫂', '👨‍👩‍👧‍👦', '🐶',
-  '🎸', '🎤', '🎧', '🎵', '🎹', '🎻', '🎷', '🥁', '🎭', '🎬', '🍿', '🎨', '🖼️', '📚', '🏛️', '🎪', '🎡', '🎟️',
-  '⚽', '🏀', '🎾', '⛳', '🏊', '🚴', '🏃', '🧘', '⛷️', '🥾', '🏔️', '🏖️', '⛵', '🚗', '✈️', '🧳', '🏕️', '🌳',
-  '🎮', '🃏', '🎲', '🛍️', '💃', '🕺', '🎯', '✨', '⭐', '🔥', '🌞', '🌙',
-];
-const botoEmoji = (valor, attrs) => `<button type="button" class="emoji-btn" aria-label="Tria la icona">${esc(valor || '🎯')}</button><input type="hidden" ${attrs} value="${esc(valor || '')}">`;
+const botoIcona = (t, attrs) => `<button type="button" class="emoji-btn" aria-label="Tria la icona" style="--c:${esc(t ? t.color : '#868E96')}">${t ? ico(t) : '<span class="ms">auto_awesome</span>'}</button><input type="hidden" ${attrs} value="">`;
 let botoEmojiActiu = null;
 function tancaPanellEmoji() { $$('.emoji-panel').forEach((x) => x.remove()); botoEmojiActiu = null; }
 function obrePanellEmoji(b) {
@@ -171,15 +190,15 @@ function obrePanellEmoji(b) {
   const fila = b.closest('.tipus-fila, .barra, .nou-tipus-fila') || b.parentElement;
   fila.insertAdjacentHTML('afterend', `<div class="emoji-panel">
       <p class="help">Toca la icona que vulguis:</p>
-      <div class="emoji-grid">${EMOJIS.map((x) => `<button type="button" data-posa-emoji="${x}">${x}</button>`).join('')}</div>
-      <div class="emoji-altre"><input placeholder="O escriu-ne una altra" autocomplete="off" enterkeyhint="done"><button type="button" class="btn emoji-ok">D'acord</button></div>
+      <div class="emoji-grid">${ICONES_TRIA.map((x) => `<button type="button" data-posa-emoji="ms:${x}"><span class="ms">${x}</span></button>`).join('')}</div>
+      <div class="emoji-altre"><input placeholder="O escriu un emoji" autocomplete="off" enterkeyhint="done"><button type="button" class="btn emoji-ok">D'acord</button></div>
     </div>`);
 }
 function posaEmoji(v) {
   const b = botoEmojiActiu;
   tancaPanellEmoji();
   if (!b || !v) return;
-  b.textContent = v;
+  b.innerHTML = v.startsWith('ms:') ? `<span class="ms">${esc(v.slice(3))}</span>` : `<span class="emo">${esc(v)}</span>`;
   const inp = b.nextElementSibling;
   inp.value = v;
   inp.dispatchEvent(new Event('change', { bubbles: true }));
@@ -220,7 +239,7 @@ function targeta(p, ambData = false) {
   const env = (p.compartit || []).length ? '<span class="env" title="Enviat a altres persones">📨</span>' : '';
   const estat = p.estat !== 'confirmat' ? `<span class="badge ${p.estat}">${esc((ESTATS.find((e) => e[0] === p.estat) || [, p.estat])[1])}</span>` : '';
   return `<button class="pla ${esc(p.estat)}${p.data < avui() ? ' passat' : ''}${p.rebut ? ' rebut' : ''}" data-pla="${esc(p.id)}" style="--c:${esc(t.color)}">
-    <span class="pla-emoji">${esc(t.emoji)}</span>
+    <span class="pla-emoji">${ico(t)}</span>
     <span class="pla-cos"><b>${esc(titolPla(p))}</b><small>${esc(info.join(' · '))}</small>${gent}${de}</span>
     ${env}${estat}
   </button>`;
@@ -270,41 +289,68 @@ function vistaPropers() {
     </div>
     ${cap0}
     ${plans.length ? llistaPerDies(plans, invers) : buit ? `<p class="buit">${buit}</p>` : `<div class="buit gran">
-      <div class="buit-emoji">🥂</div>
+      <div class="buit-emoji"><span class="ms">celebration</span></div>
       <p>No tens cap pla a la vista.</p>
       <button class="btn primary" data-nou>+ Afegeix el primer pla</button></div>`}`;
 }
 
-/* ---------- Vista: Calendari ---------- */
+/* ---------- Vista: Calendari (dia, setmana o mes) ---------- */
+const MODES = [['dia', 'Dia'], ['setmana', 'Setmana'], ['mes', 'Mes']];
+const apostrof = (txt) => txt.replace(/de ([aeiou])/g, "d'$1");
 function vistaCalendari() {
-  const c = ui.cursor;
-  const primer = new Date(c.getFullYear(), c.getMonth(), 1);
-  const inici = mondayOf(primer);
-  let cel = '';
-  for (let i = 0; i < 42; i++) {
-    const d = addDays(inici, i);
-    if (i >= 35 && d.getMonth() !== c.getMonth()) break;
-    const ds = ymd(d);
-    const plans = delDia(ds);
-    const fora = d.getMonth() !== c.getMonth();
-    const marques = plans.slice(0, 3).map((p) => `<i class="${p.estat === 'cancellat' ? 'canc' : ''}">${esc(tipDe(p).emoji)}</i>`).join('')
-      + (plans.length > 3 ? `<em>+${plans.length - 3}</em>` : '');
-    cel += `<button class="cel${fora ? ' fora' : ''}${ds === avui() ? ' avui' : ''}${ds === ui.diaSel ? ' sel' : ''}" data-dia="${ds}">
-      <span class="num">${d.getDate()}</span><span class="marques">${marques}</span></button>`;
+  const mode = ui.calMode;
+  const sel = parseYmd(ui.diaSel);
+  let titol, cos;
+  if (mode === 'dia') {
+    titol = cap(dataLlarga(ui.diaSel));
+    const plans = delDia(ui.diaSel);
+    cos = `<section class="vista-dia">
+        ${plans.map((p) => `<div class="franja"><span class="franja-hora">${esc(p.totElDia ? 'Tot el dia' : p.hora || '—')}</span>${targeta(p)}</div>`).join('') || '<p class="buit">Cap pla aquest dia.</p>'}
+        <button class="btn afegeix-dia" data-nou="${ui.diaSel}">+ Afegeix un pla aquest dia</button>
+      </section>`;
+  } else if (mode === 'setmana') {
+    const dl = mondayOf(sel), dg = addDays(dl, 6);
+    titol = dl.getMonth() === dg.getMonth()
+      ? apostrof(`${dl.getDate()} – ${dg.getDate()} de ${MESOS[dg.getMonth()]}`)
+      : `${dl.getDate()} ${MESOS[dl.getMonth()].slice(0, 3)}. – ${dg.getDate()} ${MESOS[dg.getMonth()].slice(0, 3)}.`;
+    cos = '<div class="vista-setmana">' + Array.from({ length: 7 }, (_, i) => {
+      const d = addDays(dl, i), ds = ymd(d), plans = delDia(ds);
+      return `<section class="setm-dia${ds === avui() ? ' avui' : ''}">
+          <button class="setm-cap" data-anadia="${ds}" aria-label="Veure el dia"><b>${DIES[i]}</b><span>${d.getDate()}</span></button>
+          <div class="setm-plans">${plans.map((p) => targeta(p)).join('') || `<button class="setm-buit" data-nou="${ds}">+ Afegeix</button>`}</div>
+        </section>`;
+    }).join('') + '</div>';
+  } else {
+    const c = ui.cursor;
+    titol = `${cap(MESOS[c.getMonth()])} ${c.getFullYear()}`;
+    const inici = mondayOf(new Date(c.getFullYear(), c.getMonth(), 1));
+    let cel = '';
+    for (let i = 0; i < 42; i++) {
+      const d = addDays(inici, i);
+      if (i >= 35 && d.getMonth() !== c.getMonth()) break;
+      const ds = ymd(d), plans = delDia(ds), fora = d.getMonth() !== c.getMonth();
+      const marques = plans.slice(0, 3).map((p) => `<i class="${p.estat === 'cancellat' ? 'canc' : ''}" style="--c:${esc(tipDe(p).color)}">${ico(tipDe(p))}</i>`).join('')
+        + (plans.length > 3 ? `<em>+${plans.length - 3}</em>` : '');
+      cel += `<button class="cel${fora ? ' fora' : ''}${ds === avui() ? ' avui' : ''}${ds === ui.diaSel ? ' sel' : ''}" data-dia="${ds}">
+        <span class="num">${d.getDate()}</span><span class="marques">${marques}</span></button>`;
+    }
+    const delSel = delDia(ui.diaSel);
+    cos = `<div class="cal-grid">${DIES.map((d) => `<span class="cal-dia">${d}</span>`).join('')}${cel}</div>
+      <section class="dia-sel">
+        <h3>${esc(etiquetaDia(ui.diaSel))}</h3>
+        ${delSel.map((p) => targeta(p)).join('') || '<p class="buit">Cap pla aquest dia.</p>'}
+        <button class="btn" data-nou="${ui.diaSel}">+ Afegeix un pla aquest dia</button>
+      </section>`;
   }
-  const delSel = delDia(ui.diaSel);
-  return `<div class="cal-cap">
-      <button class="btn icona" data-mes="-1" aria-label="Mes anterior">‹</button>
-      <h2>${cap(MESOS[c.getMonth()])} ${c.getFullYear()}</h2>
-      <button class="btn icona" data-mes="1" aria-label="Mes següent">›</button>
+  const quin = { dia: 'Dia', setmana: 'Setmana', mes: 'Mes' }[mode];
+  return `<div class="seg cal-modes">${MODES.map(([m, n]) => `<button data-calmode="${m}" aria-pressed="${mode === m}">${n}</button>`).join('')}</div>
+    <div class="cal-cap">
+      <button class="btn icona" data-mes="-1" aria-label="${quin} anterior">‹</button>
+      <h2>${esc(titol)}</h2>
+      <button class="btn icona" data-mes="1" aria-label="${quin} següent">›</button>
       <button class="btn" data-mes="0">Avui</button>
     </div>
-    <div class="cal-grid">${DIES.map((d) => `<span class="cal-dia">${d}</span>`).join('')}${cel}</div>
-    <section class="dia-sel">
-      <h3>${esc(etiquetaDia(ui.diaSel))}</h3>
-      ${delSel.map((p) => targeta(p)).join('') || '<p class="buit">Cap pla aquest dia.</p>'}
-      <button class="btn" data-nou="${ui.diaSel}">+ Afegeix un pla aquest dia</button>
-    </section>`;
+    ${cos}`;
 }
 
 /* ---------- Vista: Gent ---------- */
@@ -346,7 +392,7 @@ function vistaAjustos() {
     const ts = state.tipus.filter((t) => (t.grup || 'altres') === g);
     if (!ts.length) return '';
     return `<h3 class="sub">${esc(nomG)}</h3>` + ts.map((t) => `<div class="tipus-fila" data-tid="${esc(t.id)}">
-        ${botoEmoji(t.emoji, 'data-camp="emoji"')}
+        ${botoIcona(t, 'data-camp="icona"')}
         <input data-camp="nom" value="${esc(t.nom)}" aria-label="Nom">
         <input type="color" data-camp="color" value="${esc(t.color)}" aria-label="Color">
         <button class="btn icona" data-treu="${esc(t.id)}" aria-label="Treu ${esc(t.nom)}">×</button>
@@ -360,10 +406,10 @@ function vistaAjustos() {
     </div>
     <div class="section" id="seccioTipus">
       <h2>Tipus de pla</h2>
-      <p class="help">Canvia l'emoji, el nom o el color. Els canvis es desen sols.</p>
+      <p class="help">Toca la icona per canviar-la. També pots canviar el nom i el color. Els canvis es desen sols.</p>
       ${files}
       <form class="barra" id="formTipus">
-        ${botoEmoji('', 'name="emoji"')}
+        ${botoIcona(null, 'name="icona"')}
         <input name="nom" placeholder="Nou tipus (p. ex. Karaoke)" autocomplete="off">
         <select name="grup" aria-label="Grup">${GRUPS.map(([g, n]) => `<option value="${g}"${g === 'altres' ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select>
         <button class="btn primary">Afegeix</button>
@@ -471,9 +517,20 @@ $('#main').addEventListener('click', (e) => {
   if (mes) {
     const n = Number(mes.dataset.mes);
     if (n === 0) { ui.cursor = new Date(); ui.diaSel = avui(); }
+    else if (ui.calMode === 'dia') ui.diaSel = ymd(addDays(parseYmd(ui.diaSel), n));
+    else if (ui.calMode === 'setmana') ui.diaSel = ymd(addDays(parseYmd(ui.diaSel), 7 * n));
     else ui.cursor = new Date(ui.cursor.getFullYear(), ui.cursor.getMonth() + n, 1);
+    if (ui.calMode !== 'mes') { const d = parseYmd(ui.diaSel); ui.cursor = new Date(d.getFullYear(), d.getMonth(), 1); }
     render(); return;
   }
+  const cm = t.closest('[data-calmode]');
+  if (cm) {
+    ui.calMode = cm.dataset.calmode; desaPref('calMode', ui.calMode);
+    const d = parseYmd(ui.diaSel); ui.cursor = new Date(d.getFullYear(), d.getMonth(), 1);
+    render(); return;
+  }
+  const ad = t.closest('[data-anadia]');
+  if (ad) { ui.diaSel = ad.dataset.anadia; ui.calMode = 'dia'; desaPref('calMode', 'dia'); render(); window.scrollTo(0, 0); return; }
   const pe = t.closest('[data-persona]');
   if (pe) { ui.persona = pe.dataset.persona; render(); window.scrollTo(0, 0); return; }
   if (t.id === 'pRenom') {
@@ -513,6 +570,11 @@ $('#main').addEventListener('change', (e) => {
     pers(ui.persona).email = v; save(); toast('Desat'); return;
   }
   const fila = t.closest('[data-tid]');
+  if (fila && t.dataset.camp === 'icona') {
+    const tt = state.tipus.find((x) => x.id === fila.dataset.tid);
+    if (!t.value) return;
+    Object.assign(tt, llegeixIcona(t.value)); save(); toast('Desat'); return;
+  }
   if (fila && t.dataset.camp) {
     const tt = state.tipus.find((x) => x.id === fila.dataset.tid);
     const v = t.value.trim();
@@ -576,7 +638,7 @@ $('#main').addEventListener('submit', async (e) => {
   if (e.target.id === 'formTipus') {
     const nom = String(f.get('nom') || '').trim();
     if (!nom) return;
-    state.tipus.push({ id: 't-' + uid(), nom, emoji: String(f.get('emoji') || '').trim() || '✨', color: '#5C7CFA', grup: String(f.get('grup') || 'altres') });
+    state.tipus.push({ id: 't-' + uid(), nom, emoji: '', icona: 'auto_awesome', color: COLORS_NOUS[state.tipus.length % COLORS_NOUS.length], grup: String(f.get('grup') || 'altres'), ...llegeixIcona(String(f.get('icona') || '')) });
     save(); render(); toast(`«${nom}» afegit`);
   }
 });
@@ -615,7 +677,7 @@ function obreDetall(p) {
        <button type="button" class="btn" id="dEdita">✏️ Edita</button>
        <button type="button" class="btn" id="dDuplica">⧉ Duplica</button>`;
   obreDlg(`<header class="det-cap" style="--c:${esc(t.color)}">
-      <span class="det-emoji">${esc(t.emoji)}</span>
+      <span class="det-emoji">${ico(t)}</span>
       <div><small>${esc(t.nom)}</small><h2>${esc(titolPla(p))}</h2></div>
       <button type="button" class="x" data-tanca aria-label="Tanca">×</button>
     </header>
@@ -768,7 +830,7 @@ async function enviaEnllac(p) {
   const t = tipDe(p);
   const quan = etiquetaDia(p.data) === cap(dataLlarga(p.data)) ? etiquetaDia(p.data) : `${etiquetaDia(p.data)}, ${dataLlarga(p.data)}`;
   const text = [
-    `${t.emoji} ${titolPla(p)}`,
+    [t.emoji, titolPla(p)].filter(Boolean).join(' '),
     `📅 ${quan}${p.totElDia || !p.hora ? '' : ' · ' + horaText(p)}`,
     p.lloc ? `📍 ${p.lloc}` : '',
     '',
@@ -795,8 +857,8 @@ function obreForm(p, base = {}) {
       || '<span class="help">Encara no hi ha ningú: escriu un nom a sota.</span>';
   };
   const tipusXips = () => GRUPS.map(([g]) => state.tipus.filter((t) => (t.grup || 'altres') === g)).flat()
-    .map((t) => `<button type="button" class="txip" data-tipus="${esc(t.id)}" aria-pressed="${d.tipusId === t.id}" style="--c:${esc(t.color)}"><span>${esc(t.emoji)}</span>${esc(nomCurt(t))}</button>`).join('')
-    + '<button type="button" class="txip nou-tipus" id="tNou"><span>＋</span>Nou tipus</button>';
+    .map((t) => `<button type="button" class="txip" data-tipus="${esc(t.id)}" aria-pressed="${d.tipusId === t.id}" style="--c:${esc(t.color)}">${ico(t)}${esc(nomCurt(t))}</button>`).join('')
+    + '<button type="button" class="txip nou-tipus" id="tNou"><span class="ms">add</span>Nou tipus</button>';
 
   obreDlg(`<header class="dlg-cap"><h2>${nou ? 'Nou pla' : 'Edita el pla'}</h2><button type="button" class="x" data-tanca aria-label="Tanca">×</button></header>
     <div class="dlg-cos">
@@ -805,7 +867,7 @@ function obreForm(p, base = {}) {
         <p class="help">I, si vols, tria'n el tipus (o crea'n un de nou):</p>
         <div class="tipus-grid" id="tipusGrid">${tipusXips()}</div>
         <div class="nou-tipus-fila" id="nouTipusFila" hidden>
-          ${botoEmoji('', 'id="ntEmoji"')}
+          ${botoIcona(null, 'id="ntIcona"')}
           <input id="ntNom" placeholder="Nom del tipus (p. ex. Karaoke)" autocomplete="off" enterkeyhint="done">
           <button type="button" class="btn primary" id="ntCrea">Crea</button>
         </div>
@@ -857,12 +919,12 @@ function obreForm(p, base = {}) {
     const nom = $('#ntNom').value.trim();
     if (!nom) { toast('Escriu el nom del tipus'); $('#ntNom').focus(); return; }
     const ja = state.tipus.find((t) => normal(t.nom) === normal(nom));
-    const t = ja || { id: 't-' + uid(), nom, emoji: $('#ntEmoji').value.trim() || '✨', color: COLORS_NOUS[state.tipus.length % COLORS_NOUS.length], grup: 'altres' };
+    const t = ja || { id: 't-' + uid(), nom, emoji: '', icona: 'auto_awesome', color: COLORS_NOUS[state.tipus.length % COLORS_NOUS.length], grup: 'altres', ...llegeixIcona($('#ntIcona').value) };
     if (!ja) { state.tipus.push(t); save(); }
     d.tipusId = t.id;
     $('#tipusGrid').innerHTML = tipusXips();
     $('#nouTipusFila').hidden = true;
-    $('#ntNom').value = ''; $('#ntEmoji').value = ''; $('#ntEmoji').previousElementSibling.textContent = '🎯';
+    $('#ntNom').value = ''; $('#ntIcona').value = ''; $('#ntIcona').previousElementSibling.innerHTML = '<span class="ms">auto_awesome</span>';
     toast(ja ? `«${t.nom}» ja existia: l'he triat` : `Tipus «${nom}» creat`);
   };
   $('#ntNom').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); creaTipus(); } });
@@ -881,10 +943,6 @@ function obreForm(p, base = {}) {
       // Tornar a tocar el tipus triat el treu (el tipus és opcional)
       d.tipusId = d.tipusId === tx.dataset.tipus ? '' : tx.dataset.tipus;
       $$('#dlgForm [data-tipus]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.tipus === d.tipusId));
-      if (!d.tipusId) return;
-      // Hora habitual del tipus (dinar a les 14 h, sopar a les 21 h…) si encara no n'hi ha
-      const h = tip(d.tipusId).hora, hi = dlgForm.elements.hora;
-      if (h && !hi.value && !dlgForm.elements.totElDia.checked) hi.value = h;
       return;
     }
     const q = e.target.closest('[data-qui]');
