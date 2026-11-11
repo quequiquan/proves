@@ -153,6 +153,9 @@ const ui = {
 
 /* ---------- Consultes ---------- */
 const ALTRES = { id: '', nom: 'Altres', emoji: '✨', icona: 'auto_awesome', color: '#868E96' };
+const tipusOrdenats = () => state.tipus.map((t, i) => [t, i])
+  .sort((a, b) => ((a[0].ordre ?? a[1]) - (b[0].ordre ?? b[1]))).map((x) => x[0]);
+const grupDe = (t) => (GRUPS.some(([x]) => x === t.grup) ? t.grup : 'altres');
 const tip = (id) => state.tipus.find((t) => t.id === id) || state.tipus.find((t) => t.id === 't-altres') || ALTRES;
 const pers = (id) => state.persones.find((p) => p.id === id);
 const nomCurt = (t) => t.nom.split(' / ')[0];
@@ -179,8 +182,43 @@ function planRebut(r) {
 }
 const rebuts = () => (sync()?.rebuts() || []).filter((r) => r.pla && r.pla.data).map(planRebut);
 // Tots els plans que es veuen: els teus i els que t'han enviat i has dit que hi vas
-const totsPlans = () => [...state.plans, ...rebuts().filter((p) => p.rebut.resposta === 'si')];
-const trobaPla = (id) => state.plans.find((p) => p.id === id) || rebuts().find((p) => p.id === id);
+// Aniversaris: es generen sols a partir de la fitxa de cada contacte (no es guarden com a plans)
+function llegeixAniv(txt) {
+  const t = String(txt || '').trim();
+  let m = t.match(/^(\d{1,2})[\/.\-](\d{1,2})(?:[\/.\-](\d{2,4}))?$/);
+  if (m) {
+    let y = m[3] ? Number(m[3]) : null;
+    if (y !== null && y < 100) y += y > (new Date().getFullYear() % 100) ? 1900 : 2000;
+    return { d: Number(m[1]), m: Number(m[2]), y };
+  }
+  m = t.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? { d: Number(m[3]), m: Number(m[2]), y: Number(m[1]) } : null;
+}
+const tipusAniv = () => state.tipus.find((t) => normal(t.nom) === 'aniversari');
+function aniversaris(anys) {
+  const out = [];
+  const ta = tipusAniv();
+  state.persones.forEach((pe) => {
+    const a = llegeixAniv(pe.aniversari);
+    if (!a || a.m < 1 || a.m > 12 || a.d < 1 || a.d > 31) return;
+    anys.forEach((y) => {
+      const dies = new Date(y, a.m, 0).getDate();   // 29 de febrer → 28 els anys que no és de traspàs
+      const ds = `${y}-${pad(a.m)}-${pad(Math.min(a.d, dies))}`;
+      const edat = a.y && a.y <= y ? y - a.y : null;
+      out.push({
+        id: 'an|' + pe.id + '|' + y, aniversari: pe, data: ds, totElDia: true, hora: '', horaFi: '', estat: 'confirmat',
+        titol: `Aniversari de ${pe.nom}${edat ? ` (${edat} anys)` : ''}`, lloc: '', qui: [pe.id], _amb: [],
+        _t: { nom: 'Aniversari', color: ta ? ta.color : '#F06595' },
+      });
+    });
+  });
+  return out;
+}
+// Anys dels quals cal mostrar aniversaris: l'actual, el següent i el que es mira al calendari
+const anysAniv = () => [...new Set([new Date().getFullYear(), new Date().getFullYear() + 1, ui.cursor.getFullYear(), parseYmd(ui.diaSel).getFullYear()])];
+const totsPlans = (ambAniv = true) => [...state.plans, ...rebuts().filter((p) => p.rebut.resposta === 'si'), ...(ambAniv ? aniversaris(anysAniv()) : [])];
+const trobaPla = (id) => state.plans.find((p) => p.id === id) || rebuts().find((p) => p.id === id)
+  || (id.startsWith('an|') ? aniversaris([Number(id.split('|')[2])]).find((p) => p.id === id) : null);
 const delDia = (ds) => totsPlans().filter((p) => p.data === ds).sort(perOrdre);
 // Còpia del pla que rep cada persona (sense notes; «amb» des del seu punt de vista)
 function snapshotPla(p, em) {
@@ -376,15 +414,15 @@ function vistaPropers() {
   const q = normal(ui.cerca.trim());
   let plans, invers = false, buit;
   if (q) {
-    plans = totsPlans().filter((p) => normal([titolPla(p), tipDe(p).nom, p.lloc, p.notes, p.rebut?.de_nom, ...noms(p)].join(' ')).includes(q));
+    plans = totsPlans(false).filter((p) => normal([titolPla(p), tipDe(p).nom, p.lloc, p.notes, p.rebut?.de_nom, ...noms(p)].join(' ')).includes(q));
     invers = true;
     buit = `No s'ha trobat cap pla amb «${esc(ui.cerca.trim())}».`;
   } else if (ui.passats) {
-    plans = totsPlans().filter((p) => p.data < avui());
+    plans = totsPlans(false).filter((p) => p.data < avui());
     invers = true;
     buit = 'Encara no hi ha cap pla passat.';
   } else {
-    plans = totsPlans().filter((p) => p.data >= avui());
+    plans = totsPlans().filter((p) => p.data >= avui() && (!p.aniversari || p.data <= ymd(addDays(new Date(), 45))));
     buit = '';
   }
   const setmana = totsPlans().filter((p) => p.data >= avui() && p.data <= ymd(addDays(mondayOf(new Date()), 6)) && p.estat !== 'cancellat').length;
@@ -405,7 +443,7 @@ function vistaPropers() {
     </div>
     ${cap0}
     ${plans.length ? llistaPerDies(plans, invers) : buit ? `<p class="buit">${buit}</p>` : `<div class="buit gran">
-      <div class="buit-emoji"><span class="ms">celebration</span></div>
+      <div class="buit-emoji"><span class="punt-buit"></span></div>
       <p>No tens cap pla a la vista.</p>
       <button class="btn primary" data-nou>+ Afegeix el primer pla</button></div>`}`;
 }
@@ -494,7 +532,7 @@ function vistaGent() {
         <label class="camp">Correu <small>(per enviar-li plans a la seva app)</small>
           <input data-pcamp="email" type="email" value="${esc(pe.email || '')}" placeholder="nom@exemple.com" autocomplete="off" inputmode="email"></label>
         ${camp('adreca', 'Adreça')}
-        ${camp('aniversari', 'Aniversari', 'placeholder="p. ex. 14/03"')}
+${camp('aniversari', 'Aniversari <small>(dia/mes o dia/mes/any: sortirà sol al calendari cada any)</small>', 'placeholder="p. ex. 14/03 o 14/03/1980" inputmode="numeric"')}
         ${camp('empresa', 'Feina / empresa')}
         <label class="camp">Notes<textarea data-pcamp="notes" rows="3" placeholder="Al·lèrgies, gustos, el nom dels fills…">${esc(pe.notes || '')}</textarea></label>
         <p class="help">Els canvis es desen sols.</p>
@@ -530,11 +568,18 @@ function vistaGent() {
 /* ---------- Vista: Ajustos ---------- */
 function vistaAjustos() {
   const files = GRUPS.map(([g, nomG]) => {
-    const ts = state.tipus.filter((t) => (GRUPS.some(([x]) => x === t.grup) ? t.grup : 'altres') === g);
+    const ts = tipusOrdenats().filter((t) => grupDe(t) === g);
     if (!ts.length) return '';
-    return `<h3 class="sub">${esc(nomG)}</h3>` + ts.map((t) => `<div class="tipus-fila" data-tid="${esc(t.id)}">
+    return `<h3 class="sub">${esc(nomG)}</h3>` + ts.map((t, i) => `<div class="tipus-fila" data-tid="${esc(t.id)}">
         ${botoColor(t.color, 'data-camp="color"')}
-        <input data-camp="nom" value="${esc(t.nom)}" aria-label="Nom">
+        <div class="tipus-dades">
+          <input data-camp="nom" value="${esc(t.nom)}" aria-label="Nom">
+          <select data-camp="grup" aria-label="Grup">${GRUPS.map(([x, n]) => `<option value="${x}"${x === g ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select>
+        </div>
+        <div class="tipus-ordre">
+          <button class="btn icona" data-mou="-1" aria-label="Puja ${esc(t.nom)}" ${i === 0 ? 'disabled' : ''}>▲</button>
+          <button class="btn icona" data-mou="1" aria-label="Baixa ${esc(t.nom)}" ${i === ts.length - 1 ? 'disabled' : ''}>▼</button>
+        </div>
         <button class="btn icona" data-treu="${esc(t.id)}" aria-label="Treu ${esc(t.nom)}">×</button>
       </div>`).join('');
   }).join('');
@@ -546,7 +591,7 @@ function vistaAjustos() {
     </div>
     <div class="section" id="seccioTipus">
       <h2>Tipus de pla</h2>
-      <p class="help">Toca el cercle per canviar-ne el color. També pots canviar el nom. Els canvis es desen sols.</p>
+      <p class="help">Toca el cercle per canviar-ne el color. Amb ▲ ▼ ordenes les categories dins del seu grup (les de dalt surten primer al formulari), i amb el desplegable les canvies de grup. Els canvis es desen sols.</p>
       ${files}
       <form class="barra" id="formTipus">
         ${botoColor(COLORS_NOUS[state.tipus.length % COLORS_NOUS.length], 'name="color"')}
@@ -633,7 +678,7 @@ $('#main').addEventListener('click', (e) => {
   const pla = t.closest('[data-pla]');
   const resp = t.closest('[data-respon]');
   if (resp) { const p = trobaPla(resp.dataset.r); if (p) respon(p, resp.dataset.respon); return; }
-  if (pla) { const p = trobaPla(pla.dataset.pla); if (p) obreDetall(p); return; }
+  if (pla) { const p = trobaPla(pla.dataset.pla); if (p) (p.aniversari ? obreAniversari(p) : obreDetall(p)); return; }
   if (t.closest('[data-entrada]')) { ui.view = 'entrada'; ui.entrada = { pas: 'correu', email: '' }; render(); return; }
   const pas = t.closest('[data-pas]');
   if (pas) { ui.entrada.pas = pas.dataset.pas; render(); return; }
@@ -687,6 +732,25 @@ $('#main').addEventListener('click', (e) => {
     state.persones = state.persones.filter((x) => x.id !== p.id);
     ui.persona = ''; save(); render(); return;
   }
+  const mou = t.closest('[data-mou]');
+  if (mou) {
+    const id = mou.closest('[data-tid]').dataset.tid;
+    const tt = state.tipus.find((x) => x.id === id);
+    const germans = tipusOrdenats().filter((x) => grupDe(x) === grupDe(tt));
+    const i = germans.indexOf(tt), j = i + Number(mou.dataset.mou);
+    if (j < 0 || j >= germans.length) return;
+    const ord = tipusOrdenats();
+    const a = ord.indexOf(tt), b = ord.indexOf(germans[j]);
+    [ord[a], ord[b]] = [ord[b], ord[a]];
+    ord.forEach((x, k) => { if (x.ordre !== k) x.ordre = k; });
+    save();
+    const y = mou.getBoundingClientRect().top;
+    render();
+    // Manté la fila a la vista mentre es mou
+    const nova = document.querySelector(`[data-tid="${id}"] [data-mou="${mou.dataset.mou}"]`) || document.querySelector(`[data-tid="${id}"]`);
+    if (nova) window.scrollBy(0, nova.getBoundingClientRect().top - y);
+    return;
+  }
   const treu = t.closest('[data-treu]');
   if (treu) {
     const tt = state.tipus.find((x) => x.id === treu.dataset.treu);
@@ -714,6 +778,7 @@ $('#main').addEventListener('change', (e) => {
     const pe = pers(ui.persona), k = t.dataset.pcamp, v = t.value.trim();
     if (k === 'nom' && !v) { t.value = pe.nom; toast('El nom no pot quedar buit'); return; }
     if (k === 'email' && v && !emailValid(v)) { toast('Aquest correu no sembla correcte'); return; }
+    if (k === 'aniversari' && v && !llegeixAniv(v)) { toast('Escriu l\'aniversari com 14/03 o 14/03/1980'); return; }
     pe[k] = k === 'email' ? v.toLowerCase() : v;
     save(); toast('Desat');
     if (k === 'nom') $('#fitxaNom').textContent = v;
@@ -725,6 +790,15 @@ $('#main').addEventListener('change', (e) => {
     pers(ui.persona).email = v; save(); toast('Desat'); return;
   }
   const fila = t.closest('[data-tid]');
+  if (fila && t.dataset.camp === 'grup') {
+    const tt = state.tipus.find((x) => x.id === fila.dataset.tid);
+    tt.grup = t.value;
+    const ord = tipusOrdenats().filter((x) => x !== tt);
+    ord.push(tt);
+    ord.forEach((x, k) => { if (x.ordre !== k) x.ordre = k; });
+    save(); render(); $(`[data-tid="${tt.id}"]`)?.scrollIntoView({ block: 'center' }); toast(`«${tt.nom}» mogut`);
+    return;
+  }
   if (fila && t.dataset.camp) {
     const tt = state.tipus.find((x) => x.id === fila.dataset.tid);
     const v = t.value.trim();
@@ -825,6 +899,32 @@ function obreDlg(html, classe = '') {
   if (!dlg.open) dlg.showModal();
   dlgForm.scrollTop = 0;
 }
+
+/* ---------- Detall d'un aniversari ---------- */
+function obreAniversari(p) {
+  const pe = p.aniversari;
+  obreDlg(`<header class="det-cap" style="--c:${esc(p._t.color)}">
+      <span class="det-emoji">${ico(p._t)}</span>
+      <div><small>Aniversari</small><h2>${esc(p.titol)}</h2></div>
+      <button type="button" class="x" data-tanca aria-label="Tanca">×</button>
+    </header>
+    <div class="dlg-cos">
+      <ul class="det">
+        <li><span>🎂</span>${esc(cap(dataLlarga(p.data)))}</li>
+        ${falten(p.data) ? `<li><span>⏳</span>${esc(cap(falten(p.data)))}</li>` : ''}
+        ${pe.tel ? `<li><span>📞</span>${esc(pe.tel)}</li>` : ''}
+      </ul>
+      <p class="help">Surt sol cada any perquè la fitxa de ${esc(pe.nom)} té l'aniversari. Per canviar-lo o treure'l, edita la fitxa.</p>
+    </div>
+    <footer class="dlg-peu det-accions">
+      ${pe.tel ? `<a class="btn primary" href="https://wa.me/${esc(waNum(pe.tel))}" target="_blank" rel="noopener">💬 Felicita'l per WhatsApp</a>` : ''}
+      <button type="button" class="btn" id="aFitxa">👤 Fitxa de ${esc(pe.nom)}</button>
+    </footer>`, 'detall');
+  dlgForm.onclick = (e) => {
+    if (e.target.closest('#aFitxa')) { tancaDlg(); ui.view = 'gent'; ui.persona = pe.id; render(); window.scrollTo(0, 0); }
+  };
+}
+const waNum = (t) => { let n = String(t || '').replace(/[^\d+]/g, '').replace(/^\+/, '').replace(/^00/, ''); if (/^[6789]\d{8}$/.test(n)) n = '34' + n; return n; };
 
 /* ---------- Detall d'un pla ---------- */
 function obreDetall(p) {
@@ -1020,15 +1120,28 @@ function obreForm(p, base = {}) {
   const d = p ? { ...p, qui: [...(p.qui || [])] } : { tipusId: '', titol: '', data: avui(), hora: '', horaFi: '', totElDia: false, lloc: '', notes: '', estat: 'confirmat', qui: [], ...base };
   const nousPers = [];   // persones creades aquí: només es guarden si es desa
   const totes = () => [...state.persones, ...nousPers];
+  // Sense cercar: les persones triades i les més habituals. Cercant: les que coincideixen.
   const xips = () => {
-    const ord = totes().sort((a, b) => (d.qui.includes(b.id) - d.qui.includes(a.id)) || (usos(b.id) - usos(a.id)) || a.nom.localeCompare(b.nom, 'ca'));
-    return ord.map((pe) => `<button type="button" class="xip" data-qui="${esc(pe.id)}" aria-pressed="${d.qui.includes(pe.id)}">${esc(pe.nom)}</button>`).join('')
-      || '<span class="help">Encara no hi ha ningú: escriu un nom a sota.</span>';
+    const q = normal(($('#quiNou')?.value || '').trim());
+    const triades = totes().filter((pe) => d.qui.includes(pe.id));
+    let altres;
+    if (q) {
+      altres = totes().filter((pe) => !d.qui.includes(pe.id) && normal([pe.nom, pe.tel, pe.email].join(' ')).includes(q))
+        .sort((a, b) => (normal(b.nom).startsWith(q) - normal(a.nom).startsWith(q)) || a.nom.localeCompare(b.nom, 'ca')).slice(0, 30);
+    } else {
+      altres = totes().filter((pe) => !d.qui.includes(pe.id) && usos(pe.id) > 0)
+        .sort((a, b) => (usos(b.id) - usos(a.id)) || a.nom.localeCompare(b.nom, 'ca')).slice(0, 8);
+    }
+    const boto = (pe) => `<button type="button" class="xip" data-qui="${esc(pe.id)}" aria-pressed="${d.qui.includes(pe.id)}">${esc(pe.nom)}</button>`;
+    const exacte = q && totes().some((pe) => normal(pe.nom) === q);
+    return (triades.map(boto).join('') + altres.map(boto).join(''))
+      + (q && !exacte ? `<button type="button" class="xip xip-nou" id="quiAfegeix">+ Afegeix «${esc($('#quiNou').value.trim())}»</button>` : '')
+      || `<span class="help">${totes().length ? 'Escriu per cercar entre els teus contactes.' : 'Encara no hi ha ningú: escriu un nom per afegir-lo.'}</span>`;
   };
   // Tipus agrupats (Àpats i trobades, Cultura i lleure…), amb el nom del grup a sobre
   const xipTipus = (t) => `<button type="button" class="txip" data-tipus="${esc(t.id)}" aria-pressed="${d.tipusId === t.id}" style="--c:${esc(t.color)}">${ico(t)}<span class="txip-nom">${esc(nomCurt(t))}</span></button>`;
   const tipusXips = () => GRUPS.map(([g, nomG]) => {
-    const ts = state.tipus.filter((t) => (GRUPS.some(([x]) => x === t.grup) ? t.grup : 'altres') === g);
+    const ts = tipusOrdenats().filter((t) => grupDe(t) === g);
     return ts.length ? `<div class="tg-cap">${esc(nomG)}</div>` + ts.map(xipTipus).join('') : '';
   }).join('')
     + '<button type="button" class="txip nou-tipus" id="tNou"><span class="ms">add</span><span class="txip-nom">Nou tipus</span></button>';
@@ -1047,8 +1160,8 @@ function obreForm(p, base = {}) {
         <button type="button" class="enllac" id="tGestiona">✏️ Canvia o esborra els tipus</button>
       </fieldset>
       <fieldset><legend><span class="w-qui">Qui</span></legend>
-        <div class="xips" id="quiXips">${xips()}</div>
-        <div class="afegeix"><input id="quiNou" placeholder="Afegeix una persona" autocomplete="off" enterkeyhint="done"><button type="button" class="btn" id="quiAfegeix">Afegeix</button>${potContactes() ? '<button type="button" class="btn" id="quiContactes" aria-label="Tria dels contactes"><span class="ms">contacts</span></button>' : ''}</div>
+        <div class="afegeix"><input id="quiNou" type="search" placeholder="🔍 Cerca o afegeix una persona" autocomplete="off" enterkeyhint="done">${potContactes() ? '<button type="button" class="btn" id="quiContactes" aria-label="Tria dels contactes"><span class="ms">contacts</span></button>' : ''}</div>
+        <div class="xips xips-col" id="quiXips"></div>
       </fieldset>
       <fieldset><legend><span class="w-quan">Quan</span></legend>
         <div class="fila">
@@ -1087,8 +1200,9 @@ function obreForm(p, base = {}) {
     else { const pe = { id: 'pe-' + uid(), nom }; nousPers.push(pe); d.qui.push(pe.id); }
     inp.value = '';
     $('#quiXips').innerHTML = xips();
-    inp.focus();
   };
+  $('#quiXips').innerHTML = xips();
+  $('#quiNou').addEventListener('input', () => { $('#quiXips').innerHTML = xips(); });
   $('#quiNou').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); afegeixPersona(); } });
   // Tipus nou creat des del mateix formulari (queda guardat per a la propera vegada)
   const creaTipus = () => {
@@ -1148,10 +1262,11 @@ function obreForm(p, base = {}) {
     if (q) {
       const id = q.dataset.qui;
       d.qui = d.qui.includes(id) ? d.qui.filter((x) => x !== id) : [...d.qui, id];
-      q.setAttribute('aria-pressed', d.qui.includes(id));
+      if ($('#quiNou').value) $('#quiNou').value = '';
+      $('#quiXips').innerHTML = xips();
       return;
     }
-    if (e.target.id === 'quiAfegeix') { afegeixPersona(); return; }
+    if (e.target.closest('#quiAfegeix')) { afegeixPersona(); return; }
     if (e.target.id === 'fEsborra') {
       if (!confirm(`Esborrar «${titolPla(p)}»?`)) return;
       state.plans = state.plans.filter((x) => x.id !== p.id);
@@ -1166,7 +1281,6 @@ function obreForm(p, base = {}) {
   };
   dlgForm.onsubmit = (e) => {
     e.preventDefault();
-    if ($('#quiNou').value.trim()) afegeixPersona();
     const f = dlgForm.elements;
     if (!d.tipusId && !f.titol.value.trim()) { toast('Escriu què faràs o tria un tipus'); f.titol.focus(); return; }
     if (!f.data.value) { toast('Falta el dia'); f.data.focus(); return; }

@@ -466,3 +466,21 @@ fieldset > .help { margin: 10px 2px 6px; }
 .tg-cap { grid-column: 1 / -1; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); margin: 8px 2px 0; }
 .tg-cap:first-child { margin-top: 0; }
 .tipus-grid .nou-tipus { margin-top: 8px; }
+
+/* Punt vermell de la pantalla buida */
+.punt-buit { display: inline-block; width: 56px; height: 56px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 10px color-mix(in srgb, var(--accent) 18%, transparent); margin-bottom: 10px; }
+
+/* Ajustos: fila de categoria amb grup i fletxes d'ordre */
+.tipus-fila { align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); }
+.tipus-dades { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.tipus-dades input, .tipus-dades select { min-height: 38px !important; padding: 6px 10px !important; }
+.tipus-dades select { font-size: 13px; color: var(--muted); }
+.tipus-ordre { display: flex; flex-direction: column; gap: 3px; }
+.tipus-ordre .btn.icona { width: 36px; min-height: 30px; height: 30px; font-size: 13px; }
+.btn:disabled { opacity: .3; cursor: default; }
+
+/* Persones al formulari: dues columnes */
+.xips-col { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
+.xips-col .xip { min-width: 0; justify-content: flex-start; border-radius: 12px; padding: 8px 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; text-align: left; }
+.xips-col .help { grid-column: 1 / -1; }
+.xip-nou { grid-column: 1 / -1; border-style: dashed !important; color: var(--accent); }
