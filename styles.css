@@ -502,3 +502,9 @@ fieldset > .help { margin: 10px 2px 6px; }
 .vista-calendari.entra-esquerra .cal-grid, .vista-calendari.entra-esquerra .vista-setmana, .vista-calendari.entra-esquerra .vista-dia, .vista-calendari.entra-esquerra .vista-any { animation: entraEsquerra .22s ease-out; }
 @keyframes entraDreta { from { transform: translateX(40px); opacity: .3; } to { transform: none; opacity: 1; } }
 @keyframes entraEsquerra { from { transform: translateX(-40px); opacity: .3; } to { transform: none; opacity: 1; } }
+
+/* Mantenir premut un pla: que l'iPhone no seleccioni text ni mostri el menú d'enllaç */
+.pla { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+/* Casella «Envia-ho a la seva app» */
+.envia-app { display: flex; align-items: flex-start; gap: 8px; margin-top: 10px; font-size: 14px; color: var(--muted); }
+.envia-app input { margin-top: 2px; flex: none; }

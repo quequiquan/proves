@@ -928,6 +928,49 @@ $('#main').addEventListener('change', async (e) => {
   contactesAfegits(nous.length, cs.length);
 });
 
+/* ---------- Mantenir premut un pla (o botó dret) per eliminar-lo ---------- */
+function eliminaPla(p) {
+  if (!p || p.rebut || p.aniversari) {
+    if (p?.rebut) toast("Aquest pla te l'han enviat: no el pots eliminar, però pots dir que no hi vas.");
+    return;
+  }
+  if (!confirm(`Vols eliminar «${titolPla(p)}»?`)) return;
+  state.plans = state.plans.filter((x) => x.id !== p.id);
+  save(); render(); toast('Pla eliminat');
+}
+let premut = null, ignoraClic = false;
+$('#main').addEventListener('touchstart', (e) => {
+  const c = e.target.closest('[data-pla]');
+  if (!c || e.touches.length !== 1) return;
+  const x = e.touches[0].clientX, y = e.touches[0].clientY;
+  clearTimeout(premut?.t);
+  premut = {
+    x, y, c,
+    t: setTimeout(() => {
+      premut = null;
+      ignoraClic = true;                    // el clic que ve després de deixar anar no ha d'obrir el pla
+      setTimeout(() => { ignoraClic = false; }, 900);
+      if (navigator.vibrate) navigator.vibrate(15);
+      eliminaPla(trobaPla(c.dataset.pla));
+    }, 550),
+  };
+}, { passive: true });
+const cancelaPremut = () => { if (premut) { clearTimeout(premut.t); premut = null; } };
+$('#main').addEventListener('touchmove', (e) => {
+  if (premut && Math.hypot(e.touches[0].clientX - premut.x, e.touches[0].clientY - premut.y) > 10) cancelaPremut();
+}, { passive: true });
+$('#main').addEventListener('touchend', cancelaPremut, { passive: true });
+$('#main').addEventListener('touchcancel', cancelaPremut, { passive: true });
+$('#main').addEventListener('contextmenu', (e) => {
+  const c = e.target.closest('[data-pla]');
+  if (!c) return;
+  e.preventDefault();
+  if (!('ontouchstart' in window)) eliminaPla(trobaPla(c.dataset.pla));
+});
+$('#main').addEventListener('click', (e) => {
+  if (ignoraClic && e.target.closest('[data-pla]')) { e.stopImmediatePropagation(); e.preventDefault(); }
+}, true);
+
 /* ---------- Ajustos: subscripció al calendari ---------- */
 $('#main').addEventListener('click', async (e) => {
   const b = e.target.closest('#calSubscriu, #calCopia, #calNou');
@@ -1225,6 +1268,15 @@ function obreForm(p, base = {}) {
       || `<span class="help">${totes().length ? 'Escriu per cercar entre els teus contactes.' : 'Encara no hi ha ningú: escriu un nom per afegir-lo.'}</span>`;
   };
   // Tipus agrupats (Àpats i trobades, Cultura i lleure…), amb el nom del grup a sobre
+  // Persones de «Qui» amb correu: rebran el pla a la seva app quan es desi
+  const ambCorreu = () => totes().filter((pe) => d.qui.includes(pe.id) && emailValid(pe.email));
+  const pintaQui = () => {
+    $('#quiXips').innerHTML = xips();
+    const env = $('#quiEnvia'), ll = ambCorreu();
+    if (!env) return;
+    env.hidden = !usuari() || !ll.length;
+    env.querySelector('span').textContent = `Envia-ho a la seva app: ${llistaNoms(ll.map((pe) => pe.nom))}`;
+  };
   const xipTipus = (t) => `<button type="button" class="txip" data-tipus="${esc(t.id)}" aria-pressed="${d.tipusId === t.id}" style="--c:${esc(t.color)}">${ico(t)}<span class="txip-nom">${esc(nomCurt(t))}</span></button>`;
   const tipusXips = () => GRUPS.map(([g, nomG]) => {
     const ts = tipusOrdenats().filter((t) => grupDe(t) === g);
@@ -1248,6 +1300,7 @@ function obreForm(p, base = {}) {
       <fieldset><legend><span class="w-qui">Qui</span></legend>
         <div class="afegeix"><input id="quiNou" type="search" placeholder="🔍 Cerca o afegeix una persona" autocomplete="off" enterkeyhint="done">${potContactes() ? '<button type="button" class="btn" id="quiContactes" aria-label="Tria dels contactes"><span class="ms">contacts</span></button>' : ''}</div>
         <div class="xips xips-col" id="quiXips"></div>
+        <label class="check envia-app" id="quiEnvia" hidden><input type="checkbox" name="enviar" checked> <span></span></label>
       </fieldset>
       <fieldset><legend><span class="w-quan">Quan</span></legend>
         <div class="fila">
@@ -1285,10 +1338,10 @@ function obreForm(p, base = {}) {
     if (ja) { if (!d.qui.includes(ja.id)) d.qui.push(ja.id); }
     else { const pe = { id: 'pe-' + uid(), nom }; nousPers.push(pe); d.qui.push(pe.id); }
     inp.value = '';
-    $('#quiXips').innerHTML = xips();
+    pintaQui();
   };
-  $('#quiXips').innerHTML = xips();
-  $('#quiNou').addEventListener('input', () => { $('#quiXips').innerHTML = xips(); });
+  pintaQui();
+  $('#quiNou').addEventListener('input', () => { pintaQui(); });
   $('#quiNou').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); afegeixPersona(); } });
   // Tipus nou creat des del mateix formulari (queda guardat per a la propera vegada)
   const creaTipus = () => {
@@ -1325,7 +1378,7 @@ function obreForm(p, base = {}) {
     if (e.target.closest('#quiContactes')) {
       triaContactes().then((cs) => {
         incorporaContactes(cs, totes(), nousPers).forEach((pe) => { if (!d.qui.includes(pe.id)) d.qui.push(pe.id); });
-        $('#quiXips').innerHTML = xips();
+        pintaQui();
       }).catch(() => {});
       return;
     }
@@ -1349,7 +1402,7 @@ function obreForm(p, base = {}) {
       const id = q.dataset.qui;
       d.qui = d.qui.includes(id) ? d.qui.filter((x) => x !== id) : [...d.qui, id];
       if ($('#quiNou').value) $('#quiNou').value = '';
-      $('#quiXips').innerHTML = xips();
+      pintaQui();
       return;
     }
     if (e.target.closest('#quiAfegeix')) { afegeixPersona(); return; }
@@ -1377,6 +1430,18 @@ function obreForm(p, base = {}) {
       qui: d.qui.filter((id) => totes().some((x) => x.id === id)),
     };
     nousPers.filter((pe) => dades.qui.includes(pe.id)).forEach((pe) => state.persones.push(pe));
+    // Compartir: s'afegeixen els correus de la gent nova de «Qui» i es treuen els de qui ja no hi és
+    const correuDe = (id) => normal(pers(id)?.email);
+    const abansQui = nou ? [] : (p.qui || []);
+    const trets = abansQui.filter((id) => !dades.qui.includes(id)).map(correuDe).filter(Boolean);
+    let compartit = (nou ? [] : (p.compartit || [])).filter((em) => !trets.includes(em));
+    const enviats = [];
+    if (usuari() && f.enviar && f.enviar.checked) {
+      dades.qui.map(correuDe).filter(emailValid).forEach((em) => {
+        if (em !== normal(usuari().email) && !compartit.includes(em)) { compartit.push(em); enviats.push(em); }
+      });
+    }
+    dades.compartit = compartit;
     let desat;
     if (nou) { desat = { id: 'pl-' + uid(), ...dades, versio: 1, modificat: new Date().toISOString() }; state.plans.push(desat); }
     else { desat = Object.assign(p, dades, { versio: (p.versio || 1) + 1, modificat: new Date().toISOString() }); }
@@ -1385,7 +1450,7 @@ function obreForm(p, base = {}) {
     ui.cursor = new Date(parseYmd(desat.data).getFullYear(), parseYmd(desat.data).getMonth(), 1);
     render();
     obreDetall(desat);
-    toast(nou ? 'Pla afegit 🎉' : 'Canvis desats');
+    toast((nou ? 'Pla afegit' : 'Canvis desats') + (enviats.length ? ` i enviat a ${llistaNoms(enviats.map(nomDeCorreu))} 📨` : ''));
   };
 }
 
