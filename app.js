@@ -437,7 +437,7 @@ function vistaGent() {
       pe.email ? `<a class="btn" href="mailto:${esc(pe.email)}">✉️ Correu</a>` : '',
       pe.adreca ? `<a class="btn" href="${esc(Cal.mapa(pe.adreca))}" target="_blank" rel="noopener">📍 Mapa</a>` : '',
     ].filter(Boolean).join('');
-    return `<div class="cal-cap"><button class="btn" data-persona="">‹ Gent</button><h2 id="fitxaNom">${esc(pe.nom)}</h2></div>
+    return `<div class="cal-cap"><button class="btn" data-persona="">‹ Contactes</button><h2 id="fitxaNom">${esc(pe.nom)}</h2></div>
       ${accions ? `<div class="grp fitxa-accions">${accions}</div>` : ''}
       <div class="section fitxa">
         ${camp('nom', 'Nom')}
