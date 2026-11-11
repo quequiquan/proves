@@ -422,3 +422,26 @@ fieldset > .help { margin: 10px 2px 6px; }
 .ajuda summary { cursor: pointer; font-weight: 700; }
 .ajuda p { margin: 8px 0 0; color: var(--muted); }
 .ajuda b { color: var(--text); }
+
+/* ---------- Cercles de color (un per tipus) ---------- */
+.punt { display: inline-block; flex: none; width: 14px; height: 14px; border-radius: 50%; background: var(--c); }
+.pla-emoji { background: none !important; width: 22px; }
+.pla-emoji .punt { width: 18px; height: 18px; box-shadow: 0 0 0 4px color-mix(in srgb, var(--c) 20%, transparent); }
+.det-emoji { background: none !important; width: 48px; height: 48px; }
+.det-emoji .punt { width: 40px; height: 40px; box-shadow: 0 0 0 6px color-mix(in srgb, var(--c) 18%, transparent); }
+.txip { padding-left: 10px; }
+.txip .punt { width: 12px; height: 12px; }
+.txip[aria-pressed="true"] .punt { background: #fff; }
+.marques { gap: 3px; margin-top: 3px; }
+.marques i { display: inline-flex; }
+.marques .punt { width: 8px; height: 8px; }
+.marques i.canc .punt { opacity: .35; }
+.emoji-btn { display: grid; place-items: center; }
+.emoji-btn .punt { width: 24px; height: 24px; }
+.color-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(38px, 1fr)); gap: 8px; }
+.color-grid button {
+  aspect-ratio: 1; border-radius: 50%; border: 0; background: var(--c); cursor: pointer; padding: 0;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .25);
+}
+.color-grid button[aria-pressed="true"] { box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--c); }
+.color-altre { display: flex; align-items: center; gap: 10px; margin-top: 12px; font-size: 14px; font-weight: 700; color: var(--muted); }

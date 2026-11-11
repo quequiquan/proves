@@ -41,24 +41,8 @@ const ICONES = {
   't-casament': 'favorite', 't-excursio': 'hiking', 't-escapada': 'luggage', 't-esport': 'sports_soccer',
   't-festival': 'festival', 't-altres': 'auto_awesome',
 };
-// Icones que es poden triar (han de coincidir amb la llista «icon_names» d'index.html)
-const ICONES_TRIA = [
-  'restaurant', 'bakery_dining', 'brunch_dining', 'lunch_dining', 'dinner_dining', 'ramen_dining', 'local_pizza', 'icecream',
-  'cake', 'local_cafe', 'local_bar', 'wine_bar', 'sports_bar', 'liquor', 'celebration', 'nightlife',
-  'music_note', 'headphones', 'piano', 'mic', 'theater_comedy', 'movie', 'palette', 'museum', 'photo_camera', 'menu_book',
-  'festival', 'attractions', 'confirmation_number', 'local_activity', 'stadium', 'emoji_events',
-  'sports_soccer', 'sports_basketball', 'sports_tennis', 'golf_course', 'pool', 'directions_bike', 'directions_run',
-  'self_improvement', 'downhill_skiing', 'hiking', 'kayaking', 'surfing', 'sailing', 'landscape', 'beach_access',
-  'park', 'forest', 'camping', 'local_florist', 'wb_sunny', 'nightlight', 'directions_car', 'flight', 'luggage', 'cottage',
-  'favorite', 'diversity_3', 'groups', 'family_restroom', 'child_care', 'pets', 'handshake', 'volunteer_activism',
-  'redeem', 'church', 'school', 'sports_esports', 'casino', 'shopping_bag', 'storefront', 'spa', 'star', 'auto_awesome',
-];
 const iconaDe = (t) => (t.icona !== undefined ? t.icona : ICONES[t.id] || '');
-const ico = (t) => (iconaDe(t)
-  ? `<span class="ms" aria-hidden="true">${esc(iconaDe(t))}</span>`
-  : `<span class="emo">${esc(t.emoji || '✨')}</span>`);
-// Valor del selector: «ms:nom» (icona) o un emoji escrit a mà
-const llegeixIcona = (v) => (String(v || '').startsWith('ms:') ? { icona: v.slice(3) } : v ? { emoji: v, icona: '' } : {});
+const ico = () => '<span class="punt" aria-hidden="true"></span>';
 const ESTATS = [['confirmat', 'Confirmat'], ['pendent', 'Per confirmar'], ['cancellat', 'Cancel·lat']];
 
 /* ---------- Utilitats ---------- */
@@ -177,9 +161,14 @@ function falten(ds) {
   return dies < 14 ? `d'aquí a ${dies} dies` : `d'aquí a ${Math.round(dies / 7)} setmanes`;
 }
 
-/* ---------- Triar un emoji ---------- */
-// Graella d'icones d'oci per triar amb un toc (a l'iPhone, escriure un emoji vol dir canviar de teclat)
-const botoIcona = (t, attrs) => `<button type="button" class="emoji-btn" aria-label="Tria la icona" style="--c:${esc(t ? t.color : '#868E96')}">${t ? ico(t) : '<span class="ms">auto_awesome</span>'}</button><input type="hidden" ${attrs} value="">`;
+/* ---------- Triar el color d'un tipus ---------- */
+const PALETA = [
+  '#E03131', '#F76707', '#F08C00', '#FAB005', '#FFD43B', '#94D82D', '#66A80F', '#2F9E44',
+  '#0CA678', '#12B886', '#15AABF', '#1098AD', '#228BE6', '#1C7ED6', '#4263EB', '#5C7CFA',
+  '#7048E8', '#7950F2', '#9C36B5', '#BE4BDB', '#E64980', '#F06595', '#C2255C', '#E8738A',
+  '#A0522D', '#8D6E63', '#495057', '#868E96',
+];
+const botoColor = (color, attrs) => `<button type="button" class="emoji-btn" aria-label="Tria el color" style="--c:${esc(color)}"><span class="punt"></span></button><input type="hidden" ${attrs} value="${esc(color)}">`;
 let botoEmojiActiu = null;
 function tancaPanellEmoji() { $$('.emoji-panel').forEach((x) => x.remove()); botoEmojiActiu = null; }
 function obrePanellEmoji(b) {
@@ -187,31 +176,31 @@ function obrePanellEmoji(b) {
   tancaPanellEmoji();
   if (mateix) return;
   botoEmojiActiu = b;
+  const actual = b.nextElementSibling.value;
   const fila = b.closest('.tipus-fila, .barra, .nou-tipus-fila') || b.parentElement;
   fila.insertAdjacentHTML('afterend', `<div class="emoji-panel">
-      <p class="help">Toca la icona que vulguis:</p>
-      <div class="emoji-grid">${ICONES_TRIA.map((x) => `<button type="button" data-posa-emoji="ms:${x}"><span class="ms">${x}</span></button>`).join('')}</div>
-      <div class="emoji-altre"><input placeholder="O escriu un emoji" autocomplete="off" enterkeyhint="done"><button type="button" class="btn emoji-ok">D'acord</button></div>
+      <p class="help">Toca el color que vulguis:</p>
+      <div class="color-grid">${PALETA.map((x) => `<button type="button" data-posa-emoji="${x}" style="--c:${x}" aria-label="${x}" aria-pressed="${x.toLowerCase() === String(actual).toLowerCase()}"></button>`).join('')}</div>
+      <label class="color-altre">Un altre color: <input type="color" value="${esc(actual || '#868E96')}"></label>
     </div>`);
 }
 function posaEmoji(v) {
   const b = botoEmojiActiu;
   tancaPanellEmoji();
   if (!b || !v) return;
-  b.innerHTML = v.startsWith('ms:') ? `<span class="ms">${esc(v.slice(3))}</span>` : `<span class="emo">${esc(v)}</span>`;
+  b.style.setProperty('--c', v);
   const inp = b.nextElementSibling;
   inp.value = v;
   inp.dispatchEvent(new Event('change', { bubbles: true }));
 }
+document.addEventListener('change', (e) => {
+  if (e.target.matches('.color-altre input')) posaEmoji(e.target.value);
+});
 document.addEventListener('click', (e) => {
   const b = e.target.closest('.emoji-btn');
   if (b) { obrePanellEmoji(b); return; }
   const em = e.target.closest('[data-posa-emoji]');
   if (em) { posaEmoji(em.dataset.posaEmoji); return; }
-  if (e.target.closest('.emoji-ok')) posaEmoji(e.target.closest('.emoji-panel').querySelector('input').value.trim());
-});
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && e.target.closest('.emoji-altre')) { e.preventDefault(); posaEmoji(e.target.value.trim()); }
 });
 
 /* ---------- Cercar llocs (camp «On») ---------- */
@@ -448,9 +437,8 @@ function vistaAjustos() {
     const ts = state.tipus.filter((t) => (t.grup || 'altres') === g);
     if (!ts.length) return '';
     return `<h3 class="sub">${esc(nomG)}</h3>` + ts.map((t) => `<div class="tipus-fila" data-tid="${esc(t.id)}">
-        ${botoIcona(t, 'data-camp="icona"')}
+        ${botoColor(t.color, 'data-camp="color"')}
         <input data-camp="nom" value="${esc(t.nom)}" aria-label="Nom">
-        <input type="color" data-camp="color" value="${esc(t.color)}" aria-label="Color">
         <button class="btn icona" data-treu="${esc(t.id)}" aria-label="Treu ${esc(t.nom)}">×</button>
       </div>`).join('');
   }).join('');
@@ -462,10 +450,10 @@ function vistaAjustos() {
     </div>
     <div class="section" id="seccioTipus">
       <h2>Tipus de pla</h2>
-      <p class="help">Toca la icona per canviar-la. També pots canviar el nom i el color. Els canvis es desen sols.</p>
+      <p class="help">Toca el cercle per canviar-ne el color. També pots canviar el nom. Els canvis es desen sols.</p>
       ${files}
       <form class="barra" id="formTipus">
-        ${botoIcona(null, 'name="icona"')}
+        ${botoColor(COLORS_NOUS[state.tipus.length % COLORS_NOUS.length], 'name="color"')}
         <input name="nom" placeholder="Nou tipus (p. ex. Karaoke)" autocomplete="off">
         <select name="grup" aria-label="Grup">${GRUPS.map(([g, n]) => `<option value="${g}"${g === 'altres' ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select>
         <button class="btn primary">Afegeix</button>
@@ -626,11 +614,6 @@ $('#main').addEventListener('change', (e) => {
     pers(ui.persona).email = v; save(); toast('Desat'); return;
   }
   const fila = t.closest('[data-tid]');
-  if (fila && t.dataset.camp === 'icona') {
-    const tt = state.tipus.find((x) => x.id === fila.dataset.tid);
-    if (!t.value) return;
-    Object.assign(tt, llegeixIcona(t.value)); save(); toast('Desat'); return;
-  }
   if (fila && t.dataset.camp) {
     const tt = state.tipus.find((x) => x.id === fila.dataset.tid);
     const v = t.value.trim();
@@ -694,7 +677,7 @@ $('#main').addEventListener('submit', async (e) => {
   if (e.target.id === 'formTipus') {
     const nom = String(f.get('nom') || '').trim();
     if (!nom) return;
-    state.tipus.push({ id: 't-' + uid(), nom, emoji: '', icona: 'auto_awesome', color: COLORS_NOUS[state.tipus.length % COLORS_NOUS.length], grup: String(f.get('grup') || 'altres'), ...llegeixIcona(String(f.get('icona') || '')) });
+    state.tipus.push({ id: 't-' + uid(), nom, emoji: '', icona: 'auto_awesome', color: COLORS_NOUS[state.tipus.length % COLORS_NOUS.length], grup: String(f.get('grup') || 'altres'), color: String(f.get('color') || '#5C7CFA') });
     save(); render(); toast(`«${nom}» afegit`);
   }
 });
@@ -942,7 +925,7 @@ function obreForm(p, base = {}) {
         <p class="help">I, si vols, tria'n el tipus (o crea'n un de nou):</p>
         <div class="tipus-grid" id="tipusGrid">${tipusXips()}</div>
         <div class="nou-tipus-fila" id="nouTipusFila" hidden>
-          ${botoIcona(null, 'id="ntIcona"')}
+          ${botoColor(COLORS_NOUS[state.tipus.length % COLORS_NOUS.length], 'id="ntColor"')}
           <input id="ntNom" placeholder="Nom del tipus (p. ex. Karaoke)" autocomplete="off" enterkeyhint="done">
           <button type="button" class="btn primary" id="ntCrea">Crea</button>
         </div>
@@ -997,12 +980,12 @@ function obreForm(p, base = {}) {
     const nom = $('#ntNom').value.trim();
     if (!nom) { toast('Escriu el nom del tipus'); $('#ntNom').focus(); return; }
     const ja = state.tipus.find((t) => normal(t.nom) === normal(nom));
-    const t = ja || { id: 't-' + uid(), nom, emoji: '', icona: 'auto_awesome', color: COLORS_NOUS[state.tipus.length % COLORS_NOUS.length], grup: 'altres', ...llegeixIcona($('#ntIcona').value) };
+    const t = ja || { id: 't-' + uid(), nom, emoji: '', icona: 'auto_awesome', color: COLORS_NOUS[state.tipus.length % COLORS_NOUS.length], grup: 'altres', color: $('#ntColor').value || '#5C7CFA' };
     if (!ja) { state.tipus.push(t); save(); }
     d.tipusId = t.id;
     $('#tipusGrid').innerHTML = tipusXips();
     $('#nouTipusFila').hidden = true;
-    $('#ntNom').value = ''; $('#ntIcona').value = ''; $('#ntIcona').previousElementSibling.innerHTML = '<span class="ms">auto_awesome</span>';
+    $('#ntNom').value = '';
     toast(ja ? `«${t.nom}» ja existia: l'he triat` : `Tipus «${nom}» creat`);
   };
   $('#ntNom').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); creaTipus(); } });
