@@ -331,7 +331,28 @@ const Sync = (() => {
     setInterval(() => { if (document.visibilityState === 'visible') programa(0); }, 20000);
   }
 
+  /* ---------- Subscripció al calendari (iPhone, Google…) ---------- */
+  // Enllaç privat a tota l'agenda; el «token» es crea la primera vegada i es pot canviar per anul·lar l'antic
+  async function enllacCalendari(nou = false) {
+    if (!sb || !usuari) throw new Error('Cal haver entrat amb el correu');
+    let token = '';
+    if (!nou) {
+      const { data, error } = await sb.from('calendaris').select('token').eq('propietari', usuari.id).maybeSingle();
+      if (error) throw error;
+      token = data?.token || '';
+    }
+    if (!token) {
+      const b = crypto.getRandomValues(new Uint8Array(24));
+      token = btoa(String.fromCharCode(...b)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      const { error } = await sb.from('calendaris').upsert({ propietari: usuari.id, token }, { onConflict: 'propietari' });
+      if (error) throw error;
+    }
+    const https = `${cfg.supabaseUrl.replace(/\/$/, '')}/functions/v1/calendari?t=${token}${PROVES ? '&e=proves' : ''}`;
+    return { https, webcal: https.replace(/^https:/, 'webcal:') };
+  }
+
   return {
+    enllacCalendari,
     disponible,
     usuari: () => usuari,
     // Abans de saber si hi ha sessió: n'hi ha alguna de guardada en aquest dispositiu?

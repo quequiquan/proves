@@ -611,6 +611,24 @@ function vistaAjustos() {
       </div>`).join('');
   }).join('');
   return `${sync() ? sync().html() : ''}
+    ${sync()?.disponible ? `<div class="section" id="seccioCal">
+      <h2>Calendari de l'iPhone</h2>
+      <p class="help">Fes-ho <b>una sola vegada</b>: el calendari de l'iPhone se subscriu a la teva agenda i hi apareixen sols
+        tots els plans i els <b>aniversaris</b> dels contactes (cada any, amb un avís el mateix dia). S'actualitza sol, sense preguntar res.</p>
+      ${usuari()
+        ? `<div class="grp">
+            <button class="btn primary" id="calSubscriu">📆 Afegeix l'agenda al calendari de l'iPhone</button>
+            <button class="btn" id="calCopia">Copia l'enllaç (Google, Outlook…)</button>
+          </div>
+          <details class="ajuda"><summary>Més informació</summary>
+            <p>Els canvis poden trigar una estona a sortir a l'iPhone (normalment menys d'una hora). Per fer-ho més ràpid:
+              <b>Configuració → Apps → Calendari → Comptes → Obtenir dades</b>.</p>
+            <p>Perquè avisi dels aniversaris, al calendari subscrit desactiva <b>«Elimina les alertes»</b>.</p>
+            <p>L'enllaç és privat: qui el tingui pot veure la teva agenda. Si l'has compartit sense voler,
+              <button class="enllac" id="calNou">fes-ne un de nou</button> (l'antic deixarà de funcionar i caldrà tornar-se a subscriure).</p>
+          </details>`
+        : '<p class="help">Primer has d\'entrar amb el teu correu (a dalt, a «Compte»).</p>'}
+    </div>` : ''}
     <div class="section">
       <h2>El teu nom</h2>
       <p class="help">És el que veuen les persones a qui envies plans («De part de…»).</p>
@@ -908,6 +926,22 @@ $('#main').addEventListener('change', async (e) => {
   incorporaContactes(cs, [...state.persones], nous);
   state.persones.push(...nous);
   contactesAfegits(nous.length, cs.length);
+});
+
+/* ---------- Ajustos: subscripció al calendari ---------- */
+$('#main').addEventListener('click', async (e) => {
+  const b = e.target.closest('#calSubscriu, #calCopia, #calNou');
+  if (!b) return;
+  if (b.id === 'calNou' && !confirm("Fer un enllaç nou? L'antic deixarà de funcionar i t'hauràs de tornar a subscriure des de l'iPhone.")) return;
+  try {
+    const en = await sync().enllacCalendari(b.id === 'calNou');
+    if (b.id === 'calSubscriu') { location.href = en.webcal; return; }
+    if (b.id === 'calNou') { toast('Enllaç nou creat. Torna a prémer «Afegeix l\'agenda…»'); return; }
+    try { await navigator.clipboard.writeText(en.https); toast('Enllaç copiat'); }
+    catch (x) { prompt('Copia aquest enllaç:', en.https); }
+  } catch (err) {
+    toast(navigator.onLine ? "No s'ha pogut preparar el calendari. Comprova que a Supabase hi ha la taula i la funció «calendari»." : 'Cal connexió a internet.');
+  }
 });
 
 /* ---------- Calendari: anar endavant o enrere (fletxes o lliscar amb el dit) ---------- */
