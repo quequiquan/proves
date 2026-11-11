@@ -516,3 +516,9 @@ fieldset > .help { margin: 10px 2px 6px; }
 .treu-conf { border: 0; background: var(--surface-2); border-radius: 99px; width: 22px; height: 22px; cursor: pointer; line-height: 1; }
 .wa-botons { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 4px; }
 .btn.wa { background: #25D366; border-color: #25D366; color: #fff; min-height: 36px; padding: 6px 14px; }
+
+/* Altres calendaris */
+.extern-fila { display: flex; gap: 6px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); }
+#formExtern { margin-top: 10px; }
+#formExtern input[name="url"] { flex: 1 1 100%; }
+#extActualitza { margin-top: 8px; }

@@ -125,5 +125,51 @@ const Cal = (() => {
     return base.replace(/\/$/, '') + '/functions/v1/ics?p=' + codifica(p);
   }
 
-  return { codifica, descodifica, ics, google, outlook, mapa, baixaIcs, urlIcs, inici, fi, totElDia };
+  /* ---------- Llegir un calendari .ics d'una altra app (p. ex. gravacions de podcasts) ---------- */
+  // Retorna [{ uid, titol, lloc, notes, data: 'AAAA-MM-DD', hora, horaFi, totElDia }] amb l'hora local d'aquí
+  function llegeixIcs(text) {
+    const linies = String(text).replace(/\r?\n[ \t]/g, '').split(/\r?\n/);
+    const desesc = (v) => String(v || '').replace(/\\n/gi, '\n').replace(/\\([,;\\])/g, '$1');
+    const out = [];
+    let ev = null;
+    const quan = (param, valor) => {
+      if (/VALUE=DATE(?!-)/i.test(param) || /^\d{8}$/.test(valor)) {
+        return { data: `${valor.slice(0, 4)}-${valor.slice(4, 6)}-${valor.slice(6, 8)}`, hora: '', dia: true };
+      }
+      const m = valor.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})?(Z?)$/);
+      if (!m) return null;
+      // Amb «Z» és hora universal → es passa a l'hora d'aquí; sense (o amb TZID) es pren tal qual
+      const d = m[7] ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5])) : new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]);
+      return { data: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`, hora: `${pad(d.getHours())}:${pad(d.getMinutes())}`, dia: false, d };
+    };
+    for (const l of linies) {
+      if (/^BEGIN:VEVENT/i.test(l)) { ev = {}; continue; }
+      if (/^END:VEVENT/i.test(l)) {
+        if (ev && ev.ini) {
+          const fi = ev.fi;
+          out.push({
+            uid: ev.uid || ev.titol + ev.ini.data, titol: ev.titol || 'Sense títol', lloc: ev.lloc || '', notes: ev.notes || '',
+            data: ev.ini.data, totElDia: ev.ini.dia, hora: ev.ini.hora,
+            horaFi: !ev.ini.dia && fi && !fi.dia ? fi.hora : '', cancellat: ev.cancellat,
+          });
+        }
+        ev = null; continue;
+      }
+      if (!ev) continue;
+      const m = l.match(/^([A-Z-]+)((?:;[^:]*)?):(.*)$/i);
+      if (!m) continue;
+      const [, camp, param, valor] = m;
+      const c = camp.toUpperCase();
+      if (c === 'UID') ev.uid = valor;
+      else if (c === 'SUMMARY') ev.titol = desesc(valor);
+      else if (c === 'LOCATION') ev.lloc = desesc(valor);
+      else if (c === 'DESCRIPTION') ev.notes = desesc(valor);
+      else if (c === 'DTSTART') ev.ini = quan(param, valor);
+      else if (c === 'DTEND') ev.fi = quan(param, valor);
+      else if (c === 'STATUS') ev.cancellat = /CANCELLED/i.test(valor);
+    }
+    return out;
+  }
+
+  return { codifica, descodifica, ics, google, outlook, mapa, baixaIcs, urlIcs, llegeixIcs, inici, fi, totElDia };
 })();

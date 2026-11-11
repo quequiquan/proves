@@ -216,8 +216,44 @@ function aniversaris(anys) {
 }
 // Anys dels quals cal mostrar aniversaris: l'actual, el següent i el que es mira al calendari
 const anysAniv = () => [...new Set([new Date().getFullYear(), new Date().getFullYear() + 1, ui.cursor.getFullYear(), parseYmd(ui.diaSel).getFullYear()])];
-const totsPlans = (ambAniv = true) => [...state.plans, ...rebuts().filter((p) => p.rebut.resposta === 'si'), ...(ambAniv ? aniversaris(anysAniv()) : [])];
-const trobaPla = (id) => state.plans.find((p) => p.id === id) || rebuts().find((p) => p.id === id)
+// Altres calendaris (p. ex. l'app de gravacions): es llegeixen per la funció «extern» i es guarden en aquest dispositiu
+const externs = () => (Array.isArray(state.ajustos.externs) ? state.ajustos.externs : []);
+const CAU_EXT = 'qqq-externs-cau';
+let cauExt = (() => { try { return JSON.parse(localStorage.getItem(CAU_EXT)) || {}; } catch (e) { return {}; } })();
+function plansExterns() {
+  const out = [];
+  externs().forEach((c) => (cauExt[c.id]?.events || []).forEach((ev) => {
+    if (ev.cancellat) return;
+    out.push({
+      id: 'ext|' + c.id + '|' + ev.uid, extern: c, data: ev.data, hora: ev.hora, horaFi: ev.horaFi, totElDia: ev.totElDia,
+      titol: ev.titol, lloc: ev.lloc, notes: ev.notes, estat: 'confirmat', qui: [], _amb: [],
+      _t: { nom: c.nom, color: c.color || '#2F9E44' },
+    });
+  }));
+  return out;
+}
+let llegintExt = false;
+async function actualitzaExterns(avisa = false) {
+  const cfg = window.QQQ_CONFIG || {};
+  if (!cfg.supabaseUrl || !externs().length || llegintExt || !navigator.onLine) return;
+  llegintExt = true;
+  let canvi = false, error = '';
+  for (const c of externs()) {
+    try {
+      const r = await fetch(`${cfg.supabaseUrl.replace(/\/$/, '')}/functions/v1/extern?u=${encodeURIComponent(c.url)}`);
+      if (!r.ok) throw new Error(r.status === 403 ? 'aquest calendari no està permès' : 'no respon (' + r.status + ')');
+      const events = Cal.llegeixIcs(await r.text());
+      if (JSON.stringify(events) !== JSON.stringify(cauExt[c.id]?.events)) canvi = true;
+      cauExt[c.id] = { events, quan: new Date().toISOString() };
+    } catch (e) { error = `«${c.nom}»: ${e.message}`; }
+  }
+  llegintExt = false;
+  try { localStorage.setItem(CAU_EXT, JSON.stringify(cauExt)); } catch (e) { /* res */ }
+  if (avisa) toast(error ? 'No s\'ha pogut llegir ' + error : 'Calendaris actualitzats');
+  if ((canvi || avisa) && !document.querySelector('#dlg[open]')) render();
+}
+const totsPlans = (ambAniv = true) => [...state.plans, ...plansExterns(), ...rebuts().filter((p) => p.rebut.resposta === 'si'), ...(ambAniv ? aniversaris(anysAniv()) : [])];
+const trobaPla = (id) => state.plans.find((p) => p.id === id) || rebuts().find((p) => p.id === id) || plansExterns().find((p) => p.id === id)
   || (id.startsWith('an|') ? aniversaris([Number(id.split('|')[2])]).find((p) => p.id === id) : null);
 const delDia = (ds) => totsPlans().filter((p) => p.data === ds).sort(perOrdre);
 // Còpia del pla que rep cada persona (sense notes; «amb» des del seu punt de vista)
@@ -612,6 +648,23 @@ function vistaAjustos() {
       </div>`).join('');
   }).join('');
   return `${sync() ? sync().html() : ''}
+    <div class="section" id="seccioExterns">
+      <h2>Altres calendaris</h2>
+      <p class="help">Afegeix aquí el calendari d'una altra app (per exemple, el de les <b>gravacions de podcasts</b>):
+        les seves activitats sortiran a Plans i al Calendari (només per consultar-les) i l'app t'avisarà si un pla hi coincideix.</p>
+      ${externs().map((c) => `<div class="extern-fila" data-ext="${esc(c.id)}">
+          ${botoColor(c.color || '#2F9E44', 'data-extcamp="color"')}
+          <div class="tipus-dades"><input data-extcamp="nom" value="${esc(c.nom)}" aria-label="Nom">
+            <small class="hint">${cauExt[c.id] ? `${(cauExt[c.id].events || []).length} activitats · actualitzat ${new Date(cauExt[c.id].quan).toLocaleString('ca', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}` : 'Encara no s\'ha llegit'}</small></div>
+          <button class="btn icona" data-treuext="${esc(c.id)}" aria-label="Treu ${esc(c.nom)}">×</button>
+        </div>`).join('')}
+      <form class="barra" id="formExtern">
+        <input name="nom" placeholder="Nom (p. ex. Gravacions)" autocomplete="off">
+        <input name="url" placeholder="Enllaç del calendari (webcal://… o https://…)" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <button class="btn primary">Afegeix</button>
+      </form>
+      ${externs().length ? '<button class="btn" id="extActualitza">Actualitza ara</button>' : ''}
+    </div>
     ${sync()?.disponible ? `<div class="section" id="seccioCal">
       <h2>Calendari de l'iPhone</h2>
       <p class="help">Fes-ho <b>una sola vegada</b>: el calendari de l'iPhone se subscriu a la teva agenda i hi apareixen sols
@@ -743,7 +796,7 @@ $('#main').addEventListener('click', (e) => {
   }
   const resp = t.closest('[data-respon]');
   if (resp) { const p = trobaPla(resp.dataset.r); if (p) respon(p, resp.dataset.respon); return; }
-  if (pla) { const p = trobaPla(pla.dataset.pla); if (p) (p.aniversari ? obreAniversari(p) : obreDetall(p)); return; }
+  if (pla) { const p = trobaPla(pla.dataset.pla); if (p) (p.aniversari ? obreAniversari(p) : p.extern ? obreExtern(p) : obreDetall(p)); return; }
   if (t.closest('[data-entrada]')) { ui.view = 'entrada'; ui.entrada = { pas: 'correu', email: '' }; render(); return; }
   const pas = t.closest('[data-pas]');
   if (pas) { ui.entrada.pas = pas.dataset.pas; render(); return; }
@@ -946,6 +999,15 @@ $('#main').addEventListener('submit', async (e) => {
     state.persones.push({ id: 'pe-' + uid(), nom }); save(); render();
     $('#formPersona input')?.focus();
   }
+  if (e.target.id === 'formExtern') {
+    const nom = String(f.get('nom') || '').trim() || 'Gravacions';
+    const url = String(f.get('url') || '').trim();
+    if (!/^(webcals?|https):\/\//i.test(url)) { toast("Enganxa l'enllaç del calendari (comença per webcal:// o https://)"); return; }
+    state.ajustos.externs = [...externs(), { id: 'c-' + uid(), nom, url, color: '#2F9E44' }];
+    save(); render(); toast('Llegint el calendari…');
+    actualitzaExterns(true);
+    return;
+  }
   if (e.target.id === 'formTipus') {
     const nom = String(f.get('nom') || '').trim();
     if (!nom) return;
@@ -1016,6 +1078,29 @@ $('#main').addEventListener('click', (e) => {
   if (ignoraClic && e.target.closest('[data-pla]')) { e.stopImmediatePropagation(); e.preventDefault(); }
 }, true);
 
+/* ---------- Ajustos: altres calendaris (nom, color, treure, actualitzar) ---------- */
+$('#main').addEventListener('change', (e) => {
+  const camp = e.target.dataset.extcamp, fila = e.target.closest('[data-ext]');
+  if (!camp || !fila) return;
+  const c = externs().find((x) => x.id === fila.dataset.ext);
+  const v = e.target.value.trim();
+  if (!c || !v) return;
+  c[camp] = v; save(); toast('Desat');
+  if (camp === 'color') render();
+});
+$('#main').addEventListener('click', (e) => {
+  const tr = e.target.closest('[data-treuext]');
+  if (tr) {
+    const c = externs().find((x) => x.id === tr.dataset.treuext);
+    if (!c || !confirm(`Treure el calendari «${c.nom}»? Les seves activitats deixaran de sortir aquí (a la seva app no es toca res).`)) return;
+    state.ajustos.externs = externs().filter((x) => x.id !== c.id);
+    delete cauExt[c.id];
+    try { localStorage.setItem(CAU_EXT, JSON.stringify(cauExt)); } catch (x) { /* res */ }
+    save(); render(); return;
+  }
+  if (e.target.closest('#extActualitza')) { toast('Llegint…'); actualitzaExterns(true); }
+});
+
 /* ---------- Ajustos: subscripció al calendari ---------- */
 $('#main').addEventListener('click', async (e) => {
   const b = e.target.closest('#calSubscriu, #calCopia, #calNou');
@@ -1075,6 +1160,22 @@ function obreDlg(html, classe = '') {
 }
 
 /* ---------- Detall d'un aniversari ---------- */
+function obreExtern(p) {
+  obreDlg(`<header class="det-cap" style="--c:${esc(p._t.color)}">
+      <span class="det-emoji">${ico(p._t)}</span>
+      <div><small>${esc(p.extern.nom)}</small><h2>${esc(p.titol)}</h2></div>
+      <button type="button" class="x" data-tanca aria-label="Tanca">×</button>
+    </header>
+    <div class="dlg-cos">
+      <ul class="det">
+        <li><span>📅</span>${esc(cap(dataLlarga(p.data)))}</li>
+        <li><span>🕘</span>${esc(horaText(p))}</li>
+        ${p.lloc ? `<li><span>📍</span>${esc(p.lloc)}</li>` : ''}
+        ${p.notes ? `<li class="notes"><span>📝</span><div>${esc(p.notes).replace(/\n/g, '<br>')}</div></li>` : ''}
+      </ul>
+      <p class="help">Ve del calendari «${esc(p.extern.nom)}». Per canviar-lo, fes-ho a la seva app.</p>
+    </div>`, 'detall');
+}
 function obreAniversari(p) {
   const pe = p.aniversari;
   obreDlg(`<header class="det-cap" style="--c:${esc(p._t.color)}">
@@ -1482,6 +1583,17 @@ function obreForm(p, base = {}) {
     const f = dlgForm.elements;
     if (!d.tipusId && !f.titol.value.trim()) { toast('Escriu què faràs o tria un tipus'); f.titol.focus(); return; }
     if (!f.data.value) { toast('Falta el dia'); f.data.focus(); return; }
+    // Coincideix amb una altra activitat amb hora el mateix dia?
+    if (!f.totElDia.checked && f.hora.value && !dlgForm.dataset.solapOk) {
+      const min = (h) => { const [a, b] = h.split(':').map(Number); return a * 60 + b; };
+      const ini = min(f.hora.value), fi = f.horaFi.value && min(f.horaFi.value) > ini ? min(f.horaFi.value) : ini + 60;
+      const xoc = totsPlans(false).filter((x) => x.data === f.data.value && x.id !== p?.id && !x.totElDia && x.hora && x.estat !== 'cancellat')
+        .filter((x) => { const a = min(x.hora), b = x.horaFi && min(x.horaFi) > a ? min(x.horaFi) : a + 60; return a < fi && ini < b; });
+      if (xoc.length) {
+        const llista = xoc.map((x) => `• ${titolPla(x)} (${horaText(x)})`).join('\n');
+        if (!confirm(`Aquest pla coincideix amb:\n${llista}\n\nVols desar-lo igualment?`)) return;
+      }
+    }
     const dades = {
       tipusId: d.tipusId, titol: f.titol.value.trim(), data: f.data.value,
       totElDia: f.totElDia.checked, hora: f.totElDia.checked ? '' : f.hora.value, horaFi: f.totElDia.checked ? '' : f.horaFi.value,
@@ -1543,6 +1655,12 @@ if (PROVES) $('#provesTag').hidden = false;
 addEventListener('DOMContentLoaded', () => {
   if (sync()?.disponible && !sync().potserEntrat() && !llegeixPref('senseCompte', false)) ui.view = 'entrada';
   render();
+  actualitzaExterns();
+  setInterval(() => { if (document.visibilityState === 'visible') actualitzaExterns(); }, 15 * 60 * 1000);
+  document.addEventListener('visibilitychange', () => {
+    const fa = Object.values(cauExt).map((c) => Date.now() - new Date(c.quan).getTime());
+    if (document.visibilityState === 'visible' && (!fa.length || Math.min(...fa) > 5 * 60 * 1000)) actualitzaExterns();
+  });
 });
 // Quan canvia el dia (app oberta tota la nit), es torna a pintar
 let diaActual = avui();
