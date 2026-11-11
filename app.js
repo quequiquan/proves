@@ -761,11 +761,33 @@ function vistaEntrada() {
 }
 
 /* ---------- Pintar ---------- */
-const VISTES = { propers: vistaPropers, calendari: vistaCalendari, gent: vistaGent, ajustos: vistaAjustos, entrada: vistaEntrada };
+/* ---------- Portada (el que surt en obrir l'app) ---------- */
+function vistaInici() {
+  const h = new Date().getHours();
+  const salut = h < 6 ? 'Bona nit' : h < 13 ? 'Bon dia' : h < 20 ? 'Bona tarda' : 'Bona nit';
+  const nom = (state.ajustos.nom || '').trim().split(' ')[0];
+  const dAvui = totsPlans().filter((p) => p.data === avui() && p.estat !== 'cancellat').sort(perOrdre);
+  const inv = rebuts().filter((p) => p.rebut.resposta === 'pendent' && p.data >= avui()).length;
+  const resum = dAvui.length
+    ? `Avui tens <b>${dAvui.length} ${dAvui.length === 1 ? 'pla' : 'plans'}</b>`
+    : 'Avui no tens cap pla';
+  return `<div class="portada">
+      <div class="portada-punt"></div>
+      <h1>${esc(salut)}${nom ? ', ' + esc(nom) : ''}</h1>
+      <p class="portada-data">${esc(cap(dataLlarga(avui())))}</p>
+      <p class="portada-resum">${resum}${inv ? ` · <b>${inv}</b> ${inv === 1 ? 'invitació' : 'invitacions'} per respondre` : ''}</p>
+      ${dAvui.length ? `<div class="portada-avui">${dAvui.slice(0, 4).map((p) => targeta(p)).join('')}${dAvui.length > 4 ? `<p class="help">i ${dAvui.length - 4} més…</p>` : ''}</div>` : ''}
+      <button class="btn primary portada-nou" data-nou="${avui()}">+ Nou pla</button>
+      ${inv ? '<button class="btn portada-veure" data-anar="propers">Veure les invitacions</button>' : ''}
+    </div>`;
+}
+
+const VISTES = { inici: vistaInici, propers: vistaPropers, calendari: vistaCalendari, gent: vistaGent, ajustos: vistaAjustos, entrada: vistaEntrada };
 function render() {
   if (!VISTES[ui.view]) ui.view = 'propers';
   if (ui.view === 'entrada' && !sync()?.disponible) ui.view = 'propers';
   document.body.classList.toggle('mode-entrada', ui.view === 'entrada');
+  document.body.classList.toggle('mode-inici', ui.view === 'inici');
   if ($('#syncBtn') && sync()?.disponible) $('#syncBtn').hidden = ui.view === 'entrada';
   $$('#tabs button').forEach((b) => b.setAttribute('aria-current', b.dataset.view === ui.view ? 'page' : 'false'));
   const focus = document.activeElement?.id === 'cerca' ? document.activeElement.selectionStart : null;
@@ -774,7 +796,7 @@ function render() {
   if (ui.view === 'ajustos' && sync()) sync().bind();
   if (ui.view === 'entrada') $('.entrada input')?.focus();
 }
-const fiEntrada = () => { ui.view = 'propers'; desaPref('view', ui.view); render(); };
+const fiEntrada = () => { ui.view = 'inici'; render(); };
 
 /* ---------- Clics a la pantalla principal ---------- */
 $('#tabs').addEventListener('click', (e) => {
@@ -826,6 +848,8 @@ $('#main').addEventListener('click', (e) => {
   }
   const mes = t.closest('[data-mes]');
   if (mes) { navegaCalendari(Number(mes.dataset.mes)); return; }
+  const an = t.closest('[data-anar]');
+  if (an) { ui.view = an.dataset.anar; render(); window.scrollTo(0, 0); return; }
   const ll = t.closest('[data-llista]');
   if (ll) { obreLlista(ll.dataset.llista); return; }
   const am = t.closest('[data-anames]');
@@ -1760,6 +1784,7 @@ function importa(fitxer) {
 if (PROVES) $('#provesTag').hidden = false;
 // S'espera que estigui carregat sync.js. La primera vegada es demana d'entrar amb el correu.
 addEventListener('DOMContentLoaded', () => {
+  ui.view = 'inici';
   if (sync()?.disponible && !sync().potserEntrat() && !llegeixPref('senseCompte', false)) ui.view = 'entrada';
   render();
   actualitzaExterns();
@@ -1773,3 +1798,6 @@ addEventListener('DOMContentLoaded', () => {
 let diaActual = avui();
 setInterval(() => { if (avui() !== diaActual) { diaActual = avui(); render(); } }, 60000);
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+
+// Tocar el logo de dalt torna a la portada
+document.querySelector('.brand')?.addEventListener('click', () => { ui.view = 'inici'; ui.persona = ''; render(); window.scrollTo(0, 0); });

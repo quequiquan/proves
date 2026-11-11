@@ -574,3 +574,16 @@ body { overflow-x: hidden; }
 .vista { max-width: 100%; overflow-x: clip; }
 main { width: 100%; max-width: min(760px, 100vw); }
 .det li { overflow-wrap: anywhere; }
+
+/* ---------- Portada ---------- */
+.portada { text-align: center; padding: 6vh 4px 20px; }
+.portada-punt { width: 92px; height: 92px; border-radius: 50%; background: var(--qui); margin: 0 auto 22px;
+  box-shadow: 0 0 0 16px color-mix(in srgb, var(--qui) 20%, transparent), 0 0 0 34px color-mix(in srgb, var(--qui) 9%, transparent); }
+.portada h1 { font-family: var(--font-title); font-weight: 600; font-size: 28px; margin: 0 0 4px; }
+.portada-data { color: var(--muted); margin: 0 0 10px; font-weight: 600; }
+.portada-resum { margin: 0 0 18px; }
+.portada-avui { text-align: left; margin: 0 auto 18px; max-width: 520px; }
+.portada-nou { min-height: 54px; font-size: 18px; padding: 10px 34px; border-radius: 16px; box-shadow: 0 8px 22px color-mix(in srgb, var(--accent) 35%, transparent); }
+.portada-veure { display: block; margin: 12px auto 0; }
+body.mode-inici .top .nou { display: none; }   /* a la portada ja hi ha el botó gran */
+.brand { cursor: pointer; }
