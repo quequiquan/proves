@@ -1781,6 +1781,16 @@ function obreForm(p, base = {}) {
     hi.addEventListener(ev, () => posaHora(hi, '09:00'), { passive: true });
     hf.addEventListener(ev, () => posaHora(hf, hi.value ? mesUna(hi.value) : '10:00'), { passive: true });
   });
+  // «Fins al dia»: el calendari s'obre al primer dia del pla (no a avui), i no deixa triar dies d'abans
+  const di = dlgForm.elements.data, df = dlgForm.elements.dataFi, rf = dlgForm.elements.repeteixFins;
+  const limits = () => {
+    [df, rf].forEach((el) => { if (el) el.min = di.value || ''; });
+    if (df.value && di.value && df.value < di.value) df.value = '';
+  };
+  limits();
+  di.addEventListener('change', limits);
+  di.addEventListener('input', limits);
+  ['pointerdown', 'touchstart', 'focus'].forEach((ev) => df.addEventListener(ev, () => { if (!df.value && di.value) df.value = di.value; }, { passive: true }));
   dlgForm.onchange = (e) => {
     if (e.target.name === 'repeteix') dlgForm.querySelector('.rep-fins').hidden = !e.target.value;
     if (e.target.name === 'totElDia') {
