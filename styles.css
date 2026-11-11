@@ -468,7 +468,7 @@ fieldset > .help { margin: 10px 2px 6px; }
 .tipus-grid .nou-tipus { margin-top: 8px; }
 
 /* Punt vermell de la pantalla buida */
-.punt-buit { display: inline-block; width: 56px; height: 56px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 10px color-mix(in srgb, var(--accent) 18%, transparent); margin-bottom: 10px; }
+.punt-buit { display: inline-block; width: 56px; height: 56px; border-radius: 50%; background: var(--qui); box-shadow: 0 0 0 10px color-mix(in srgb, var(--qui) 22%, transparent); margin-bottom: 10px; }
 
 /* Ajustos: fila de categoria amb grup i fletxes d'ordre */
 .tipus-fila { align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); }
