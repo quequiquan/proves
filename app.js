@@ -432,7 +432,8 @@ function vistaPropers() {
   const inv = !q && !ui.passats ? rebuts().filter((p) => p.rebut.resposta === 'pendent' && p.data >= avui()).sort(perOrdre) : [];
   const invHtml = inv.length ? `<section class="invitacions"><h3>📨 T'han enviat ${inv.length === 1 ? 'un pla' : inv.length + ' plans'}</h3>
       ${inv.map((p) => `<div class="invitacio">${targeta(p, true)}
-        <div class="grp"><button class="btn primary" data-respon="si" data-r="${esc(p.id)}">✅ Hi vaig</button><button class="btn" data-respon="no" data-r="${esc(p.id)}">No hi vaig</button></div></div>`).join('')}
+        <div class="grp"><button class="btn primary" data-respon="si" data-r="${esc(p.id)}">✅ Hi vaig</button><button class="btn" data-respon="no" data-r="${esc(p.id)}">No hi vaig</button></div>
+        ${p.rebut.de_email ? `<button class="enllac sempre" data-sempre="${esc(p.id)}">Accepta sempre els plans de ${esc(p.rebut.de_nom || p.rebut.de_email)}</button>` : ''}</div>`).join('')}
     </section>` : '';
   return `${invHtml}<div class="barra">
       <input type="search" id="cerca" placeholder="Busca: sopar, Marta, Girona…" value="${esc(ui.cerca)}" autocomplete="off">
@@ -629,6 +630,12 @@ function vistaAjustos() {
           </details>`
         : '<p class="help">Primer has d\'entrar amb el teu correu (a dalt, a «Compte»).</p>'}
     </div>` : ''}
+    ${sync()?.disponible ? `<div class="section" id="seccioAuto">
+      <h2>Plans que t'envien</h2>
+      <label class="check"><input type="checkbox" id="acceptaTot" ${state.ajustos.acceptaTot ? 'checked' : ''}> Accepta sols tots els plans que m'enviïn</label>
+      <p class="help">Si no ho marques, només s'accepten sols els d'aquestes persones (les afegeixes amb «Accepta sempre els plans de…» a cada invitació):</p>
+      ${confiança().length ? `<div class="confiança">${confiança().map((em) => `<span class="xip">${esc(nomDeCorreu(em))}<button class="treu-conf" data-treuconf="${esc(em)}" aria-label="Treu ${esc(em)}">×</button></span>`).join('')}</div>` : '<p class="help"><i>Encara cap.</i></p>'}
+    </div>` : ''}
     <div class="section">
       <h2>El teu nom</h2>
       <p class="help">És el que veuen les persones a qui envies plans («De part de…»).</p>
@@ -721,6 +728,19 @@ $('#btnNou').addEventListener('click', () => obreForm(null, { data: ui.view === 
 $('#main').addEventListener('click', (e) => {
   const t = e.target;
   const pla = t.closest('[data-pla]');
+  const tc = t.closest('[data-treuconf]');
+  if (tc) { state.ajustos.autoAccepta = confiança().filter((x) => x !== tc.dataset.treuconf); save(); render(); return; }
+  const sempre = t.closest('[data-sempre]');
+  if (sempre) {
+    const p = trobaPla(sempre.dataset.sempre);
+    if (!p?.rebut?.de_email) return;
+    const em = normal(p.rebut.de_email);
+    if (!confiança().includes(em)) state.ajustos.autoAccepta = [...confiança(), em];
+    save();
+    respon(p, 'si');
+    toast(`A partir d'ara, els plans de ${p.rebut.de_nom || em} s'afegiran sols`);
+    return;
+  }
   const resp = t.closest('[data-respon]');
   if (resp) { const p = trobaPla(resp.dataset.r); if (p) respon(p, resp.dataset.respon); return; }
   if (pla) { const p = trobaPla(pla.dataset.pla); if (p) (p.aniversari ? obreAniversari(p) : obreDetall(p)); return; }
@@ -815,6 +835,12 @@ $('#main').addEventListener('input', (e) => {
 });
 $('#main').addEventListener('change', (e) => {
   const t = e.target;
+  if (t.id === 'acceptaTot') {
+    state.ajustos.acceptaTot = t.checked; save();
+    toast(t.checked ? "Els plans que t'enviïn s'afegiran sols" : "Només s'afegiran sols els de les persones de la llista");
+    if (t.checked) acceptaAutomatics();
+    return;
+  }
   if (t.id === 'nomMeu') { state.ajustos.nom = t.value.trim(); save(); toast('Desat'); return; }
   if (t.dataset.pcamp) {
     const pe = pers(ui.persona), k = t.dataset.pcamp, v = t.value.trim();
@@ -855,6 +881,25 @@ function errorEntrada(err) {
   if (/expired|invalid|token/i.test(m)) return 'El codi no és correcte o ha caducat. Torna-ho a provar.';
   if (!navigator.onLine) return 'No hi ha connexió a internet.';
   return "No s'ha pogut fer: " + m;
+}
+// Persones de confiança: els seus plans s'accepten sols
+const confiança = () => (Array.isArray(state.ajustos.autoAccepta) ? state.ajustos.autoAccepta : []);
+const acceptaSol = (r) => state.ajustos.acceptaTot || confiança().includes(normal(r.de_email));
+let acceptant = false;
+async function acceptaAutomatics() {
+  if (acceptant || !sync()?.usuari()) return;
+  const pendents = (sync().rebuts() || []).filter((r) => r.resposta === 'pendent' && r.pla && acceptaSol(r));
+  if (!pendents.length) return;
+  acceptant = true;
+  const fets = [];
+  for (const r of pendents) {
+    try { await sync().respon(r, 'si'); fets.push(r); } catch (e) { /* es tornarà a provar a la propera sincronització */ }
+  }
+  acceptant = false;
+  if (fets.length) {
+    toast(fets.length === 1 ? `Afegit sol: ${fets[0].pla.titol || fets[0].pla.tipusNom || 'un pla'} (de part de ${fets[0].de_nom || fets[0].de_email})` : `${fets.length} plans afegits sols`);
+    if (!dlg.open) render();
+  }
 }
 async function respon(p, resposta) {
   try {
@@ -1061,6 +1106,10 @@ function obreDetall(p) {
   const n = noms(p);
   const r = p.rebut;
   const resp = !r && usuari() ? sync().respostes(p.id).filter((x) => (p.compartit || []).includes(x.email)) : [];
+  const ambTel = r ? [] : (p.qui || []).map(pers).filter((pe) => pe && pe.tel);
+  const whatsapp = ambTel.length ? `<li><span>💬</span><div>Avisa per WhatsApp:<div class="wa-botons">${ambTel.map((pe) =>
+    `<a class="btn wa" href="https://wa.me/${esc(waNum(pe.tel))}?text=${encodeURIComponent(textPla(p, pe))}" target="_blank" rel="noopener">${esc(pe.nom)}</a>`).join('')}</div>
+      <small class="hint">S'obre el xat amb el missatge escrit: només has de prémer Enviar.</small></div></li>` : '';
   const enviat = (p.compartit || []).length
     ? `<li><span>📨</span><div>Enviat a:<ul class="respostes">${(p.compartit || []).map((em) => {
       const x = resp.find((y) => y.email === em);
@@ -1089,6 +1138,7 @@ function obreDetall(p) {
         ${p.estat !== 'confirmat' ? `<li><span>${p.estat === 'cancellat' ? '🚫' : '⏳'}</span>${esc((ESTATS.find((e) => e[0] === p.estat) || [, ''])[1])}</li>` : ''}
         ${p.notes ? `<li class="notes"><span>📝</span><div>${esc(p.notes).replace(/\n/g, '<br>')}</div></li>` : ''}
         ${enviat}
+        ${whatsapp}
         ${r && r.resposta === 'pendent' ? '<li><span>❓</span>Encara no has dit si hi vas.</li>' : ''}
       </ul>
     </div>
@@ -1110,17 +1160,33 @@ function obreDetall(p) {
 }
 
 /* ---------- Compartir ---------- */
-function dadesCal(p, perAltres) {
+function titolPer(p, pe) {
+  if ((p.titol || '').trim() || !pe) return titolPla(p);
+  const altres = (p.qui || []).filter((id) => id !== pe.id).map(pers).filter(Boolean).map((x) => x.nom);
+  return nomCurt(tipDe(p)) + ' amb ' + llistaNoms([nomPropi(), ...altres]);
+}
+function textPla(p, pe) {
+  const quan = etiquetaDia(p.data) === cap(dataLlarga(p.data)) ? etiquetaDia(p.data) : `${etiquetaDia(p.data)}, ${dataLlarga(p.data)}`;
+  return [
+    titolPer(p, pe),
+    `📅 ${quan}${p.totElDia || !p.hora ? '' : ' · ' + horaText(p)}`,
+    p.lloc ? `📍 ${p.lloc}` : '',
+    '',
+    'Afegeix-ho al teu calendari:',
+    enllacPla(p, true, pe),
+  ].filter((x, i) => x !== '' || i === 3).join('\n');
+}
+function dadesCal(p, perAltres, pe) {
   return {
-    u: p.rebut ? p.rebut.pla_id : p.id, v: p.versio || 1, t: titolPla(p), e: tipDe(p).emoji, d: p.data,
+    u: p.rebut ? p.rebut.pla_id : p.id, v: p.versio || 1, t: perAltres ? titolPer(p, pe) : titolPla(p), e: tipDe(p).emoji, d: p.data,
     h: p.totElDia ? undefined : p.hora || undefined, f: p.totElDia ? undefined : p.horaFi || undefined,
     a: p.totElDia ? 1 : undefined, l: p.lloc || undefined,
     n: perAltres ? undefined : p.notes || undefined,
     o: perAltres ? nomPropi() : undefined,
   };
 }
-function enllacPla(p, perAltres) {
-  return new URL('afegir.html', location.href).href.split('#')[0] + '#' + Cal.codifica(dadesCal(p, perAltres));
+function enllacPla(p, perAltres, pe) {
+  return new URL('afegir.html', location.href).href.split('#')[0] + '#' + Cal.codifica(dadesCal(p, perAltres, pe));
 }
 // «Al meu calendari»: s'escull el calendari aquí mateix, sense sortir de l'app
 function obreAlCalendari(p) {
@@ -1227,14 +1293,7 @@ function obreComparteix(p) {
 async function enviaEnllac(p) {
   const t = tipDe(p);
   const quan = etiquetaDia(p.data) === cap(dataLlarga(p.data)) ? etiquetaDia(p.data) : `${etiquetaDia(p.data)}, ${dataLlarga(p.data)}`;
-  const text = [
-    [t.emoji, titolPla(p)].filter(Boolean).join(' '),
-    `📅 ${quan}${p.totElDia || !p.hora ? '' : ' · ' + horaText(p)}`,
-    p.lloc ? `📍 ${p.lloc}` : '',
-    '',
-    'Afegeix-ho al teu calendari:',
-    enllacPla(p, true),
-  ].filter((x, i) => x !== '' || i === 3).join('\n');
+  const text = textPla(p);
   if (navigator.share) {
     try { await navigator.share({ title: titolPla(p), text }); return; }
     catch (e) { if (e.name === 'AbortError') return; }
@@ -1450,7 +1509,9 @@ function obreForm(p, base = {}) {
     ui.cursor = new Date(parseYmd(desat.data).getFullYear(), parseYmd(desat.data).getMonth(), 1);
     render();
     obreDetall(desat);
-    toast((nou ? 'Pla afegit' : 'Canvis desats') + (enviats.length ? ` i enviat a ${llistaNoms(enviats.map(nomDeCorreu))} 📨` : ''));
+    const perWa = dades.qui.map(pers).filter((pe) => pe && pe.tel && !compartit.includes(normal(pe.email)));
+    toast((nou ? 'Pla afegit' : 'Canvis desats') + (enviats.length ? ` i enviat a ${llistaNoms(enviats.map(nomDeCorreu))} 📨` : '')
+      + (nou && perWa.length ? `. Per avisar ${perWa.length === 1 ? perWa[0].nom : 'els altres'} per WhatsApp, toca el seu nom aquí sota.` : ''), perWa.length ? 6000 : 3200);
   };
 }
 

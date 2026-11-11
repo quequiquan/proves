@@ -217,6 +217,7 @@ const Sync = (() => {
         canvi = (await baixaComp()) || canvi;
         posaEstat('ok');
         if (canvi && !document.querySelector('#dlg[open]')) render();
+        if (typeof acceptaAutomatics === 'function') setTimeout(acceptaAutomatics, 0);
       } catch (e) {
         console.warn('Sincronització:', e);
         posaEstat(navigator.onLine ? 'error' : 'offline', e.message || String(e));
