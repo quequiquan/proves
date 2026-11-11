@@ -766,11 +766,22 @@ function vistaInici() {
   const h = new Date().getHours();
   const salut = h < 6 ? 'Bona nit' : h < 13 ? 'Bon dia' : h < 20 ? 'Bona tarda' : 'Bona nit';
   const nom = (state.ajustos.nom || '').trim().split(' ')[0];
-  const dAvui = totsPlans().filter((p) => p.data === avui() && p.estat !== 'cancellat').sort(perOrdre);
+  // Només el que encara ha de venir: un pla amb hora desapareix quan acaba («Fins a», o una hora després de començar)
+  const ara = new Date(), minutsAra = ara.getHours() * 60 + ara.getMinutes();
+  const minuts = (h) => { const [a, b] = h.split(':').map(Number); return a * 60 + (b || 0); };
+  const pendent = (p) => {
+    if (p.totElDia || !p.hora) return true;
+    const ini = minuts(p.hora);
+    const fi = p.horaFi ? (minuts(p.horaFi) > ini ? minuts(p.horaFi) : 24 * 60) : ini + 60;
+    return fi > minutsAra;
+  };
+  const totsAvui = totsPlans().filter((p) => p.data === avui() && p.estat !== 'cancellat');
+  const dAvui = totsAvui.filter(pendent).sort(perOrdre);
   const inv = rebuts().filter((p) => p.rebut.resposta === 'pendent' && p.data >= avui()).length;
+  const encara = totsAvui.length > dAvui.length ? 'encara ' : '';
   const resum = dAvui.length
-    ? `Avui tens <b>${dAvui.length} ${dAvui.length === 1 ? 'pla' : 'plans'}</b>`
-    : 'Avui no tens cap pla';
+    ? `Avui ${encara}tens <b>${dAvui.length} ${dAvui.length === 1 ? 'pla' : 'plans'}</b>`
+    : totsAvui.length ? 'Avui ja no et queda cap pla' : 'Avui no tens cap pla';
   return `<div class="portada">
       <div class="portada-punt"></div>
       <h1>${esc(salut)}${nom ? ', ' + esc(nom) : ''}</h1>
@@ -1796,7 +1807,10 @@ addEventListener('DOMContentLoaded', () => {
 });
 // Quan canvia el dia (app oberta tota la nit), es torna a pintar
 let diaActual = avui();
-setInterval(() => { if (avui() !== diaActual) { diaActual = avui(); render(); } }, 60000);
+setInterval(() => {
+  if (avui() !== diaActual) { diaActual = avui(); render(); return; }
+  if (ui.view === 'inici' && !document.querySelector('#dlg[open]') && document.visibilityState === 'visible') render();
+}, 60000);
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 
 // Tocar el logo de dalt torna a la portada
