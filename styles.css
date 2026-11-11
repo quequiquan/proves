@@ -593,3 +593,14 @@ body.mode-inici .top .nou { display: none; }   /* a la portada ja hi ha el botó
 .fila.fila2 label:first-child { grid-column: auto; }
 .fila label small { font-weight: 600; color: var(--muted); }
 .rep-fins { margin-top: 8px; font-size: 13px; color: var(--muted); }
+
+/* iPhone: les caselles de dia i hora no han de sortir per la dreta */
+.fila { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr); }
+.fila label { min-width: 0; }
+.fila input, .fila select { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; }
+.fila input[type="date"], .fila input[type="time"] { -webkit-appearance: none; appearance: none; display: block; min-height: 44px; text-align: center; }
+.fila input::-webkit-date-and-time-value { text-align: center; }
+.fila.fila2 { align-items: end; }
+@media (max-width: 560px) {
+  .fila, .fila.fila2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}

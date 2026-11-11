@@ -467,7 +467,7 @@ function targeta(p, ambData = false) {
   const info = [ambData ? dataCurta(p.data) : '', horaText(p), p.lloc ? '📍 ' + p.lloc : ''].filter(Boolean);
   const gent = (p.titol || '').trim() && noms(p).length ? `<small class="pla-qui">👥 ${esc(llistaNoms(noms(p)))}</small>` : '';
   const de = p.rebut ? `<small class="pla-de">📨 De part de ${esc(p.rebut.de_nom || p.rebut.de_email)}</small>` : '';
-  const env = (p.compartit || []).length ? '<span class="env" title="Enviat a altres persones">📨</span>' : '';
+  const env = '';
   const estat = p.estat !== 'confirmat' ? `<span class="badge ${p.estat}">${esc((ESTATS.find((e) => e[0] === p.estat) || [, p.estat])[1])}</span>` : '';
   return `<button class="pla ${esc(p.estat)}${diesPla(p) < avui() ? ' passat' : ''}${p.rebut ? ' rebut' : ''}" data-pla="${esc(p.id)}" style="--c:${esc(t.color)}">
     <span class="pla-emoji">${ico(t)}</span>
@@ -642,7 +642,7 @@ function vistaGent() {
         ${camp('nom', 'Nom')}
         ${camp('tel', 'Mòbil', 'type="tel" inputmode="tel"')}
         ${camp('tel2', 'Un altre telèfon', 'type="tel" inputmode="tel"')}
-        <label class="camp">Correu <small>(per enviar-li plans a la seva app)</small>
+        <label class="camp">Correu
           <input data-pcamp="email" type="email" value="${esc(pe.email || '')}" placeholder="nom@exemple.com" autocomplete="off" inputmode="email"></label>
         ${camp('adreca', 'Adreça')}
 ${camp('aniversari', 'Aniversari <small>(dia/mes o dia/mes/any: sortirà sol al calendari cada any)</small>', 'placeholder="p. ex. 14/03 o 14/03/1980" inputmode="numeric"')}
@@ -736,7 +736,7 @@ function vistaAjustos() {
           </details>`
         : '<p class="help">Primer has d\'entrar amb el teu correu (a dalt, a «Compte»).</p>'}
     </div>` : ''}
-    ${sync()?.disponible ? `<div class="section" id="seccioAuto">
+    ${sync()?.disponible && rebuts().length ? `<div class="section" id="seccioAuto">
       <h2>Plans que t'envien</h2>
       <label class="check"><input type="checkbox" id="acceptaTot" ${state.ajustos.acceptaTot ? 'checked' : ''}> Accepta sols tots els plans que m'enviïn</label>
       <p class="help">Si no ho marques, només s'accepten sols els d'aquestes persones (les afegeixes amb «Accepta sempre els plans de…» a cada invitació):</p>
@@ -744,7 +744,7 @@ function vistaAjustos() {
     </div>` : ''}
     <div class="section">
       <h2>El teu nom</h2>
-      <p class="help">És el que veuen les persones a qui envies plans («De part de…»).</p>
+      <p class="help">Surt als missatges dels plans que comparteixes.</p>
       <input id="nomMeu" value="${esc(state.ajustos.nom || '')}" placeholder="El teu nom">
     </div>
     <div class="section" id="seccioTipus">
@@ -1386,7 +1386,7 @@ function obreDetall(p) {
     ? `<button type="button" class="btn${r.resposta === 'si' ? ' primary' : ''}" data-respon="si">✅ Hi vaig</button>
        <button type="button" class="btn${r.resposta === 'no' ? ' primary' : ''}" data-respon="no">❌ No hi vaig</button>
        <button type="button" class="btn" id="dCalendari">Al meu calendari</button>`
-    : `<button type="button" class="btn primary" id="dComparteix">Comparteix</button>
+    : `<button type="button" class="btn primary" id="dComparteix">📤 Comparteix</button>
        <button type="button" class="btn" id="dCalendari">Al meu calendari</button>
        <button type="button" class="btn" id="dEdita">✏️ Edita</button>
        <button type="button" class="btn" id="dDuplica">⧉ Duplica</button>`;
@@ -1405,7 +1405,6 @@ function obreDetall(p) {
         ${n.length ? `<li><span>👥</span>${esc(llistaNoms(n))}</li>` : ''}
         ${p.estat !== 'confirmat' ? `<li><span>${p.estat === 'cancellat' ? '🚫' : '⏳'}</span>${esc((ESTATS.find((e) => e[0] === p.estat) || [, ''])[1])}</li>` : ''}
         ${p.notes ? `<li class="notes"><span>📝</span><div>${esc(p.notes).replace(/\n/g, '<br>')}</div></li>` : ''}
-        ${enviat}
         ${whatsapp}
         ${r && r.resposta === 'pendent' ? '<li><span>❓</span>Encara no has dit si hi vas.</li>' : ''}
       </ul>
@@ -1416,7 +1415,7 @@ function obreDetall(p) {
     const b = e.target.closest('button');
     if (!b) return;
     if (b.dataset.respon) { respon(p, b.dataset.respon); return; }
-    if (b.id === 'dComparteix') obreComparteix(p);
+    if (b.id === 'dComparteix') enviaEnllac(p);
     if (b.id === 'dCalendari') obreAlCalendari(p);
     if (b.id === 'dEdita') obreForm(p);
     if (b.id === 'dDuplica') {
@@ -1629,7 +1628,6 @@ function obreForm(p, base = {}) {
       <fieldset><legend><span class="w-qui">Qui</span></legend>
         <div class="afegeix"><input id="quiNou" type="search" placeholder="🔍 Cerca o afegeix una persona" autocomplete="off" enterkeyhint="done">${potContactes() ? '<button type="button" class="btn" id="quiContactes" aria-label="Tria dels contactes"><span class="ms">contacts</span></button>' : ''}</div>
         <div class="xips xips-col" id="quiXips"></div>
-        <label class="check envia-app" id="quiEnvia" hidden><input type="checkbox" name="enviar" checked> <span></span></label>
       </fieldset>
       <fieldset><legend><span class="w-quan">Quan</span></legend>
         <div class="fila">
@@ -1821,12 +1819,6 @@ function obreForm(p, base = {}) {
     const abansQui = nou ? [] : (p.qui || []);
     const trets = abansQui.filter((id) => !dades.qui.includes(id)).map(correuDe).filter(Boolean);
     let compartit = (nou ? [] : (p.compartit || [])).filter((em) => !trets.includes(em));
-    const enviats = [];
-    if (usuari() && f.enviar && f.enviar.checked) {
-      dades.qui.map(correuDe).filter(emailValid).forEach((em) => {
-        if (em !== normal(usuari().email) && !compartit.includes(em)) { compartit.push(em); enviats.push(em); }
-      });
-    }
     dades.compartit = compartit;
     let desat;
     if (nou) { desat = { id: 'pl-' + uid(), ...dades, versio: 1, modificat: new Date().toISOString() }; state.plans.push(desat); }
@@ -1836,8 +1828,8 @@ function obreForm(p, base = {}) {
     ui.cursor = new Date(parseYmd(desat.data).getFullYear(), parseYmd(desat.data).getMonth(), 1);
     render();
     obreDetall(desat);
-    const perWa = dades.qui.map(pers).filter((pe) => pe && pe.tel && !compartit.includes(normal(pe.email)));
-    toast((nou ? 'Pla afegit' : 'Canvis desats') + (enviats.length ? ` i enviat a ${llistaNoms(enviats.map(nomDeCorreu))} 📨` : '')
+    const perWa = dades.qui.map(pers).filter((pe) => pe && pe.tel);
+    toast((nou ? 'Pla afegit' : 'Canvis desats')
       + (nou && perWa.length ? `. Per avisar ${perWa.length === 1 ? perWa[0].nom : 'els altres'} per WhatsApp, toca el seu nom aquí sota.` : ''), perWa.length ? 6000 : 3200);
   };
 }
