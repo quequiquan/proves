@@ -11,8 +11,10 @@ al seu calendari (iPhone, Google o Outlook) sense instal·lar res. Les dades del
 (després del `#`), no es guarden a cap servidor.
 
 ## Versions
-- Compte propi de GitHub i de Supabase (separat de l'app de gravacions). Adreces: pendents de crear.
-- La versió de proves (adreça amb «proves») guarda les dades a part.
+- **Definitiva:** https://quequiquan.github.io (la que es fa servir de debò, amb dades reals)
+- **Proves:** https://quequiquan.github.io/proves/ (només per a canvis grossos o delicats; guarda les dades a part)
+
+Cada canvi es prova primer a l'ordinador i després es publica a la definitiva (`git push origin main`).
 
 ## Instal·lar-la
 - **iPhone:** obre l'adreça amb Safari → Compartir → Afegeix a la pantalla d'inici.
