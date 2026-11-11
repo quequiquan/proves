@@ -716,6 +716,11 @@ function vistaAjustos() {
         <label class="btn">Recupera una còpia<input type="file" id="fitxerImporta" accept=".json,application/json" hidden></label>
       </div>
     </div>
+    <div class="section">
+      <h2>Guia d'ús</h2>
+      <p class="help">Una guia pràctica de dues pàgines per imprimir o enviar a qui comenci a fer servir l'app.</p>
+      <a class="btn" href="guia.html" target="_blank" rel="noopener">📄 Obre la guia</a>
+    </div>
     <p class="versio">Què · Qui · Quan${PROVES ? ' · versió de proves' : ''}</p>`;
 }
 

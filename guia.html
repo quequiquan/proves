@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="ca">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Guia d'ús · Què · Qui · Quan</title>
+  <meta name="description" content="Guia pràctica per instal·lar i fer servir l'app Què · Qui · Quan">
+  <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --que: #FF5A47; --qui: #E0A100; --quan: #13A08A; --tinta: #221C18; --gris: #6E645B; --fons: #FBF6EE;
+      --linia: #E6DCCD; --blanc: #fff;
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body { margin: 0; background: #E9E2D6; color: var(--tinta); font: 9.6pt/1.32 "Nunito", system-ui, sans-serif; }
+    h1, h2, h3 { font-family: "Fredoka", "Nunito", sans-serif; font-weight: 600; margin: 0; }
+    .w-que { color: var(--que); } .w-qui { color: var(--qui); } .w-quan { color: var(--quan); }
+
+    /* Barra superior (només a la pantalla) */
+    .barra { position: sticky; top: 0; z-index: 5; display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap;
+      padding: 10px 16px; background: var(--tinta); color: #fff; font-weight: 700; }
+    .barra button, .barra a { font: inherit; border: 0; border-radius: 10px; padding: 8px 16px; cursor: pointer; text-decoration: none; }
+    .barra button { background: var(--que); color: #fff; }
+    .barra a { background: rgba(255,255,255,.12); color: #fff; }
+
+    /* Fulls A4 */
+    .full { width: 210mm; min-height: 297mm; margin: 14px auto; padding: 10mm 12mm 14mm; background: var(--fons); box-shadow: 0 6px 30px rgba(0,0,0,.15); position: relative; overflow: hidden; }
+    .franja { position: absolute; left: 0; right: 0; top: 0; height: 7px; background: linear-gradient(90deg, var(--que) 0 33.3%, var(--qui) 33.3% 66.6%, var(--quan) 66.6%); }
+    .cap { display: flex; align-items: center; gap: 14px; margin-bottom: 3mm; }
+    .cap img { width: 14mm; height: 14mm; border-radius: 4mm; }
+    .cap h1 { font-size: 22pt; line-height: 1; }
+    .cap p { margin: 1mm 0 0; color: var(--gris); font-weight: 600; }
+    .cap .pag { margin-left: auto; text-align: right; font-size: 9pt; color: var(--gris); }
+    .cap .pag b { display: block; font-family: "Fredoka"; font-size: 14pt; color: var(--tinta); }
+    .intro { background: var(--blanc); border-radius: 4mm; padding: 2.2mm 3.5mm; margin-bottom: 2mm; border: 1px solid var(--linia); font-size: 9.6pt; }
+    .intro b { color: var(--tinta); }
+
+    h2.seccio { display: flex; align-items: center; gap: 8px; font-size: 13pt; margin: 3mm 0 1.8mm; }
+    h2.seccio .num { width: 7.5mm; height: 7.5mm; border-radius: 50%; display: grid; place-items: center; color: #fff; font-size: 13pt; flex: none; }
+
+    .passos { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2.2mm; }
+    .passos.tres { grid-template-columns: repeat(3, 1fr); }
+    .pas { background: var(--blanc); border: 1px solid var(--linia); border-radius: 3.5mm; padding: 2.2mm 3mm; position: relative; break-inside: avoid; }
+    .pas h3 { font-size: 10.8pt; margin-bottom: 1mm; display: flex; gap: 6px; align-items: center; }
+    .pas h3 .ic { font-size: 14pt; }
+    .pas ol, .pas ul { margin: 0; padding-left: 5mm; }
+    .pas li { margin: .3mm 0; }
+    .pas p { margin: 0 0 1mm; }
+    .pas .nota { font-size: 8.6pt; color: var(--gris); margin-top: 1mm; }
+    .pas.ample { grid-column: 1 / -1; }
+    .clau { display: inline-block; background: var(--tinta); color: #fff; border-radius: 1.5mm; padding: 0 1.6mm; font-weight: 700; font-size: 9.5pt; white-space: nowrap; }
+    .boto { display: inline-block; background: var(--que); color: #fff; border-radius: 1.5mm; padding: 0 1.6mm; font-weight: 700; font-size: 9.5pt; white-space: nowrap; }
+    .boto.gris { background: #fff; color: var(--tinta); border: 1px solid #cbbfae; }
+    .boto.verd { background: #25D366; }
+    .adreca { font-family: "Fredoka"; font-size: 12.5pt; color: var(--que); letter-spacing: .3px; }
+
+    /* Mini pantalles d'exemple */
+    .mobil { background: #fff; border: 2px solid var(--tinta); border-radius: 4mm; padding: 2mm; margin-top: 2mm; font-size: 8.5pt; }
+    .mobil .t { font-family: "Fredoka"; font-weight: 600; font-size: 10pt; margin-bottom: 1mm; }
+    .xips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1mm; }
+    .xip { border: 1px solid var(--linia); border-radius: 1.6mm; padding: .6mm 1.2mm; display: flex; align-items: center; gap: 1mm; white-space: nowrap; overflow: hidden; }
+    .xip i { width: 2.2mm; height: 2.2mm; border-radius: 50%; display: inline-block; flex: none; }
+    .xip.on { background: #C92A2A; color: #fff; border-color: #C92A2A; }
+    .xip.on i { background: #fff !important; }
+    .camp { border: 1px solid var(--linia); border-radius: 1.6mm; padding: .6mm 1.5mm; margin: .8mm 0; color: var(--gris); }
+    .check { display: flex; gap: 1.5mm; align-items: center; margin: 1mm 0; }
+    .check i { width: 3mm; height: 3mm; border-radius: .8mm; background: var(--que); display: inline-grid; place-items: center; color: #fff; font-size: 7pt; font-style: normal; }
+    .inv { background: #FFF6DC; border: 1px solid #F0D894; border-radius: 2mm; padding: 1.5mm; }
+    .inv .targ { background: #fff; border-left: 2mm solid #E8590C; border-radius: 1.5mm; padding: 1mm 1.5mm; margin: 1mm 0; }
+    .inv .bts { display: flex; gap: 1mm; }
+    .inv .bts span { flex: 1; text-align: center; border-radius: 1.5mm; padding: .6mm; font-weight: 700; }
+    .baix { display: flex; justify-content: space-around; background: var(--tinta); color: #fff; border-radius: 2mm; padding: 1.2mm; font-size: 8pt; font-weight: 700; margin-top: 1mm; }
+    .baix span.on { color: #FFC94A; }
+
+    .consells { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2mm 4mm; background: var(--tinta); color: #fff; border-radius: 3.5mm; padding: 2.6mm 4mm; margin-top: 3mm; font-size: 9.2pt; }
+    .consells h3 { grid-column: 1 / -1; color: #FFC94A; font-size: 12pt; }
+    .consells b { color: #FFC94A; }
+    .apunts { margin-top: 3mm; border: 1.5px dashed #cbbfae; border-radius: 3.5mm; padding: 3mm 4mm; background: var(--blanc); }
+    .apunts h3 { font-size: 11pt; margin-bottom: 1mm; }
+    .apunts .linia { display: flex; gap: 2mm; align-items: flex-end; height: 7.5mm; }
+    .apunts .linia b { white-space: nowrap; }
+    .apunts .linia span { flex: 1; border-bottom: 1px solid #bbb; height: 5mm; }
+    .peu { position: absolute; left: 13mm; right: 13mm; bottom: 7mm; display: flex; justify-content: space-between; font-size: 8.5pt; color: var(--gris); }
+
+    @media print {
+      @page { size: A4; margin: 0; }
+      body { background: none; }
+      .barra { display: none; }
+      .full { margin: 0; box-shadow: none; height: 297mm; min-height: 0; page-break-after: always; break-after: page; }
+      .full:last-of-type { page-break-after: auto; break-after: auto; }
+    }
+    /* A la pantalla del mòbil, el full s'adapta a l'amplada */
+    @media screen and (max-width: 820px) {
+      .full { width: auto; min-height: 0; margin: 10px; padding: 18px 14px 50px; }
+      .passos, .passos.tres, .consells { grid-template-columns: 1fr; }
+      .cap h1 { font-size: 22pt; }
+      body { font-size: 15px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="barra">
+    <span>Guia d'ús · 2 pàgines A4</span>
+    <button onclick="window.print()">🖨️ Imprimeix</button>
+    <a href="./">Obre l'app</a>
+  </div>
+
+  <!-- ===================== PÀGINA 1 ===================== -->
+  <section class="full">
+    <div class="franja"></div>
+    <header class="cap">
+      <img src="img/icona.svg" alt="">
+      <div>
+        <h1><span class="w-que">Què</span> · <span class="w-qui">Qui</span> · <span class="w-quan">Quan</span></h1>
+        <p>Guia pràctica · Els teus plans d'oci i socials, en un sol lloc</p>
+      </div>
+      <div class="pag"><b>1 / 2</b>Per començar</div>
+    </header>
+
+    <div class="intro">
+      Cada persona té <b>el seu compte i els seus plans</b> (ningú veu l'agenda dels altres). Quan vols fer un pla amb algú, l'app <b>l'hi envia</b>
+      i li apareix a la seva agenda. No cal cap contrasenya: s'entra amb el <b>correu</b> i un <b>codi</b>.
+    </div>
+
+    <h2 class="seccio"><span class="num" style="background:var(--que)">1</span> Instal·lar l'app al mòbil</h2>
+    <div class="passos">
+      <div class="pas">
+        <h3><span class="ic">📱</span> iPhone</h3>
+        <ol>
+          <li>Obre <b>Safari</b> (ha de ser Safari).</li>
+          <li>Ves a <span class="adreca">quequiquan.github.io</span></li>
+          <li>Prem <span class="clau">Compartir ⬆︎</span> (el quadrat amb la fletxa).</li>
+          <li>Tria <span class="clau">Afegeix a la pantalla d'inici</span> → <span class="clau">Afegeix</span>.</li>
+        </ol>
+        <p class="nota">Et quedarà una icona amb tres cercles de colors, com una app normal.</p>
+      </div>
+      <div class="pas">
+        <h3><span class="ic">💻</span> Android o ordinador</h3>
+        <ol>
+          <li>Obre <b>Chrome</b> i ves a <span class="adreca">quequiquan.github.io</span></li>
+          <li>Android: menú <span class="clau">⋮</span> → <span class="clau">Instal·la l'aplicació</span>.</li>
+          <li>Ordinador: icona d'instal·lar <span class="clau">⊕</span> a la barra d'adreces.</li>
+        </ol>
+        <p class="nota">També funciona sense instal·lar-la, directament al navegador.</p>
+      </div>
+    </div>
+
+    <h2 class="seccio"><span class="num" style="background:var(--qui)">2</span> Entrar amb el teu correu</h2>
+    <div class="passos tres">
+      <div class="pas">
+        <h3><span class="ic">✉️</span> El correu</h3>
+        <p>Escriu <b>el teu correu</b> i prem <span class="boto">Envia'm un codi</span>.</p>
+        <p class="nota">Fes servir sempre el mateix correu: és el que els altres posaran a la teva fitxa per enviar-te plans.</p>
+      </div>
+      <div class="pas">
+        <h3><span class="ic">🔢</span> El codi</h3>
+        <p>Rebràs un correu de <b>Què · Qui · Quan</b> amb un número de 6 xifres. Escriu-lo a l'app i prem <span class="boto">Entra</span>.</p>
+        <p class="nota">Si no arriba, mira el correu brossa (spam).</p>
+      </div>
+      <div class="pas">
+        <h3><span class="ic">🙋</span> El teu nom</h3>
+        <p>Escriu com et dius i prem <span class="boto">Comença</span>.</p>
+        <p class="nota">És el nom que veuran els altres quan els enviïs un pla («De part de…»).</p>
+      </div>
+    </div>
+
+    <h2 class="seccio"><span class="num" style="background:var(--quan)">3</span> Deixar-ho tot a punt (només una vegada)</h2>
+    <div class="passos">
+      <div class="pas">
+        <h3><span class="ic">📆</span> Veure els plans al calendari del mòbil</h3>
+        <ol>
+          <li>A l'app: <span class="clau">Ajustos</span> → <b>Calendari de l'iPhone</b>.</li>
+          <li>Prem <span class="boto gris">Copia l'enllaç</span>.</li>
+          <li>Configuració de l'iPhone → <b>Apps → Calendari → Comptes de calendari → Afegeix un compte → Altres → Afegeix un calendari subscrit</b>.</li>
+          <li>Enganxa l'enllaç → <span class="clau">Següent</span>, desactiva <b>«Elimina les alertes»</b> i <span class="clau">Desa</span>.</li>
+        </ol>
+        <p class="nota">A partir d'aquí, plans i aniversaris apareixen sols al calendari de l'iPhone.</p>
+      </div>
+      <div class="pas">
+        <h3><span class="ic">👥</span> Els teus contactes</h3>
+        <ol>
+          <li>A l'app <b>Contactes</b> de l'iPhone, selecciona els contactes → <b>Comparteix</b> → <b>Desa a Arxius</b>.</li>
+          <li>A Què · Qui · Quan: <span class="clau">Contactes</span> → <span class="boto gris">📥 Importa contactes</span> i tria el fitxer.</li>
+          <li>A la fitxa de cada persona amb qui vulguis compartir plans, comprova que hi ha <b>el seu correu</b>.</li>
+        </ol>
+        <p class="nota">Els aniversaris de les fitxes surten sols al calendari, cada any.</p>
+      </div>
+      <div class="pas ample">
+        <h3><span class="ic">🤝</span> Plans de la família sense haver de tocar res</h3>
+        <p>Quan algú t'enviï un pla per primera vegada, a la invitació prem <b>«Accepta sempre els plans de…»</b>. Des d'aquell moment, tot el que aquella persona
+          comparteixi amb tu s'afegirà sol a la teva agenda. També ho pots activar per a tothom a <span class="clau">Ajustos</span> → <b>Plans que t'envien</b>.</p>
+      </div>
+    </div>
+
+    <div class="consells">
+      <h3>Bo de saber</h3>
+      <div>🔒 <b>Privat:</b> ningú veu els teus plans, només els que tu envies.</div>
+      <div>🔄 <b>A tots els aparells:</b> entra amb el mateix correu al mòbil, l'iPad o l'ordinador.</div>
+      <div>🆕 <b>Actualitzacions:</b> si no veus un canvi nou, tanca l'app del tot i torna-la a obrir.</div>
+      <div>🚪 <b>En un ordinador d'algú altre:</b> en acabar, <span class="clau">Ajustos</span> → <b>Surt d'aquest dispositiu</b>.</div>
+    </div>
+    <div class="peu"><span>quequiquan.github.io</span><span>Què · Qui · Quan</span></div>
+  </section>
+
+  <!-- ===================== PÀGINA 2 ===================== -->
+  <section class="full">
+    <div class="franja"></div>
+    <header class="cap">
+      <img src="img/icona.svg" alt="">
+      <div>
+        <h1><span class="w-que">Què</span> · <span class="w-qui">Qui</span> · <span class="w-quan">Quan</span></h1>
+        <p>Guia pràctica · El dia a dia</p>
+      </div>
+      <div class="pag"><b>2 / 2</b>Fer-la servir</div>
+    </header>
+
+    <h2 class="seccio"><span class="num" style="background:var(--que)">4</span> Crear un pla (exemple: dinar amb la Marta)</h2>
+    <div class="passos">
+      <div class="pas">
+        <ol>
+          <li>Prem el botó vermell <span class="boto">+</span>.</li>
+          <li><b class="w-que">Què</b>: toca <b>Dinar</b> (o escriu el que vulguis a dalt).</li>
+          <li><b class="w-qui">Qui</b>: escriu «mar» al cercador i toca <b>Marta</b>.</li>
+          <li><b class="w-quan">Quan</b>: tria el dia i l'hora.</li>
+          <li><b>On</b>: escriu el lloc i tria'l de la llista, enganxa un enllaç de Maps o prem <span class="boto gris">📍 On soc ara</span>.</li>
+          <li>Prem <span class="boto">Desa</span>.</li>
+        </ol>
+        <p class="nota">Si la Marta té l'app i el seu correu és a la fitxa, <b>li arriba sola</b> (casella «Envia-ho a la seva app»).</p>
+      </div>
+      <div class="mobil">
+        <div class="t">Nou pla</div>
+        <div class="xips">
+          <span class="xip"><i style="background:#F08C00"></i>Esmorzar</span>
+          <span class="xip on"><i></i>Dinar</span>
+          <span class="xip"><i style="background:#C92A2A"></i>Sopar</span>
+          <span class="xip"><i style="background:#7048E8"></i>Concert</span>
+          <span class="xip"><i style="background:#4263EB"></i>Cinema</span>
+          <span class="xip"><i style="background:#9C36B5"></i>Teatre</span>
+        </div>
+        <div class="camp">🔍 mar</div>
+        <div class="xips"><span class="xip" style="background:#E0A100;color:#221C18;border-color:#E0A100">Marta</span></div>
+        <div class="check"><i>✓</i> Envia-ho a la seva app: Marta</div>
+        <div class="camp">dijous 20 · 14:00</div>
+        <div class="camp">📍 Can Roca, Girona</div>
+      </div>
+    </div>
+
+    <h2 class="seccio"><span class="num" style="background:var(--qui)">5</span> Compartir i rebre plans</h2>
+    <div class="passos tres">
+      <div class="pas">
+        <h3><span class="ic">📨</span> Quan te n'envien un</h3>
+        <p>A dalt de <b>Plans</b> surt <b>«T'han enviat un pla»</b>. Prem <b>Hi vaig</b> o <b>No hi vaig</b>.</p>
+        <div class="inv">
+          <div class="targ"><b>Dinar amb Angel</b><br>dj 20 · 14:00 · Can Roca</div>
+          <div class="bts"><span style="background:#FF5A47;color:#fff">✅ Hi vaig</span><span style="background:#fff;border:1px solid #ddd">No hi vaig</span></div>
+        </div>
+      </div>
+      <div class="pas">
+        <h3><span class="ic">💬</span> Si no té l'app</h3>
+        <p>Obre el pla: a <b>«Avisa per WhatsApp»</b> toca el seu nom <span class="boto verd">Marta</span>. S'obre el xat amb el missatge escrit: només cal prémer <b>Enviar</b>.</p>
+        <p class="nota">Cal que la seva fitxa tingui el mòbil.</p>
+      </div>
+      <div class="pas">
+        <h3><span class="ic">✅</span> Qui hi va?</h3>
+        <p>Obre el pla: a <b>«Enviat a»</b> veuràs <b>✅ Hi va</b>, <b>❌ No hi va</b> o <b>⏳ Sense resposta</b>.</p>
+        <p class="nota">Si canvies l'hora o el lloc, als altres també se'ls canvia.</p>
+      </div>
+    </div>
+
+    <h2 class="seccio"><span class="num" style="background:var(--quan)">6</span> Veure i organitzar l'agenda</h2>
+    <div class="passos">
+      <div class="pas">
+        <h3><span class="ic">🗓️</span> Calendari</h3>
+        <ul>
+          <li>A dalt tries la vista: <b>Dia</b>, <b>Setmana</b>, <b>Mes</b> o <b>Any</b>.</li>
+          <li><b>Llisca amb el dit</b> a esquerra o dreta per passar de dia, setmana, mes o any.</li>
+          <li>Hi surten també els <b>aniversaris</b> 🎂 i les activitats d'altres calendaris (per exemple, gravacions).</li>
+        </ul>
+        <div class="baix"><span>Plans</span><span class="on">Calendari</span><span>Contactes</span><span>Ajustos</span></div>
+      </div>
+      <div class="pas">
+        <h3><span class="ic">📋</span> Llista del dia per imprimir</h3>
+        <p>Calendari → vista <b>Dia</b> (o <b>Setmana</b>) → a baix de tot, <span class="boto gris">📋 Llista del dia</span>.
+          Pots <b>imprimir-la</b> o <b>enviar-la com a text</b>, amb caselles ☐ per anar marcant.</p>
+        <h3 style="margin-top:2mm"><span class="ic">👆</span> Accions ràpides</h3>
+        <ul>
+          <li><b>Toca</b> un pla per veure'l, editar-lo o duplicar-lo.</li>
+          <li><b>Mantén premut</b> un pla per <b>eliminar-lo</b>.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="consells">
+      <h3>Personalitza-la (a Ajustos)</h3>
+      <div>🎨 <b>Categories:</b> toca el cercle per canviar-ne el color, amb <b>▲ ▼</b> les ordenes i les pots canviar de grup.</div>
+      <div>➕ <b>Categories noves:</b> també des del mateix pla, amb <b>«＋ Nou tipus»</b>.</div>
+      <div>👤 <b>Fitxa de contacte:</b> mòbil, correu, adreça, aniversari i notes. Botons per trucar o fer un WhatsApp.</div>
+      <div>⚠️ <b>Solapaments:</b> si un pla coincideix en hora amb un altre, l'app t'avisa abans de desar-lo.</div>
+    </div>
+    <div class="apunts">
+      <h3>✍️ Apunta-ho aquí</h3>
+      <div class="linia"><b>El meu correu per entrar:</b><span></span></div>
+      <div class="linia"><b>Persones amb qui comparteixo plans:</b><span></span></div>
+    </div>
+    <div class="peu"><span>Dubtes o millores? Fes una captura de pantalla i explica què estaves fent.</span><span>quequiquan.github.io</span></div>
+  </section>
+</body>
+</html>

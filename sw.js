@@ -2,10 +2,10 @@
 // Quan canviïs fitxers de l'app, puja el número de VERSIO perquè els dispositius s'actualitzin.
 // La versió de proves i la definitiva tenen còpies separades
 const PREFIX = 'qqq-' + (/proves/i.test(self.location.pathname) ? 'proves-' : 'def-');
-const VERSIO = PREFIX + 'v25';
+const VERSIO = PREFIX + 'v26';
 const FITXERS = [
   './', 'index.html', 'styles.css', 'app.js', 'sync.js', 'calendari.js', 'config.js', 'manifest.webmanifest',
-  'afegir.html', 'img/icona.svg', 'img/icona-180.png', 'img/icona-192.png', 'img/icona-512.png', 'img/favicon-32.png',
+  'afegir.html', 'guia.html', 'img/icona.svg', 'img/icona-180.png', 'img/icona-192.png', 'img/icona-512.png', 'img/favicon-32.png',
 ];
 // Fitxers externs que també es guarden per funcionar sense connexió
 const EXTERNS = ['fonts.googleapis.com', 'fonts.gstatic.com', 'cdn.jsdelivr.net'];
