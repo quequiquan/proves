@@ -527,3 +527,12 @@ fieldset > .help { margin: 10px 2px 6px; }
 fieldset input[name="llocUrl"] { margin-top: 8px; font-size: 14px; }
 .lloc-botons { margin: 8px 0 0; }
 .lloc-botons .btn { flex: 1; font-size: 14px; }
+
+/* ---------- iPhone: que la pantalla no s'engrandeixi sola ---------- */
+/* L'iPhone fa zoom quan es toca una casella amb lletra de menys de 16 px: totes en tenen 16 */
+@media (max-width: 760px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="color"]), select, textarea { font-size: 16px !important; }
+}
+/* Dos tocs ràpids no fan zoom; i res pot fer la pàgina més ampla que la pantalla */
+html { touch-action: manipulation; }
+body { overflow-x: hidden; }
