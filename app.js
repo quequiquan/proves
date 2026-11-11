@@ -504,6 +504,7 @@ function vistaCalendari() {
     cos = `<section class="vista-dia">
         ${plans.map((p) => `<div class="franja"><span class="franja-hora">${esc(p.totElDia ? 'Tot el dia' : p.hora || '—')}</span>${targeta(p)}</div>`).join('') || '<p class="buit">Cap pla aquest dia.</p>'}
         <button class="btn afegeix-dia" data-nou="${ui.diaSel}">+ Afegeix un pla aquest dia</button>
+        <button class="btn llista-btn" data-llista="dia">📋 Llista del dia</button>
       </section>`;
   } else if (mode === 'setmana') {
     const dl = mondayOf(sel), dg = addDays(dl, 6);
@@ -516,7 +517,7 @@ function vistaCalendari() {
           <button class="setm-cap" data-anadia="${ds}" aria-label="Veure el dia"><b>${DIES[i]}</b><span>${d.getDate()}</span></button>
           <div class="setm-plans">${plans.map((p) => targeta(p)).join('') || `<button class="setm-buit" data-nou="${ds}">+ Afegeix</button>`}</div>
         </section>`;
-    }).join('') + '</div>';
+    }).join('') + '</div><button class="btn llista-btn" data-llista="setmana">📋 Llista de la setmana</button>';
   } else if (mode === 'any') {
     const y = ui.cursor.getFullYear();
     titol = String(y);
@@ -820,6 +821,8 @@ $('#main').addEventListener('click', (e) => {
   }
   const mes = t.closest('[data-mes]');
   if (mes) { navegaCalendari(Number(mes.dataset.mes)); return; }
+  const ll = t.closest('[data-llista]');
+  if (ll) { obreLlista(ll.dataset.llista); return; }
   const am = t.closest('[data-anames]');
   if (am) {
     ui.cursor = new Date(ui.cursor.getFullYear(), Number(am.dataset.anames), 1);
@@ -1118,6 +1121,73 @@ $('#main').addEventListener('click', async (e) => {
     toast(navigator.onLine ? "No s'ha pogut preparar el calendari. Comprova que a Supabase hi ha la taula i la funció «calendari»." : 'Cal connexió a internet.');
   }
 });
+
+/* ---------- Llista del dia / de la setmana (per imprimir o compartir) ---------- */
+function diesLlista(quin) {
+  const sel = parseYmd(ui.diaSel);
+  if (quin === 'dia') return [ui.diaSel];
+  const dl = mondayOf(sel);
+  return Array.from({ length: 7 }, (_, i) => ymd(addDays(dl, i)));
+}
+function activitatsDe(ds) {
+  return totsPlans().filter((p) => p.data === ds && p.estat !== 'cancellat').sort(perOrdre);
+}
+function htmlLlista(dies) {
+  const blocs = dies.map((ds) => {
+    const ps = activitatsDe(ds);
+    if (!ps.length && dies.length > 1) return '';
+    return `<section class="ll-dia">
+        <h2>${esc(cap(dataLlarga(ds)) + (parseYmd(ds).getFullYear() !== new Date().getFullYear() ? ' de ' + parseYmd(ds).getFullYear() : ''))}</h2>
+        ${ps.length ? `<ul>${ps.map((p) => {
+          const n = noms(p);
+          const detalls = [p.lloc ? '📍 ' + p.lloc : '', n.length && (p.titol || '').trim() ? '👥 ' + llistaNoms(n) : '', p.extern ? p.extern.nom : ''].filter(Boolean);
+          return `<li style="--c:${esc(tipDe(p).color)}">
+              <span class="ll-casella"></span>
+              <span class="ll-hora">${esc(p.totElDia || !p.hora ? 'Tot el dia' : p.hora + (p.horaFi ? '–' + p.horaFi : ''))}</span>
+              <span class="ll-cos"><b>${esc(titolPla(p))}</b>${detalls.length ? `<small>${esc(detalls.join(' · '))}</small>` : ''}${p.notes ? `<small class="ll-notes">${esc(p.notes)}</small>` : ''}</span>
+            </li>`;
+        }).join('')}</ul>` : '<p class="ll-buit">Cap activitat.</p>'}
+      </section>`;
+  }).join('');
+  return blocs || '<p class="ll-buit">Cap activitat aquesta setmana.</p>';
+}
+function textLlista(dies) {
+  return dies.map((ds) => {
+    const ps = activitatsDe(ds);
+    if (!ps.length && dies.length > 1) return '';
+    return [cap(dataLlarga(ds)).toUpperCase(), ...(ps.length ? ps.map((p) => {
+      const n = noms(p);
+      return `☐ ${p.totElDia || !p.hora ? 'Tot el dia' : p.hora + (p.horaFi ? '–' + p.horaFi : '')} · ${titolPla(p)}${p.lloc ? ' · 📍 ' + p.lloc : ''}${n.length && (p.titol || '').trim() ? ' · 👥 ' + llistaNoms(n) : ''}`;
+    }) : ['(cap activitat)'])].join('\n');
+  }).filter(Boolean).join('\n\n');
+}
+function obreLlista(quin) {
+  const dies = diesLlista(quin);
+  const titol = quin === 'dia' ? 'Llista del dia' : 'Llista de la setmana';
+  obreDlg(`<header class="dlg-cap"><h2>${titol}</h2><button type="button" class="x" data-tanca aria-label="Tanca">×</button></header>
+    <div class="dlg-cos"><div class="llista-full">${htmlLlista(dies)}</div></div>
+    <footer class="dlg-peu">
+      <button type="button" class="btn" id="llText">📤 Envia el text</button>
+      <button type="button" class="btn primary" id="llImprimeix">🖨️ Imprimeix</button>
+    </footer>`, 'form');
+  dlgForm.onclick = async (e) => {
+    if (e.target.closest('#llImprimeix')) {
+      // Es prepara un full a part (fora de la finestra) i s'imprimeix només aquest
+      const full = $('#impressio');
+      full.innerHTML = `<div class="llista-full imprès"><p class="ll-app">Què · Qui · Quan</p>${htmlLlista(dies)}</div>`;
+      tancaDlg();
+      document.body.classList.add('imprimint');
+      setTimeout(() => { window.print(); setTimeout(() => document.body.classList.remove('imprimint'), 500); }, 100);
+      return;
+    }
+    if (e.target.closest('#llText')) {
+      const text = textLlista(dies);
+      if (navigator.share) { try { await navigator.share({ title: titol, text }); return; } catch (x) { if (x.name === 'AbortError') return; } }
+      try { await navigator.clipboard.writeText(text); toast('Llista copiada'); } catch (x) { prompt('Copia la llista:', text); }
+    }
+  };
+}
+addEventListener('afterprint', () => document.body.classList.remove('imprimint'));
 
 /* ---------- Calendari: anar endavant o enrere (fletxes o lliscar amb el dit) ---------- */
 function navegaCalendari(n) {

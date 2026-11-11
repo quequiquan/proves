@@ -536,3 +536,31 @@ fieldset input[name="llocUrl"] { margin-top: 8px; font-size: 14px; }
 /* Dos tocs ràpids no fan zoom; i res pot fer la pàgina més ampla que la pantalla */
 html { touch-action: manipulation; }
 body { overflow-x: hidden; }
+
+/* ---------- Llista del dia / setmana ---------- */
+.llista-btn { width: 100%; margin-top: 8px; }
+.llista-full h2 { font-size: 17px; margin: 14px 0 6px; padding-bottom: 4px; border-bottom: 2px solid var(--text); }
+.llista-full .ll-dia:first-child h2, .llista-full .ll-app + .ll-dia h2 { margin-top: 0; }
+.llista-full ul { list-style: none; margin: 0; padding: 0; }
+.llista-full li { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.ll-casella { flex: none; width: 18px; height: 18px; border: 2px solid var(--text); border-radius: 4px; margin-top: 1px; box-shadow: inset 4px 0 0 var(--c); }
+.ll-hora { flex: none; width: 92px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.ll-cos { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ll-cos small { color: var(--muted); font-size: 13px; }
+.ll-notes { font-style: italic; }
+.ll-buit { color: var(--muted); margin: 6px 0; }
+.ll-app { font-family: var(--font-title); font-weight: 600; color: #777; margin: 0 0 8px; font-size: 13px; }
+#impressio { display: none; }
+
+/* En imprimir, només surt el full de la llista, en blanc i negre i amb la mida de la pàgina */
+@media print {
+  @page { margin: 14mm; }
+  body.imprimint > *:not(#impressio) { display: none !important; }
+  body.imprimint #impressio { display: block !important; }
+  body.imprimint { background: #fff !important; color: #000 !important; }
+  #impressio .llista-full { --text: #000; --muted: #444; --border: #bbb; font-size: 12pt; }
+  #impressio .llista-full h2 { break-after: avoid; }
+  #impressio .llista-full li { break-inside: avoid; }
+}
+#llText, #llImprimeix { flex: 1 1 0; }
+.ll-hora { width: 104px; font-size: 15px; }
