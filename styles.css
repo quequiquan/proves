@@ -564,3 +564,13 @@ body { overflow-x: hidden; }
 }
 #llText, #llImprimeix { flex: 1 1 0; }
 .ll-hora { width: 104px; font-size: 15px; }
+
+/* ---------- iPhone (Safari): res no pot ser més ample que la pantalla ---------- */
+/* Les graelles d'una sola columna s'han de poder estrènyer (si no, Safari les eixampla per encabir un títol llarg) */
+.vista-setmana, .gent, .invitacions, .dia, .dia-sel, .vista-dia { grid-template-columns: minmax(0, 1fr); min-width: 0; max-width: 100%; }
+.setm-dia, .setm-plans, .franja, .invitacio, .persona, .pla, .pla-cos, .ll-cos, .tipus-dades, .det li > div { min-width: 0; max-width: 100%; }
+.setm-plans { overflow: hidden; padding: 2px 3px 2px 0; }
+.pla-cos b, .pla-cos small { display: block; max-width: 100%; }
+.vista { max-width: 100%; overflow-x: clip; }
+main { width: 100%; max-width: min(760px, 100vw); }
+.det li { overflow-wrap: anywhere; }
