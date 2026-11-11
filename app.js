@@ -449,11 +449,15 @@ function vistaPropers() {
 }
 
 /* ---------- Vista: Calendari (dia, setmana o mes) ---------- */
-const MODES = [['dia', 'Dia'], ['setmana', 'Setmana'], ['mes', 'Mes']];
+const MODES = [['dia', 'Dia'], ['setmana', 'Setmana'], ['mes', 'Mes'], ['any', 'Any']];
 const apostrof = (txt) => txt.replace(/de ([aeiou])/g, "d'$1");
 function vistaCalendari() {
   const mode = ui.calMode;
   const sel = parseYmd(ui.diaSel);
+  // Tots els plans agrupats per dia, calculats una sola vegada (la vista anual en mira 365)
+  const perDia = new Map();
+  totsPlans().forEach((p) => { if (!perDia.has(p.data)) perDia.set(p.data, []); perDia.get(p.data).push(p); });
+  const delDia = (ds) => (perDia.get(ds) || []).slice().sort(perOrdre);
   let titol, cos;
   if (mode === 'dia') {
     titol = cap(dataLlarga(ui.diaSel));
@@ -472,6 +476,25 @@ function vistaCalendari() {
       return `<section class="setm-dia${ds === avui() ? ' avui' : ''}">
           <button class="setm-cap" data-anadia="${ds}" aria-label="Veure el dia"><b>${DIES[i]}</b><span>${d.getDate()}</span></button>
           <div class="setm-plans">${plans.map((p) => targeta(p)).join('') || `<button class="setm-buit" data-nou="${ds}">+ Afegeix</button>`}</div>
+        </section>`;
+    }).join('') + '</div>';
+  } else if (mode === 'any') {
+    const y = ui.cursor.getFullYear();
+    titol = String(y);
+    cos = '<div class="vista-any">' + MESOS.map((nomMes, m) => {
+      const inici = mondayOf(new Date(y, m, 1));
+      let dies = '';
+      for (let i = 0; i < 42; i++) {
+        const d = addDays(inici, i);
+        if (i >= 35 && d.getMonth() !== m) break;
+        if (d.getMonth() !== m) { dies += '<span></span>'; continue; }
+        const ds = ymd(d), plans = delDia(ds).filter((p) => p.estat !== 'cancellat');
+        const c = plans.length ? tipDe(plans[0]).color : '';
+        dies += `<button class="any-dia${plans.length ? ' te' : ''}${ds === avui() ? ' avui' : ''}" data-anadia="${ds}" ${c ? `style="--c:${esc(c)}"` : ''}>${d.getDate()}</button>`;
+      }
+      return `<section class="any-mes">
+          <button class="any-nom" data-anames="${m}">${cap(nomMes)}</button>
+          <div class="any-grid">${DIES.map((x) => `<b>${x}</b>`).join('')}${dies}</div>
         </section>`;
     }).join('') + '</div>';
   } else {
@@ -496,7 +519,7 @@ function vistaCalendari() {
         <button class="btn" data-nou="${ui.diaSel}">+ Afegeix un pla aquest dia</button>
       </section>`;
   }
-  const quin = { dia: 'Dia', setmana: 'Setmana', mes: 'Mes' }[mode];
+  const quin = { dia: 'Dia', setmana: 'Setmana', mes: 'Mes', any: 'Any' }[mode];
   return `<div class="seg cal-modes">${MODES.map(([m, n]) => `<button data-calmode="${m}" aria-pressed="${mode === m}">${n}</button>`).join('')}</div>
     <div class="cal-cap">
       <button class="btn icona" data-mes="-1" aria-label="${quin} anterior">‹</button>
@@ -556,6 +579,10 @@ ${camp('aniversari', 'Aniversari <small>(dia/mes o dia/mes/any: sortirà sol al 
       <label class="btn">📥 Importa contactes<input type="file" id="gVcf" accept=".vcf,text/vcard,text/x-vcard" multiple hidden></label>
     </div>
     ${potContactes() ? '' : AJUDA_CONTACTES}
+    ${llista.length ? (() => {
+      const n = llista.filter((pe) => llegeixAniv(pe.aniversari)).length;
+      return `<p class="help">${llista.length} contactes · ${n ? `<b>${n}</b> amb l'aniversari apuntat (surten sols al calendari)` : "cap amb l'aniversari apuntat"}.${n < llista.length ? ' Si als teus contactes de l\'iPhone hi tens aniversaris que aquí no surten, torna a importar el fitxer: s\'ompliran les dades que falten.' : ''}</p>`;
+    })() : ''}
     ${llista.length ? `<div class="gent">${llista.map((pe) => {
       const seus = state.plans.filter((p) => (p.qui || []).includes(pe.id)).sort(perOrdre);
       const prox = seus.find((p) => p.data >= avui());
@@ -699,14 +726,11 @@ $('#main').addEventListener('click', (e) => {
     render(); return;
   }
   const mes = t.closest('[data-mes]');
-  if (mes) {
-    const n = Number(mes.dataset.mes);
-    if (n === 0) { ui.cursor = new Date(); ui.diaSel = avui(); }
-    else if (ui.calMode === 'dia') ui.diaSel = ymd(addDays(parseYmd(ui.diaSel), n));
-    else if (ui.calMode === 'setmana') ui.diaSel = ymd(addDays(parseYmd(ui.diaSel), 7 * n));
-    else ui.cursor = new Date(ui.cursor.getFullYear(), ui.cursor.getMonth() + n, 1);
-    if (ui.calMode !== 'mes') { const d = parseYmd(ui.diaSel); ui.cursor = new Date(d.getFullYear(), d.getMonth(), 1); }
-    render(); return;
+  if (mes) { navegaCalendari(Number(mes.dataset.mes)); return; }
+  const am = t.closest('[data-anames]');
+  if (am) {
+    ui.cursor = new Date(ui.cursor.getFullYear(), Number(am.dataset.anames), 1);
+    ui.calMode = 'mes'; desaPref('calMode', 'mes'); render(); window.scrollTo(0, 0); return;
   }
   const cm = t.closest('[data-calmode]');
   if (cm) {
@@ -886,6 +910,34 @@ $('#main').addEventListener('change', async (e) => {
   contactesAfegits(nous.length, cs.length);
 });
 
+/* ---------- Calendari: anar endavant o enrere (fletxes o lliscar amb el dit) ---------- */
+function navegaCalendari(n) {
+  if (n === 0) { ui.cursor = new Date(); ui.diaSel = avui(); }
+  else if (ui.calMode === 'dia') ui.diaSel = ymd(addDays(parseYmd(ui.diaSel), n));
+  else if (ui.calMode === 'setmana') ui.diaSel = ymd(addDays(parseYmd(ui.diaSel), 7 * n));
+  else if (ui.calMode === 'any') ui.cursor = new Date(ui.cursor.getFullYear() + n, 0, 1);
+  else ui.cursor = new Date(ui.cursor.getFullYear(), ui.cursor.getMonth() + n, 1);
+  if (ui.calMode === 'dia' || ui.calMode === 'setmana') { const d = parseYmd(ui.diaSel); ui.cursor = new Date(d.getFullYear(), d.getMonth(), 1); }
+  render();
+  if (n) {
+    const v = $('.vista-calendari');
+    if (v) { v.classList.add(n > 0 ? 'entra-dreta' : 'entra-esquerra'); }
+  }
+}
+let toc = null;
+$('#main').addEventListener('touchstart', (e) => {
+  if (ui.view !== 'calendari' || e.touches.length !== 1) { toc = null; return; }
+  toc = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
+}, { passive: true });
+$('#main').addEventListener('touchend', (e) => {
+  if (!toc || ui.view !== 'calendari') return;
+  const dx = e.changedTouches[0].clientX - toc.x, dy = e.changedTouches[0].clientY - toc.y;
+  const rapid = Date.now() - toc.t < 700;
+  toc = null;
+  // Gest horitzontal clar: cap a l'esquerra = següent, cap a la dreta = anterior
+  if (rapid && Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) navegaCalendari(dx < 0 ? 1 : -1);
+}, { passive: true });
+
 /* ---------- Diàleg ---------- */
 const dlg = $('#dlg'), dlgForm = $('#dlgForm');
 function tancaDlg() { if (dlg.open) dlg.close(); }
@@ -940,9 +992,9 @@ function obreDetall(p) {
   const peu = r
     ? `<button type="button" class="btn${r.resposta === 'si' ? ' primary' : ''}" data-respon="si">✅ Hi vaig</button>
        <button type="button" class="btn${r.resposta === 'no' ? ' primary' : ''}" data-respon="no">❌ No hi vaig</button>
-       <button type="button" class="btn" id="dCalendari">📆 Al meu calendari</button>`
-    : `<button type="button" class="btn primary" id="dComparteix">📤 Comparteix</button>
-       <button type="button" class="btn" id="dCalendari">📆 Al meu calendari</button>
+       <button type="button" class="btn" id="dCalendari">Al meu calendari</button>`
+    : `<button type="button" class="btn primary" id="dComparteix">Comparteix</button>
+       <button type="button" class="btn" id="dCalendari">Al meu calendari</button>
        <button type="button" class="btn" id="dEdita">✏️ Edita</button>
        <button type="button" class="btn" id="dDuplica">⧉ Duplica</button>`;
   obreDlg(`<header class="det-cap" style="--c:${esc(t.color)}">
