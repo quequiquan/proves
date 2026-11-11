@@ -319,6 +319,18 @@ function etiquetaDia(ds) {
   return cap(dataLlarga(ds)) + (d.getFullYear() !== new Date().getFullYear() ? ` de ${d.getFullYear()}` : '');
 }
 // Text del dia (o dels dies) d'un pla: «Avui, dimarts 3 de març», «Divendres 19 de març → diumenge 21 de març de 2027»
+// Persones que tenen l'app: els plans (d'avui endavant) on surten els arriben sols a la seva app
+const teApp = (pe) => Boolean(pe && pe.teApp && emailValid(pe.email) && normal(pe.email) !== normal(usuari()?.email));
+function enviaAApp(plans = state.plans) {
+  if (!usuari()) return [];
+  const enviats = [];
+  plans.forEach((p) => {
+    if (!p.data || diesPla(p) < avui()) return;
+    const falten = (p.qui || []).map(pers).filter(teApp).map((pe) => normal(pe.email)).filter((em) => !(p.compartit || []).includes(em));
+    if (falten.length) { p.compartit = [...(p.compartit || []), ...falten]; enviats.push(p); }
+  });
+  return enviats;
+}
 function textDies(ds, fi) {
   const any = (x) => (parseYmd(x).getFullYear() !== new Date().getFullYear() ? ` de ${parseYmd(x).getFullYear()}` : '');
   const e = etiquetaDia(ds);
@@ -653,6 +665,7 @@ function vistaGent() {
         ${camp('tel2', 'Un altre telèfon', 'type="tel" inputmode="tel"')}
         <label class="camp">Correu
           <input data-pcamp="email" type="email" value="${esc(pe.email || '')}" placeholder="nom@exemple.com" autocomplete="off" inputmode="email"></label>
+        <label class="check te-app"><input type="checkbox" data-papp ${pe.teApp ? 'checked' : ''}> <span>Té l'app <b>Què · Qui · Quan</b>: els plans on surti li arribaran sols a la seva app <small>(amb aquest mateix correu)</small></span></label>
         ${camp('adreca', 'Adreça')}
 ${camp('aniversari', 'Aniversari <small>(dia/mes o dia/mes/any: sortirà sol al calendari cada any)</small>', 'placeholder="p. ex. 14/03 o 14/03/1980" inputmode="numeric"')}
         ${camp('empresa', 'Feina / empresa')}
@@ -999,6 +1012,17 @@ $('#main').addEventListener('change', (e) => {
     return;
   }
   if (t.id === 'nomMeu') { state.ajustos.nom = t.value.trim(); save(); toast('Desat'); return; }
+  if (t.dataset.papp !== undefined) {
+    const pe = pers(ui.persona);
+    if (t.checked && !emailValid(pe.email)) { t.checked = false; toast("Primer posa el seu correu (el mateix amb què entra a l'app)"); return; }
+    pe.teApp = t.checked;
+    const nous = t.checked ? enviaAApp() : [];
+    save();
+    toast(!t.checked ? 'Desat: els plans nous ja no li arribaran a la seva app'
+      : !usuari() ? 'Desat. Perquè li arribin, entra amb el teu correu (Ajustos → Compte)'
+      : nous.length ? (nous.length === 1 ? 'Desat. Li ha arribat 1 pla a la seva app 📲' : `Desat. Li han arribat ${nous.length} plans a la seva app 📲`) : 'Desat: els plans on surti li arribaran a la seva app');
+    return;
+  }
   if (t.dataset.pcamp) {
     const pe = pers(ui.persona), k = t.dataset.pcamp, v = t.value.trim();
     if (k === 'nom' && !v) { t.value = pe.nom; toast('El nom no pot quedar buit'); return; }
@@ -1387,7 +1411,7 @@ function obreDetall(p) {
     `<a class="btn wa" href="https://wa.me/${esc(waNum(pe.tel))}?text=${encodeURIComponent(textPla(p, pe))}" target="_blank" rel="noopener">${esc(pe.nom)}</a>`).join('')}</div>
       <small class="hint">S'obre el xat amb el missatge escrit: només has de prémer Enviar.</small></div></li>` : '';
   const enviat = (p.compartit || []).length
-    ? `<li><span>📨</span><div>Enviat a:<ul class="respostes">${(p.compartit || []).map((em) => {
+    ? `<li><span>📲</span><div>A la seva app:<ul class="respostes">${(p.compartit || []).map((em) => {
       const x = resp.find((y) => y.email === em);
       return `<li><b>${esc(nomDeCorreu(em))}</b> <small>${esc(RESPOSTES[x?.resposta || 'pendent'])}</small></li>`;
     }).join('')}</ul>${usuari() ? '' : '<small class="hint">Entra amb el teu correu perquè els arribi.</small>'}</div></li>` : '';
@@ -1414,6 +1438,7 @@ function obreDetall(p) {
         ${n.length ? `<li><span>👥</span>${esc(llistaNoms(n))}</li>` : ''}
         ${p.estat !== 'confirmat' ? `<li><span>${p.estat === 'cancellat' ? '🚫' : '⏳'}</span>${esc((ESTATS.find((e) => e[0] === p.estat) || [, ''])[1])}</li>` : ''}
         ${p.notes ? `<li class="notes"><span>📝</span><div>${esc(p.notes).replace(/\n/g, '<br>')}</div></li>` : ''}
+        ${enviat}
         ${whatsapp}
         ${r && r.resposta === 'pendent' ? '<li><span>❓</span>Encara no has dit si hi vas.</li>' : ''}
       </ul>
@@ -1841,6 +1866,8 @@ function obreForm(p, base = {}) {
     const trets = abansQui.filter((id) => !dades.qui.includes(id)).map(correuDe).filter(Boolean);
     let compartit = (nou ? [] : (p.compartit || [])).filter((em) => !trets.includes(em));
     dades.compartit = compartit;
+    const perApp = dades.qui.map(pers).filter(teApp).filter((pe) => !compartit.includes(normal(pe.email)));
+    if (usuari() && dades.data >= avui()) perApp.forEach((pe) => compartit.push(normal(pe.email)));
     let desat;
     if (nou) { desat = { id: 'pl-' + uid(), ...dades, versio: 1, modificat: new Date().toISOString() }; state.plans.push(desat); }
     else { desat = Object.assign(p, dades, { versio: (p.versio || 1) + 1, modificat: new Date().toISOString() }); }
@@ -1849,8 +1876,8 @@ function obreForm(p, base = {}) {
     ui.cursor = new Date(parseYmd(desat.data).getFullYear(), parseYmd(desat.data).getMonth(), 1);
     render();
     obreDetall(desat);
-    const perWa = dades.qui.map(pers).filter((pe) => pe && pe.tel);
-    toast((nou ? 'Pla afegit' : 'Canvis desats')
+    const perWa = dades.qui.map(pers).filter((pe) => pe && pe.tel && !(usuari() && teApp(pe)));
+    toast((nou ? 'Pla afegit' : 'Canvis desats') + (usuari() && perApp.length && dades.data >= avui() ? ` i enviat a l'app de ${llistaNoms(perApp.map((pe) => pe.nom))} 📲` : '')
       + (nou && perWa.length ? `. Per avisar ${perWa.length === 1 ? perWa[0].nom : 'els altres'} per WhatsApp, toca el seu nom aquí sota.` : ''), perWa.length ? 6000 : 3200);
   };
 }

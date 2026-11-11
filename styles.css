@@ -608,3 +608,8 @@ body.mode-inici .top .nou { display: none; }   /* a la portada ja hi ha el botó
 /* «Qui»: rètol que separa les persones del pla de les dreceres */
 .qui-rotol { grid-column: 1 / -1; flex-basis: 100%; margin: 8px 2px 0; font-size: 13px; font-weight: 700; color: var(--muted); }
 .xip.suggerit[aria-pressed="false"] { background: transparent; border-style: dashed; color: var(--muted); font-weight: 600; }
+
+/* Fitxa de contacte: «Té l'app» */
+.te-app { display: flex; align-items: flex-start; gap: 8px; margin: 4px 0 10px; font-size: 14px; color: var(--muted); line-height: 1.35; }
+.te-app input { margin-top: 3px; flex: none; }
+.te-app b { color: var(--ink, inherit); }
