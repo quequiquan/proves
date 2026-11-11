@@ -318,6 +318,15 @@ function etiquetaDia(ds) {
   const d = parseYmd(ds);
   return cap(dataLlarga(ds)) + (d.getFullYear() !== new Date().getFullYear() ? ` de ${d.getFullYear()}` : '');
 }
+// Text del dia (o dels dies) d'un pla: «Avui, dimarts 3 de març», «Divendres 19 de març → diumenge 21 de març de 2027»
+function textDies(ds, fi) {
+  const any = (x) => (parseYmd(x).getFullYear() !== new Date().getFullYear() ? ` de ${parseYmd(x).getFullYear()}` : '');
+  const e = etiquetaDia(ds);
+  const inici = /^(Avui|Demà|Ahir)$/.test(e) ? `${e}, ${dataLlarga(ds)}` : e;
+  if (!fi || fi <= ds) return inici;
+  const ini = /^(Avui|Demà|Ahir)$/.test(e) ? inici : cap(dataLlarga(ds)) + (any(ds) !== any(fi) ? any(ds) : '');
+  return `${ini} → ${dataLlarga(fi)}${any(fi)}`;
+}
 function falten(ds) {
   const dies = Math.round((parseYmd(ds) - parseYmd(avui())) / 86400000);
   if (dies <= 1 || dies > 60) return '';
@@ -1398,7 +1407,7 @@ function obreDetall(p) {
     <div class="dlg-cos">
       <ul class="det">
         ${r ? `<li><span>💌</span>De part de <b>&nbsp;${esc(r.de_nom || r.de_email)}</b></li>` : ''}
-        <li><span>📅</span>${esc(etiquetaDia(vista.data) === cap(dataLlarga(vista.data)) ? etiquetaDia(vista.data) : etiquetaDia(vista.data) + ', ' + dataLlarga(vista.data))}${vista.dataFi && vista.dataFi > vista.data ? esc(' → ' + dataLlarga(vista.dataFi)) : ''}</li>
+        <li><span>📅</span>${esc(textDies(vista.data, vista.dataFi))}</li>
         ${p.repeteix ? `<li><span>🔁</span>${esc(nomRepeticio(p.repeteix))}${p.repeteixFins ? esc(', fins al ' + dataLlarga(p.repeteixFins)) : ''}</li>` : ''}
         <li><span>🕘</span>${esc(horaSola(p))}</li>
         ${p.lloc || p.llocUrl ? `<li><span>📍</span><a href="${esc(mapaDe(p))}" target="_blank" rel="noopener">${esc(p.lloc || 'Obre la ubicació al mapa')}</a></li>` : ''}
@@ -1433,10 +1442,10 @@ function titolPer(p, pe) {
   return nomCurt(tipDe(p)) + ' amb ' + llistaNoms([nomPropi(), ...altres]);
 }
 function textPla(p, pe) {
-  const quan = etiquetaDia(p.data) === cap(dataLlarga(p.data)) ? etiquetaDia(p.data) : `${etiquetaDia(p.data)}, ${dataLlarga(p.data)}`;
+  const quan = textDies(p.data, p.dataFi);
   return [
     titolPer(p, pe),
-    `📅 ${quan}${p.totElDia || !p.hora ? '' : ' · ' + horaText(p)}`,
+    `📅 ${quan}${p.totElDia || !p.hora ? '' : ' · ' + horaSola(p)}`,
     p.lloc ? `📍 ${p.lloc}` : '',
     p.llocUrl ? `🗺️ ${p.llocUrl}` : '',
     '',
@@ -1561,7 +1570,7 @@ function obreComparteix(p) {
 }
 async function enviaEnllac(p) {
   const t = tipDe(p);
-  const quan = etiquetaDia(p.data) === cap(dataLlarga(p.data)) ? etiquetaDia(p.data) : `${etiquetaDia(p.data)}, ${dataLlarga(p.data)}`;
+  const quan = textDies(p.data, p.dataFi);
   const text = textPla(p);
   if (navigator.share) {
     try { await navigator.share({ title: titolPla(p), text }); return; }
