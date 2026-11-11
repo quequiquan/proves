@@ -461,3 +461,8 @@ fieldset > .help { margin: 10px 2px 6px; }
 .fitxa .camp { font-size: 14px; }
 .fitxa .camp input, .fitxa .camp textarea { font-weight: 400; font-size: 16px; }
 .fitxa > .btn.perill { margin-top: 6px; }
+
+/* Nom de cada grup de categories al formulari */
+.tg-cap { grid-column: 1 / -1; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); margin: 8px 2px 0; }
+.tg-cap:first-child { margin-top: 0; }
+.tipus-grid .nou-tipus { margin-top: 8px; }

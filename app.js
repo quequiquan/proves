@@ -8,28 +8,66 @@ const KEY = 'qqq-dades-v1' + (PROVES ? '-proves' : '');
 /* ---------- Tipus de pla de sèrie (es poden canviar des d'Ajustos) ---------- */
 // Identificadors fixos: així els dispositius nous no dupliquen els tipus en sincronitzar
 const GRUPS = [
-  ['apats', 'Àpats i copes'], ['cultura', 'Cultura i espectacles'],
-  ['celebracions', 'Celebracions i trobades'], ['sortides', 'Sortides'], ['altres', 'Altres'],
+  ['apats', 'Àpats i trobades'],
+  ['cultura', 'Cultura i lleure'],
+  ['celebracions', 'Celebracions'],
+  ['feina', 'Feina i gestions'],
+  ['personal', 'Vida personal'],
+  ['altres', 'Altres'],
 ];
+// Versió de la llista de categories: si un compte en té una d'anterior, se substitueix per aquesta
+const VERSIO_CATEGORIES = 2;
 const TIPUS_INICIALS = [
-  { id: 't-esmorzar', nom: 'Esmorzar / Brunch', emoji: '🥐', color: '#F08C00', grup: 'apats' },
-  { id: 't-dinar', nom: 'Dinar', emoji: '🍽️', color: '#E8590C', grup: 'apats' },
-  { id: 't-sopar', nom: 'Sopar', emoji: '🍷', color: '#C92A2A', grup: 'apats' },
-  { id: 't-vermut', nom: 'Vermut / Copes', emoji: '🍸', color: '#E64980', grup: 'apats' },
-  { id: 't-cafe', nom: 'Cafè / Berenar', emoji: '☕', color: '#8D6E63', grup: 'apats' },
-  { id: 't-concert', nom: 'Concert', emoji: '🎸', color: '#7048E8', grup: 'cultura' },
-  { id: 't-teatre', nom: 'Teatre / Espectacle', emoji: '🎭', color: '#9C36B5', grup: 'cultura' },
-  { id: 't-cinema', nom: 'Cinema', emoji: '🎬', color: '#4263EB', grup: 'cultura' },
-  { id: 't-exposicio', nom: 'Exposició / Museu', emoji: '🖼️', color: '#1C7ED6', grup: 'cultura' },
-  { id: 't-inauguracio', nom: 'Inauguració', emoji: '🥂', color: '#D9A400', grup: 'cultura' },
-  { id: 't-festa', nom: 'Festa / Aniversari', emoji: '🎉', color: '#F06595', grup: 'celebracions' },
-  { id: 't-amics', nom: 'Trobada amb amics', emoji: '🙌', color: '#1098AD', grup: 'celebracions' },
-  { id: 't-casament', nom: 'Casament / Celebració familiar', emoji: '💐', color: '#E8738A', grup: 'celebracions' },
-  { id: 't-excursio', nom: 'Excursió / Natura', emoji: '🥾', color: '#2F9E44', grup: 'sortides' },
-  { id: 't-escapada', nom: 'Escapada / Viatge', emoji: '🧳', color: '#0CA678', grup: 'sortides' },
-  { id: 't-esport', nom: 'Esport', emoji: '⚽', color: '#66A80F', grup: 'sortides' },
-  { id: 't-festival', nom: 'Festival / Fira', emoji: '🎪', color: '#BE4BDB', grup: 'sortides' },
-  { id: 't-altres', nom: 'Altres', emoji: '✨', color: '#868E96', grup: 'altres' },
+  { id: 't-esmorzar', nom: 'Esmorzar', emoji: '', color: '#F08C00', grup: 'apats' },
+  { id: 't-dinar', nom: 'Dinar', emoji: '', color: '#E8590C', grup: 'apats' },
+  { id: 't-berenar', nom: 'Berenar', emoji: '', color: '#D9480F', grup: 'apats' },
+  { id: 't-sopar', nom: 'Sopar', emoji: '', color: '#C92A2A', grup: 'apats' },
+  { id: 't-cafe', nom: 'Cafè', emoji: '', color: '#A0522D', grup: 'apats' },
+  { id: 't-amics', nom: 'Trobada', emoji: '', color: '#F76707', grup: 'apats' },
+  { id: 't-vermut', nom: 'Vermut', emoji: '', color: '#E03131', grup: 'apats' },
+  { id: 't-barbacoa', nom: 'Barbacoa', emoji: '', color: '#B35900', grup: 'apats' },
+  { id: 't-calcotada', nom: 'Calçotada', emoji: '', color: '#FA5252', grup: 'apats' },
+  { id: 't-tast', nom: 'Tast', emoji: '', color: '#E67700', grup: 'apats' },
+  { id: 't-concert', nom: 'Concert', emoji: '', color: '#7048E8', grup: 'cultura' },
+  { id: 't-cinema', nom: 'Cinema', emoji: '', color: '#4263EB', grup: 'cultura' },
+  { id: 't-teatre', nom: 'Teatre', emoji: '', color: '#9C36B5', grup: 'cultura' },
+  { id: 't-exposicio', nom: 'Exposició', emoji: '', color: '#1C7ED6', grup: 'cultura' },
+  { id: 't-festival', nom: 'Festival', emoji: '', color: '#BE4BDB', grup: 'cultura' },
+  { id: 't-excursio', nom: 'Excursió', emoji: '', color: '#5F3DC4', grup: 'cultura' },
+  { id: 't-passejada', nom: 'Passejada', emoji: '', color: '#7950F2', grup: 'cultura' },
+  { id: 't-sortida', nom: 'Sortida', emoji: '', color: '#364FC7', grup: 'cultura' },
+  { id: 't-taller', nom: 'Taller', emoji: '', color: '#AE3EC9', grup: 'cultura' },
+  { id: 't-partida', nom: 'Partida', emoji: '', color: '#1971C2', grup: 'cultura' },
+  { id: 't-aniversari', nom: 'Aniversari', emoji: '', color: '#F06595', grup: 'celebracions' },
+  { id: 't-festa', nom: 'Festa', emoji: '', color: '#E64980', grup: 'celebracions' },
+  { id: 't-casament', nom: 'Casament', emoji: '', color: '#C2255C', grup: 'celebracions' },
+  { id: 't-bateig', nom: 'Bateig', emoji: '', color: '#F783AC', grup: 'celebracions' },
+  { id: 't-comunio', nom: 'Comunió', emoji: '', color: '#E8738A', grup: 'celebracions' },
+  { id: 't-homenatge', nom: 'Homenatge', emoji: '', color: '#A61E4D', grup: 'celebracions' },
+  { id: 't-comiat', nom: 'Comiat', emoji: '', color: '#D6336C', grup: 'celebracions' },
+  { id: 't-revetlla', nom: 'Revetlla', emoji: '', color: '#FF6B6B', grup: 'celebracions' },
+  { id: 't-inauguracio', nom: 'Inauguració', emoji: '', color: '#FAB005', grup: 'celebracions' },
+  { id: 't-commemoracio', nom: 'Commemoració', emoji: '', color: '#B83280', grup: 'celebracions' },
+  { id: 't-reunio', nom: 'Reunió', emoji: '', color: '#495057', grup: 'feina' },
+  { id: 't-entrevista', nom: 'Entrevista', emoji: '', color: '#1098AD', grup: 'feina' },
+  { id: 't-formacio', nom: 'Formació', emoji: '', color: '#0B7285', grup: 'feina' },
+  { id: 't-conferencia', nom: 'Conferència', emoji: '', color: '#3B5BDB', grup: 'feina' },
+  { id: 't-presentacio', nom: 'Presentació', emoji: '', color: '#15AABF', grup: 'feina' },
+  { id: 't-congres', nom: 'Congrés', emoji: '', color: '#343A40', grup: 'feina' },
+  { id: 't-jornada', nom: 'Jornada', emoji: '', color: '#5C7CFA', grup: 'feina' },
+  { id: 't-assemblea', nom: 'Assemblea', emoji: '', color: '#0C8599', grup: 'feina' },
+  { id: 't-tramit', nom: 'Tràmit', emoji: '', color: '#868E96', grup: 'feina' },
+  { id: 't-gravacio', nom: 'Gravació', emoji: '', color: '#212529', grup: 'feina' },
+  { id: 't-visita', nom: 'Visita', emoji: '', color: '#2F9E44', grup: 'personal' },
+  { id: 't-metge', nom: 'Metge', emoji: '', color: '#0CA678', grup: 'personal' },
+  { id: 't-revisio', nom: 'Revisió', emoji: '', color: '#099268', grup: 'personal' },
+  { id: 't-compres', nom: 'Compres', emoji: '', color: '#66A80F', grup: 'personal' },
+  { id: 't-esport', nom: 'Esport', emoji: '', color: '#37B24D', grup: 'personal' },
+  { id: 't-entrenament', nom: 'Entrenament', emoji: '', color: '#74B816', grup: 'personal' },
+  { id: 't-viatge', nom: 'Viatge', emoji: '', color: '#12B886', grup: 'personal' },
+  { id: 't-escapada', nom: 'Escapada', emoji: '', color: '#087F5B', grup: 'personal' },
+  { id: 't-vacances', nom: 'Vacances', emoji: '', color: '#20C997', grup: 'personal' },
+  { id: 't-perruqueria', nom: 'Perruqueria', emoji: '', color: '#40C057', grup: 'personal' },
 ];
 // Colors per als tipus nous que es creen des del formulari
 const COLORS_NOUS = ['#5C7CFA', '#20C997', '#FF922B', '#CC5DE8', '#F06595', '#339AF0', '#94D82D', '#FAB005'];
@@ -67,7 +105,7 @@ const llistaNoms = (n) => (n.length < 2 ? n.join('') : n.slice(0, -1).join(', ')
 
 /* ---------- Dades ---------- */
 function seed() {
-  return { tipus: TIPUS_INICIALS.map((t) => ({ ...t })), persones: [], plans: [], ajustos: { nom: '' } };
+  return { tipus: TIPUS_INICIALS.map((t) => ({ ...t })), persones: [], plans: [], ajustos: { nom: '', categories: VERSIO_CATEGORIES } };
 }
 function normalize(d) {
   const arr = (x) => (Array.isArray(x) ? x : []);
@@ -89,7 +127,17 @@ function save() {
 }
 
 let state = load();
+actualitzaCategories();
 save();
+// Si les dades tenen la llista de categories antiga, es canvia per la nova (els plans conserven la seva
+// categoria quan existeix a la llista nova; si no, queden sense categoria)
+function actualitzaCategories() {
+  if ((state.ajustos.categories || 0) >= VERSIO_CATEGORIES) return;
+  state.tipus = TIPUS_INICIALS.map((t) => ({ ...t }));
+  state.ajustos.categories = VERSIO_CATEGORIES;
+  const valids = new Set(state.tipus.map((t) => t.id));
+  state.plans.forEach((p) => { if (p.tipusId && !valids.has(p.tipusId)) p.tipusId = ''; });
+}
 // En sortir del compte (o si entra una altra persona en aquest dispositiu) es comença de zero
 function reiniciaDades() {
   state = seed();
@@ -482,7 +530,7 @@ function vistaGent() {
 /* ---------- Vista: Ajustos ---------- */
 function vistaAjustos() {
   const files = GRUPS.map(([g, nomG]) => {
-    const ts = state.tipus.filter((t) => (t.grup || 'altres') === g);
+    const ts = state.tipus.filter((t) => (GRUPS.some(([x]) => x === t.grup) ? t.grup : 'altres') === g);
     if (!ts.length) return '';
     return `<h3 class="sub">${esc(nomG)}</h3>` + ts.map((t) => `<div class="tipus-fila" data-tid="${esc(t.id)}">
         ${botoColor(t.color, 'data-camp="color"')}
@@ -977,8 +1025,12 @@ function obreForm(p, base = {}) {
     return ord.map((pe) => `<button type="button" class="xip" data-qui="${esc(pe.id)}" aria-pressed="${d.qui.includes(pe.id)}">${esc(pe.nom)}</button>`).join('')
       || '<span class="help">Encara no hi ha ningú: escriu un nom a sota.</span>';
   };
-  const tipusXips = () => GRUPS.map(([g]) => state.tipus.filter((t) => (t.grup || 'altres') === g)).flat()
-    .map((t) => `<button type="button" class="txip" data-tipus="${esc(t.id)}" aria-pressed="${d.tipusId === t.id}" style="--c:${esc(t.color)}">${ico(t)}<span class="txip-nom">${esc(nomCurt(t))}</span></button>`).join('')
+  // Tipus agrupats (Àpats i trobades, Cultura i lleure…), amb el nom del grup a sobre
+  const xipTipus = (t) => `<button type="button" class="txip" data-tipus="${esc(t.id)}" aria-pressed="${d.tipusId === t.id}" style="--c:${esc(t.color)}">${ico(t)}<span class="txip-nom">${esc(nomCurt(t))}</span></button>`;
+  const tipusXips = () => GRUPS.map(([g, nomG]) => {
+    const ts = state.tipus.filter((t) => (GRUPS.some(([x]) => x === t.grup) ? t.grup : 'altres') === g);
+    return ts.length ? `<div class="tg-cap">${esc(nomG)}</div>` + ts.map(xipTipus).join('') : '';
+  }).join('')
     + '<button type="button" class="txip nou-tipus" id="tNou"><span class="ms">add</span><span class="txip-nom">Nou tipus</span></button>';
 
   obreDlg(`<header class="dlg-cap"><h2>${nou ? 'Nou pla' : 'Edita el pla'}</h2><button type="button" class="x" data-tanca aria-label="Tanca">×</button></header>
