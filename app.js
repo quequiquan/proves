@@ -99,7 +99,7 @@ function reiniciaDades() {
 function llegeixPref(k, def) { try { const v = localStorage.getItem('qqq-pref-' + k); return v === null ? def : JSON.parse(v); } catch (e) { return def; } }
 function desaPref(k, v) { try { localStorage.setItem('qqq-pref-' + k, JSON.stringify(v)); } catch (e) { /* res */ } }
 const ui = {
-  view: llegeixPref('view', 'propers'), calMode: llegeixPref('calMode', 'mes'), cursor: new Date(), diaSel: avui(), cerca: '', passats: false, persona: '',
+  view: llegeixPref('view', 'propers'), calMode: llegeixPref('calMode', 'mes'), cursor: new Date(), diaSel: avui(), cerca: '', cercaGent: '', passats: false, persona: '',
   entrada: { pas: 'correu', email: '' },
 };
 
@@ -222,28 +222,56 @@ async function cercaLlocs(q) {
 // Selector de contactes del navegador (Android; a l'iPhone, només si s'activa a Safari)
 const potContactes = () => 'contacts' in navigator && typeof navigator.contacts.select === 'function';
 async function triaContactes() {
-  const res = await navigator.contacts.select(['name', 'email'], { multiple: true });
-  return res.map((c) => ({ nom: String((c.name || [])[0] || '').trim(), email: String((c.email || [])[0] || '').trim().toLowerCase() }))
-    .map((c) => ({ nom: c.nom || c.email.split('@')[0], email: emailValid(c.email) ? c.email : '' }))
+  // Demana també el telèfon i l'adreça, si el mòbil ho permet
+  const disponibles = navigator.contacts.getProperties ? await navigator.contacts.getProperties().catch(() => ['name', 'email']) : ['name', 'email'];
+  const res = await navigator.contacts.select(['name', 'email', 'tel', 'address'].filter((p) => disponibles.includes(p)), { multiple: true });
+  return res.map((c) => ({
+    nom: String((c.name || [])[0] || '').trim(), email: String((c.email || [])[0] || '').trim().toLowerCase(),
+    tel: String((c.tel || [])[0] || '').trim(), tel2: String((c.tel || [])[1] || '').trim(),
+    adreca: (c.address || [])[0] ? [].concat(c.address[0].addressLine || [], c.address[0].city || []).filter(Boolean).join(', ') : '',
+  }))
+    .map((c) => ({ ...c, nom: c.nom || c.email.split('@')[0] || c.tel, email: emailValid(c.email) ? c.email : '' }))
     .filter((c) => c.nom);
 }
 // Targetes de contacte (.vcf), com les que es comparteixen des de l'app Contactes de l'iPhone
+const desescapa = (v) => String(v || '').replace(/\\n/gi, '\n').replace(/\\([,;\\])/g, '$1').trim();
 function llegeixVcf(text) {
   const net = String(text).replace(/\r?\n[ \t]/g, '');
   return net.split(/BEGIN:VCARD/i).slice(1).map((bloc) => {
-    const camp = (re) => { const m = bloc.match(re); return m ? m[1].trim() : ''; };
-    let nom = camp(/^FN[^:\n]*:(.*)$/mi);
-    if (!nom) { const n = camp(/^N[^:\n]*:(.*)$/mi).split(';'); nom = [n[1], n[0]].filter(Boolean).join(' '); }
-    const email = camp(/^(?:item\d+\.)?EMAIL[^:\n]*:(.*)$/mi).toLowerCase();
-    return { nom: nom.replace(/\\([,;])/g, '$1'), email: emailValid(email) ? email : '' };
-  }).filter((c) => c.nom || c.email).map((c) => ({ nom: c.nom || c.email.split('@')[0], email: c.email }));
+    const linies = bloc.split(/\r?\n/);
+    // Totes les línies d'un camp (TEL, EMAIL…), amb els seus tipus (CELL, HOME…)
+    const tots = (camp) => linies
+      .map((l) => l.match(new RegExp('^(?:item\\d+\\.)?' + camp + '((?:;[^:]*)?):(.*)$', 'i')))
+      .filter(Boolean).map((m) => ({ tipus: m[1].toUpperCase(), valor: desescapa(m[2]) })).filter((x) => x.valor);
+    const u = (camp) => (tots(camp)[0] || {}).valor || '';
+    let nom = u('FN');
+    if (!nom) { const n = u('N').split(';'); nom = [n[1], n[0]].filter(Boolean).join(' '); }
+    const tels = tots('TEL');
+    const mobil = tels.find((t) => /CELL|IPHONE|MOBILE/.test(t.tipus)) || tels[0];
+    const altre = tels.find((t) => t !== mobil);
+    const emails = tots('EMAIL').map((x) => x.valor.toLowerCase()).filter(emailValid);
+    // ADR: apartat;extens;carrer;població;província;codi postal;país
+    const [, , carrer, poble, , cp, pais] = u('ADR').split(';').map((x) => x.trim());
+    const adreca = [carrer, [cp, poble].filter(Boolean).join(' '), /^(espa(ñ|ny)a|spain)$/i.test(pais || '') ? '' : pais].filter(Boolean).join(', ');
+    let anv = u('BDAY').replace(/T.*$/, '');
+    let m = anv.match(/^(\d{4})-?(\d{2})-?(\d{2})$/);
+    if (m) anv = m[1] === '1604' ? `${m[3]}/${m[2]}` : `${m[3]}/${m[2]}/${m[1]}`;
+    else if ((m = anv.match(/^--(\d{2})-?(\d{2})$/))) anv = `${m[2]}/${m[1]}`;
+    return {
+      nom, email: emails[0] || '', tel: mobil ? mobil.valor : '', tel2: altre ? altre.valor : '',
+      adreca,
+      aniversari: anv, empresa: u('ORG').split(';').filter(Boolean).join(' · '), notes: u('NOTE'),
+    };
+  }).filter((c) => c.nom || c.email || c.tel).map((c) => ({ ...c, nom: c.nom || c.email.split('@')[0] || c.tel }));
 }
+const CAMPS_CONTACTE = ['email', 'tel', 'tel2', 'adreca', 'aniversari', 'empresa', 'notes'];
 // Converteix contactes en fitxes de persona (si ja hi són, només hi afegeix el correu)
 function incorporaContactes(llista, existents, onAfegir) {
   return llista.map((c) => {
     let pe = existents.find((x) => (c.email && normal(x.email) === c.email) || normal(x.nom) === normal(c.nom));
     if (!pe) { pe = { id: 'pe-' + uid(), nom: c.nom }; onAfegir.push(pe); existents.push(pe); }
-    if (c.email && !pe.email) pe.email = c.email;
+    // Només s'omplen els camps buits: el que ja s'hagi escrit a mà no es trepitja
+    CAMPS_CONTACTE.forEach((k) => { if (c[k] && !pe[k]) pe[k] = c[k]; });
     return pe;
   });
 }
@@ -400,12 +428,29 @@ function vistaGent() {
     const seus = state.plans.filter((p) => (p.qui || []).includes(pe.id));
     const propers = seus.filter((p) => p.data >= avui()).sort(perOrdre);
     const passats = seus.filter((p) => p.data < avui()).sort(perOrdre).reverse();
-    return `<div class="cal-cap"><button class="btn" data-persona="">‹ Gent</button><h2>${esc(pe.nom)}</h2></div>
-      <label class="camp">Correu <small>(opcional: per enviar-li plans a la seva app)</small>
-        <input type="email" id="pCorreu" value="${esc(pe.email || '')}" placeholder="nom@exemple.com" autocomplete="off" inputmode="email"></label>
-      <div class="grp">
-        <button class="btn" id="pRenom">Canvia el nom</button>
-        <button class="btn perill" id="pEsborra">Esborra</button>
+    const telNet = (t) => String(t || '').replace(/[^\d+]/g, '');
+    const wa = (t) => { let n = telNet(t).replace(/^\+/, '').replace(/^00/, ''); if (/^[6789]\d{8}$/.test(n)) n = '34' + n; return 'https://wa.me/' + n; };
+    const camp = (k, etiqueta, attrs = '') => `<label class="camp">${etiqueta}<input data-pcamp="${k}" value="${esc(pe[k] || '')}" autocomplete="off" ${attrs}></label>`;
+    const accions = [
+      pe.tel ? `<a class="btn" href="tel:${esc(telNet(pe.tel))}">📞 Truca</a>` : '',
+      pe.tel ? `<a class="btn" href="${esc(wa(pe.tel))}" target="_blank" rel="noopener">💬 WhatsApp</a>` : '',
+      pe.email ? `<a class="btn" href="mailto:${esc(pe.email)}">✉️ Correu</a>` : '',
+      pe.adreca ? `<a class="btn" href="${esc(Cal.mapa(pe.adreca))}" target="_blank" rel="noopener">📍 Mapa</a>` : '',
+    ].filter(Boolean).join('');
+    return `<div class="cal-cap"><button class="btn" data-persona="">‹ Gent</button><h2 id="fitxaNom">${esc(pe.nom)}</h2></div>
+      ${accions ? `<div class="grp fitxa-accions">${accions}</div>` : ''}
+      <div class="section fitxa">
+        ${camp('nom', 'Nom')}
+        ${camp('tel', 'Mòbil', 'type="tel" inputmode="tel"')}
+        ${camp('tel2', 'Un altre telèfon', 'type="tel" inputmode="tel"')}
+        <label class="camp">Correu <small>(per enviar-li plans a la seva app)</small>
+          <input data-pcamp="email" type="email" value="${esc(pe.email || '')}" placeholder="nom@exemple.com" autocomplete="off" inputmode="email"></label>
+        ${camp('adreca', 'Adreça')}
+        ${camp('aniversari', 'Aniversari', 'placeholder="p. ex. 14/03"')}
+        ${camp('empresa', 'Feina / empresa')}
+        <label class="camp">Notes<textarea data-pcamp="notes" rows="3" placeholder="Al·lèrgies, gustos, el nom dels fills…">${esc(pe.notes || '')}</textarea></label>
+        <p class="help">Els canvis es desen sols.</p>
+        <button class="btn perill" id="pEsborra">Esborra aquesta persona</button>
       </div>
       <h3 class="sub">Propers</h3>
       ${propers.map((p) => targeta(p, true)).join('') || '<p class="buit">Cap pla previst.</p>'}
@@ -413,7 +458,10 @@ function vistaGent() {
       ${passats.map((p) => targeta(p, true)).join('') || '<p class="buit">Encara cap.</p>'}`;
   }
   const llista = [...state.persones].sort((a, b) => a.nom.localeCompare(b.nom, 'ca'));
-  return `<form class="barra" id="formPersona">
+  const qg = normal(ui.cercaGent.trim());
+  const coincideix = (pe) => !qg || normal([pe.nom, pe.tel, pe.tel2, pe.email, pe.empresa].join(' ')).includes(qg);
+  return `${llista.length > 3 ? `<input type="search" id="cercaGent" class="cerca-gent" placeholder="🔍 Cerca un contacte" value="${esc(ui.cercaGent)}" autocomplete="off">` : ''}
+    <form class="barra" id="formPersona">
       <input name="nom" placeholder="Nom d'una persona" autocomplete="off">
       <button class="btn primary">Afegeix</button>
     </form>
@@ -426,8 +474,8 @@ function vistaGent() {
       const seus = state.plans.filter((p) => (p.qui || []).includes(pe.id)).sort(perOrdre);
       const prox = seus.find((p) => p.data >= avui());
       const ult = [...seus].reverse().find((p) => p.data < avui());
-      const info = [seus.length ? `${seus.length} ${seus.length === 1 ? 'pla' : 'plans'}` : 'Cap pla', prox ? 'proper: ' + dataCurta(prox.data) : ult ? 'últim: ' + dataCurta(ult.data) : ''].filter(Boolean).join(' · ');
-      return `<button class="persona" data-persona="${esc(pe.id)}"><span class="avatar">${esc(pe.nom.trim().charAt(0).toUpperCase())}</span><span><b>${esc(pe.nom)}</b><small>${esc(info)}</small></span></button>`;
+      const info = [pe.tel || '', seus.length ? `${seus.length} ${seus.length === 1 ? 'pla' : 'plans'}` : 'Cap pla', prox ? 'proper: ' + dataCurta(prox.data) : ult ? 'últim: ' + dataCurta(ult.data) : ''].filter(Boolean).join(' · ');
+      return `<button class="persona" data-persona="${esc(pe.id)}" data-cerca="${esc(normal([pe.nom, pe.tel, pe.tel2, pe.email, pe.empresa].join(' ')))}" ${coincideix(pe) ? '' : 'hidden'}><span class="avatar">${esc(pe.nom.trim().charAt(0).toUpperCase())}</span><span><b>${esc(pe.nom)}</b><small>${esc(info)}</small></span></button>`;
     }).join('')}</div>` : '<p class="buit">Aquí hi sortiran les persones amb qui quedes. Les pots afegir aquí o directament quan crees un pla.</p>'}`;
 }
 
@@ -603,11 +651,26 @@ $('#main').addEventListener('click', (e) => {
 });
 
 $('#main').addEventListener('input', (e) => {
+  if (e.target.id === 'cercaGent') {
+    ui.cercaGent = e.target.value;
+    const q = normal(ui.cercaGent.trim());
+    $$('.persona[data-cerca]').forEach((b) => { b.hidden = Boolean(q) && !b.dataset.cerca.includes(q); });
+    return;
+  }
   if (e.target.id === 'cerca') { ui.cerca = e.target.value; render(); }
 });
 $('#main').addEventListener('change', (e) => {
   const t = e.target;
   if (t.id === 'nomMeu') { state.ajustos.nom = t.value.trim(); save(); toast('Desat'); return; }
+  if (t.dataset.pcamp) {
+    const pe = pers(ui.persona), k = t.dataset.pcamp, v = t.value.trim();
+    if (k === 'nom' && !v) { t.value = pe.nom; toast('El nom no pot quedar buit'); return; }
+    if (k === 'email' && v && !emailValid(v)) { toast('Aquest correu no sembla correcte'); return; }
+    pe[k] = k === 'email' ? v.toLowerCase() : v;
+    save(); toast('Desat');
+    if (k === 'nom') $('#fitxaNom').textContent = v;
+    return;
+  }
   if (t.id === 'pCorreu') {
     const v = t.value.trim().toLowerCase();
     if (v && !emailValid(v)) { toast('Aquest correu no sembla correcte'); return; }
