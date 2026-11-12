@@ -838,7 +838,7 @@ function vistaGent() {
   const llista = [...state.persones].sort((a, b) => a.nom.localeCompare(b.nom, 'ca'));
   const qg = normal(ui.cercaGent.trim());
   const coincideix = (pe) => !qg || normal([pe.nom, pe.tel, pe.tel2, pe.email, pe.empresa].join(' ')).includes(qg);
-  return `${llista.length > 3 ? `<input type="search" id="cercaGent" class="cerca-gent" placeholder="Cerca un contacte" value="${esc(ui.cercaGent)}" autocomplete="off">` : ''}
+  return `${llista.length > 3 ? `<div class="cerca-caixa"><input type="search" id="cercaGent" class="cerca-gent" placeholder="Cerca un contacte" value="${esc(ui.cercaGent)}" autocomplete="off"><button type="button" class="cerca-x" id="cercaGentX" aria-label="Esborra la cerca" ${ui.cercaGent ? '' : 'hidden'}>×</button></div>` : ''}
     <form class="barra" id="formPersona">
       <input name="nom" placeholder="Nom d'una persona" autocomplete="off">
       <button class="btn primary">Afegeix</button>
@@ -1175,6 +1175,7 @@ $('#main').addEventListener('input', (e) => {
     ui.cercaGent = e.target.value;
     const q = normal(ui.cercaGent.trim());
     $$('.persona[data-cerca]').forEach((b) => { b.hidden = Boolean(q) && !b.dataset.cerca.includes(q); });
+    $('#cercaGentX').hidden = !ui.cercaGent;
     return;
   }
   if (e.target.id === 'cerca') { ui.cerca = e.target.value; render(); }
@@ -1554,6 +1555,14 @@ $('#main').addEventListener('click', (e) => {
   pe[b.dataset.dmtreu] = ''; save(); toast('Tret');
   b.closest('.dm').querySelectorAll('input').forEach((x) => { x.value = ''; });
   b.remove();
+});
+// Botó per buidar la cerca de contactes d'un toc
+$('#main').addEventListener('click', (e) => {
+  if (!e.target.closest('#cercaGentX')) return;
+  const c = $('#cercaGent');
+  c.value = '';
+  c.dispatchEvent(new Event('input', { bubbles: true }));
+  c.focus();
 });
 /* ---------- Detall d'un aniversari ---------- */
 function obreExtern(p) {

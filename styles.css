@@ -742,3 +742,11 @@ body.mode-inici main { padding-top: 0; padding-bottom: 0; }
 #main .dm input.dm-a { width: 84px; }
 .dm > span { color: var(--muted); }
 .dm .dm-treu { margin-left: auto; font-weight: 600; }
+
+/* Cerca de contactes amb botó per buidar-la */
+.cerca-caixa { position: relative; margin-bottom: 10px; }
+.cerca-caixa .cerca-gent { margin-bottom: 0; padding-right: 44px; }
+.cerca-caixa .cerca-gent::-webkit-search-cancel-button { display: none; }
+.cerca-x { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px; border: 0; border-radius: 50%;
+  background: var(--surface-2); color: var(--muted); font-size: 20px; line-height: 1; cursor: pointer; }
+.cerca-x[hidden] { display: none; }
