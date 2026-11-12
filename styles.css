@@ -725,3 +725,5 @@ body.mode-inici main { padding-top: 0; padding-bottom: 0; }
 .portada { height: var(--alt-portada, auto); min-height: 0; padding: 0 16px; box-sizing: border-box; justify-content: center; }
 .portada h1 { font-family: inherit; font-weight: 600; font-size: 20px; letter-spacing: 0; color: var(--text); margin: 0 0 4px; }
 .portada-data { font-weight: 500; }
+.portada-data { margin-bottom: 66px; }
+@media (max-height: 700px) { .portada-data { margin-bottom: 44px; } }
