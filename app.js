@@ -823,6 +823,11 @@ function vistaAjustos() {
       </form>
     </div>
     <div class="section">
+      <h2>Afegeix plans d'un fitxer</h2>
+      <p class="help">Per carregar molts plans de cop (per exemple, el calendari de la lliga). S'<b>afegeixen</b> als que ja tens, sense esborrar res; si el tornes a carregar, no es dupliquen.</p>
+      <label class="btn">Tria el fitxer<input type="file" id="fitxerPlans" accept=".json,application/json" hidden></label>
+    </div>
+    <div class="section">
       <h2>Còpia de seguretat</h2>
       <p class="help">Desa tots els plans en un fitxer, o recupera'ls d'una còpia.</p>
       <div class="grp">
@@ -1097,6 +1102,7 @@ $('#main').addEventListener('change', (e) => {
     tt[t.dataset.camp] = v; save(); toast('Desat'); return;
   }
   if (t.id === 'fitxerImporta' && t.files[0]) importa(t.files[0]);
+  if (t.id === 'fitxerPlans' && t.files[0]) { afegeixPlans(t.files[0]); t.value = ''; }
 });
 function errorEntrada(err) {
   const m = String(err?.message || err || '');
@@ -1954,6 +1960,37 @@ function exporta() {
   a.download = `que-qui-quan-copia-${avui()}.json`;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+// Afegeix plans d'un fitxer { app: 'que-qui-quan-plans', plans: [{ id, titol, tipus, data, hora, horaFi, lloc, qui: [noms], notes, estat }] }
+// No substitueix res: els plans que ja hi són (pel seu identificador) no es tornen a afegir
+function afegeixPlans(fitxer) {
+  const r = new FileReader();
+  r.onload = () => {
+    let d;
+    try { d = JSON.parse(r.result); } catch (e) { d = null; }
+    const llista = d && d.app === 'que-qui-quan-plans' && Array.isArray(d.plans) ? d.plans.filter((p) => p && p.id && /^\d{4}-\d{2}-\d{2}$/.test(p.data || '')) : null;
+    if (!llista) { toast('Aquest fitxer no és una llista de plans de Què · Qui · Quan.'); return; }
+    const nous = llista.filter((p) => !state.plans.some((x) => x.id === p.id));
+    if (!nous.length) { toast('Tots aquests plans ja els tens'); return; }
+    if (!confirm(`Vols afegir ${nous.length === 1 ? '1 pla' : nous.length + ' plans'} a la teva agenda?${d.nom ? ' (' + d.nom + ')' : ''}`)) return;
+    const tipusPerNom = (nom) => (nom ? state.tipus.find((t) => normal(t.nom) === normal(nom) || normal(nomCurt(t)) === normal(nom)) : null);
+    const persona = (nom) => {
+      let pe = state.persones.find((x) => normal(x.nom) === normal(nom));
+      if (!pe) { pe = { id: 'pe-' + uid(), nom: String(nom).trim() }; state.persones.push(pe); }
+      return pe.id;
+    };
+    const afegits = nous.map((p) => ({
+      id: String(p.id), titol: String(p.titol || '').trim(), tipusId: tipusPerNom(p.tipus)?.id || '',
+      data: p.data, dataFi: p.dataFi || '', hora: p.hora || '', horaFi: p.horaFi || '', totElDia: Boolean(p.totElDia),
+      lloc: p.lloc || '', llocUrl: '', notes: p.notes || '', estat: ['confirmat', 'pendent', 'cancellat'].includes(p.estat) ? p.estat : 'confirmat',
+      qui: (Array.isArray(p.qui) ? p.qui : []).filter(Boolean).map(persona), versio: 1, modificat: new Date().toISOString(),
+    }));
+    state.plans.push(...afegits);
+    enviaAApp(afegits);
+    save(); render();
+    toast(`Fet: ${afegits.length === 1 ? 'afegit 1 pla' : 'afegits ' + afegits.length + ' plans'}`, 4500);
+  };
+  r.readAsText(fitxer);
 }
 function importa(fitxer) {
   const r = new FileReader();
