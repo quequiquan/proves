@@ -212,7 +212,7 @@ const emailValid = (s) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(s || '').trim
 const tipDe = (p) => p._t || tip(p.tipusId);
 const noms = (p) => p._amb || (p.qui || []).map(pers).filter(Boolean).map((x) => x.nom);
 const titolPla = (p) => (p.titol || '').trim() || nomCurt(tipDe(p)) + (noms(p).length ? ' amb ' + llistaNoms(noms(p)) : '');
-const REPETICIONS = [['', 'No es repeteix'], ['setmana', 'Cada setmana'], ['mes', 'Cada mes'], ['any', 'Cada any']];
+const REPETICIONS = [['', 'No es repeteix'], ['setmana', 'Cada setmana'], ['2setmanes', 'Cada 2 setmanes'], ['mes', 'Cada mes'], ['any', 'Cada any']];
 const nomRepeticio = (r) => (REPETICIONS.find((x) => x[0] === r) || ['', ''])[1];
 const diesPla = (p) => (p.dataFi && p.dataFi > p.data ? p.dataFi : p.data);   // últim dia del pla
 const cobreix = (p, ds) => p.data <= ds && ds <= diesPla(p);
@@ -224,6 +224,7 @@ const horaText = (p) => (p.dataFi && p.dataFi > p.data
 function sumaPeriode(ds, freq, n) {
   const d = parseYmd(ds);
   if (freq === 'setmana') return ymd(addDays(d, 7 * n));
+  if (freq === '2setmanes') return ymd(addDays(d, 14 * n));
   const y = d.getFullYear() + (freq === 'any' ? n : 0), m = d.getMonth() + (freq === 'mes' ? n : 0);
   return ymd(new Date(y, m, Math.min(d.getDate(), new Date(y, m + 1, 0).getDate())));
 }
@@ -1719,7 +1720,7 @@ function obreForm(p, base = {}) {
         <div class="quan-grid">
           <label>Dia<input type="date" name="data" value="${esc(d.data)}" required></label>
           <label>Hora<input type="time" name="hora" value="${esc(d.hora || '')}" ${d.totElDia ? 'disabled' : ''}></label>
-          <label>Es repeteix<select name="repeteix">${REPETICIONS.map(([v, n]) => `<option value="${v}"${(d.repeteix || '') === v ? ' selected' : ''}>${({ '': 'No', setmana: 'Setmanal', mes: 'Mensual', any: 'Anual' })[v] || n}</option>`).join('')}</select></label>
+          <label>Es repeteix<select name="repeteix">${REPETICIONS.map(([v, n]) => `<option value="${v}"${(d.repeteix || '') === v ? ' selected' : ''}>${({ '': 'No', setmana: 'Setmanal', '2setmanes': 'Quinzenal', mes: 'Mensual', any: 'Anual' })[v] || n}</option>`).join('')}</select></label>
           <label>Fins al dia<input type="date" name="dataFi" value="${esc(d.dataFi || '')}"></label>
           <label>Fins a<input type="time" name="horaFi" value="${esc(d.horaFi || '')}" ${d.totElDia ? 'disabled' : ''}></label>
           <label class="tot-dia"><span>&nbsp;</span><span class="tot-dia-caixa"><input type="checkbox" name="totElDia" ${d.totElDia ? 'checked' : ''}> Tot el dia</span></label>

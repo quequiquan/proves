@@ -81,7 +81,7 @@ const Cal = (() => {
 
   /* ---------- Enllaços directes ---------- */
   // Repetició: cada setmana, mes o any (i fins quan)
-  const FREQ = { setmana: 'WEEKLY', mes: 'MONTHLY', any: 'YEARLY' };
+  const FREQ = { setmana: 'WEEKLY', '2setmanes': 'WEEKLY;INTERVAL=2', mes: 'MONTHLY', any: 'YEARLY' };
   const regla = (e) => (FREQ[e.r] ? `RRULE:FREQ=${FREQ[e.r]}${/^\d{4}-\d{2}-\d{2}$/.test(e.ru || '') ? ';UNTIL=' + e.ru.replace(/-/g, '') + 'T235959Z' : ''}` : '');
   function google(e) {
     const dates = totElDia(e) ? `${local(inici(e))}/${local(fi(e))}` : `${utc(inici(e))}/${utc(fi(e))}`;

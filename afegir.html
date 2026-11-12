@@ -49,7 +49,7 @@
       const data = `${DIES[d.getDay()]} ${d.getDate()} de ${MESOS[d.getMonth()]} de ${d.getFullYear()}`.replace(/de ([ao])/, "d'$1");
       const hora = Cal.totElDia(e) ? 'Tot el dia' : e.f ? `${e.h} – ${e.f}` : e.h;
       const fins = e.df && e.df > e.d ? (() => { const f = Cal.fi({ d: e.df, a: 1 }); f.setDate(f.getDate() - 1); return ` → ${DIES[f.getDay()]} ${f.getDate()} de ${MESOS[f.getMonth()]}`.replace(/de ([ao])/, "d'$1"); })() : '';
-      const repeteix = { setmana: 'Cada setmana', mes: 'Cada mes', any: 'Cada any' }[e.r] || '';
+      const repeteix = { setmana: 'Cada setmana', '2setmanes': 'Cada 2 setmanes', mes: 'Cada mes', any: 'Cada any' }[e.r] || '';
       document.title = `${e.t} · Afegeix al calendari`;
       dins.innerHTML = `
         ${e.o ? `<p class="de">${esc(e.o)} t'envia aquest pla</p>` : ''}
