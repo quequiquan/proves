@@ -735,3 +735,10 @@ body.mode-inici main { padding-top: 0; padding-bottom: 0; }
 .cal-etq .punt { width: 12px; height: 12px; }
 .cal-etq.fet { background: color-mix(in srgb, var(--c) 12%, var(--surface)); }
 .etq.llarg { font-size: 11px; letter-spacing: 0; padding-left: 3px; padding-right: 3px; }
+
+/* Fitxa: aniversari i sant en caselles de dia / mes / any */
+.dm { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+#main .dm input { flex: 0 0 auto; width: 62px; text-align: center; font-size: 17px; padding: 10px 4px; }
+#main .dm input.dm-a { width: 84px; }
+.dm > span { color: var(--muted); }
+.dm .dm-treu { margin-left: auto; font-weight: 600; }

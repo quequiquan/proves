@@ -271,8 +271,27 @@ function llegeixAniv(txt) {
   return m ? { d: Number(m[3]), m: Number(m[2]), y: Number(m[1]) } : null;
 }
 const tipusAniv = () => state.tipus.find((t) => t.id === 't-aniversari') || state.tipus.find((t) => /^aniversaris?$/.test(normal(t.nom)));
-function aniversaris(anys) {
+const tipusRecord = () => state.tipus.find((t) => /^recordatoris?$/.test(normal(t.nom)));
+// Sants dels contactes (dia/mes): surten cada any a «Recordatoris»
+function sants(anys) {
   const out = [];
+  const tr = tipusRecord();
+  state.persones.forEach((pe) => {
+    const a = llegeixAniv(pe.sant);
+    if (!a || a.m < 1 || a.m > 12 || a.d < 1 || a.d > 31) return;
+    anys.forEach((y) => {
+      const ds = `${y}-${pad(a.m)}-${pad(Math.min(a.d, new Date(y, a.m, 0).getDate()))}`;
+      out.push({
+        id: 'sa|' + pe.id + '|' + y, aniversari: pe, sant: true, data: ds, totElDia: true, hora: '', horaFi: '', estat: 'confirmat',
+        titol: `Sant de ${pe.nom}`, lloc: '', qui: [pe.id], _amb: [],
+        _t: { nom: tr ? tr.nom : 'Recordatoris', color: tr ? tr.color : '#868E96' },
+      });
+    });
+  });
+  return out;
+}
+function aniversaris(anys) {
+  const out = sants(anys);
   const ta = tipusAniv();
   state.persones.forEach((pe) => {
     const a = llegeixAniv(pe.aniversari);
@@ -341,7 +360,7 @@ const totsPlans = (ambAniv = true) => {
     ...plansExterns(), ...(ambAniv ? aniversaris(anysAniv()) : [])];
 };
 const trobaPla = (id) => state.plans.find((p) => p.id === id) || rebuts().find((p) => p.id === id) || plansExterns().find((p) => p.id === id)
-  || (id.startsWith('an|') ? aniversaris([Number(id.split('|')[2])]).find((p) => p.id === id) : null)
+  || (/^(an|sa)\|/.test(id) ? aniversaris([Number(id.split('|')[2])]).find((p) => p.id === id) : null)
   || (() => {   // una de les repeticions d'un pla: «idDelPla@AAAA-MM-DD»
     const i = id.lastIndexOf('@');
     if (i < 0) return null;
@@ -577,7 +596,7 @@ function llegeixVcf(text) {
     };
   }).filter((c) => c.nom || c.email || c.tel).map((c) => ({ ...c, nom: c.nom || c.email.split('@')[0] || c.tel }));
 }
-const CAMPS_CONTACTE = ['email', 'tel', 'tel2', 'adreca', 'aniversari', 'empresa', 'notes'];
+const CAMPS_CONTACTE = ['email', 'tel', 'tel2', 'adreca', 'aniversari', 'sant', 'empresa', 'notes'];
 // Converteix contactes en fitxes de persona (si ja hi són, només hi afegeix el correu)
 function incorporaContactes(llista, existents, onAfegir) {
   return llista.map((c) => {
@@ -779,6 +798,13 @@ function vistaGent() {
     const passats = seus.filter((p) => p.data < avui()).sort(perOrdre).reverse();
     const telNet = (t) => String(t || '').replace(/[^\d+]/g, '');
     const wa = (t) => { let n = telNet(t).replace(/^\+/, '').replace(/^00/, ''); if (/^[6789]\d{8}$/.test(n)) n = '34' + n; return 'https://wa.me/' + n; };
+    // Dia, mes i (si cal) any, cadascun a la seva casella
+    const campDiaMes = (k, etiqueta, ambAny) => {
+      const a = llegeixAniv(pe[k]) || {};
+      const c = (part, ph, max, val) => `<input class="dm-${part}" data-dm="${k}" data-part="${part}" inputmode="numeric" pattern="[0-9]*" maxlength="${max}" placeholder="${ph}" value="${val ? esc(part === 'a' ? String(val) : pad(val)) : ''}" autocomplete="off" aria-label="${etiqueta}: ${ph}">`;
+      return `<div class="camp"><span>${etiqueta}</span><div class="dm">${c('d', 'Dia', 2, a.d)}<span>/</span>${c('m', 'Mes', 2, a.m)}${ambAny ? `<span>/</span>${c('a', 'Any', 4, a.y)}` : ''}
+        ${pe[k] ? `<button type="button" class="enllac dm-treu" data-dmtreu="${k}">Treu</button>` : ''}</div></div>`;
+    };
     const camp = (k, etiqueta, attrs = '') => `<label class="camp">${etiqueta}<input data-pcamp="${k}" value="${esc(pe[k] || '')}" autocomplete="off" ${attrs}></label>`;
     const accions = [
       pe.tel ? `<a class="btn" href="tel:${esc(telNet(pe.tel))}">Truca</a>` : '',
@@ -796,7 +822,9 @@ function vistaGent() {
           <input data-pcamp="email" type="email" value="${esc(pe.email || '')}" placeholder="nom@exemple.com" autocomplete="off" inputmode="email"></label>
         <label class="check te-app"><input type="checkbox" data-papp ${pe.teApp ? 'checked' : ''}> <span>Té l'app <b>Què · Qui · Quan</b>: els plans on surti li arribaran sols a la seva app <small>(amb aquest mateix correu)</small></span></label>
         ${camp('adreca', 'Adreça')}
-${camp('aniversari', 'Aniversari <small>(dia/mes o dia/mes/any: sortirà sol al calendari cada any)</small>', 'placeholder="p. ex. 14/03 o 14/03/1980" inputmode="numeric"')}
+        ${campDiaMes('aniversari', 'Aniversari', true)}
+        ${campDiaMes('sant', 'Sant', false)}
+        <p class="help">Surten sols al calendari cada any: l'aniversari a «Aniversaris» i el sant a «Recordatoris».</p>
         ${camp('empresa', 'Feina / empresa')}
         <label class="camp">Notes<textarea data-pcamp="notes" rows="3" placeholder="Al·lèrgies, gustos, el nom dels fills…">${esc(pe.notes || '')}</textarea></label>
         <p class="help">Els canvis es desen sols.</p>
@@ -1133,6 +1161,16 @@ $('#main').addEventListener('click', (e) => {
 });
 
 $('#main').addEventListener('input', (e) => {
+  if (e.target.dataset.dm) {
+    const t = e.target, part = t.dataset.part;
+    t.value = t.value.replace(/\D/g, '').slice(0, Number(t.maxLength));
+    const ple = t.value.length >= t.maxLength || (part === 'd' && Number(t.value) > 3) || (part === 'm' && Number(t.value) > 1);
+    if (ple && part !== 'a') {
+      const seg = t.parentElement.querySelector(`[data-part="${part === 'd' ? 'm' : 'a'}"]`);
+      if (seg) { seg.focus(); seg.select?.(); } else t.blur();
+    } else if (ple) t.blur();
+    return;
+  }
   if (e.target.id === 'cercaGent') {
     ui.cercaGent = e.target.value;
     const q = normal(ui.cercaGent.trim());
@@ -1143,6 +1181,20 @@ $('#main').addEventListener('input', (e) => {
 });
 $('#main').addEventListener('change', (e) => {
   const t = e.target;
+  if (t.dataset.dm) {
+    const pe = pers(ui.persona), k = t.dataset.dm, caixa = t.closest('.dm');
+    const v = (p) => (caixa.querySelector(`[data-part="${p}"]`)?.value || '').trim();
+    const d = Number(v('d')), m = Number(v('m')), a = v('a');
+    if (!v('d') && !v('m') && !a) { if (pe[k]) { pe[k] = ''; save(); toast('Tret'); } return; }
+    if (!v('d') || !v('m')) return;   // encara a mitges
+    if (d < 1 || d > 31 || m < 1 || m > 12) { toast('Aquest dia no existeix'); return; }
+    if (a && (a.length !== 4 || Number(a) < 1900 || Number(a) > new Date().getFullYear())) { if (a.length === 4) toast("L'any no sembla correcte"); return; }
+    const nou = `${pad(d)}/${pad(m)}${a ? '/' + a : ''}`;
+    if (pe[k] === nou) return;
+    pe[k] = nou; save(); toast('Desat');
+    if (!caixa.querySelector('.dm-treu')) caixa.insertAdjacentHTML('beforeend', `<button type="button" class="enllac dm-treu" data-dmtreu="${k}">Treu</button>`);
+    return;
+  }
   if (t.id === 'acceptaTot') {
     state.ajustos.acceptaTot = t.checked; save();
     toast(t.checked ? "Els plans que t'enviïn s'afegiran sols" : "Només s'afegiran sols els de les persones de la llista");
@@ -1495,6 +1547,14 @@ function obreDlg(html, classe = '') {
   dlgForm.scrollTop = 0;
 }
 
+$('#main').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-dmtreu]');
+  if (!b) return;
+  const pe = pers(ui.persona);
+  pe[b.dataset.dmtreu] = ''; save(); toast('Tret');
+  b.closest('.dm').querySelectorAll('input').forEach((x) => { x.value = ''; });
+  b.remove();
+});
 /* ---------- Detall d'un aniversari ---------- */
 function obreExtern(p) {
   obreDlg(`<header class="det-cap" style="--c:${esc(p._t.color)}">
@@ -1516,7 +1576,7 @@ function obreAniversari(p) {
   const pe = p.aniversari;
   obreDlg(`<header class="det-cap" style="--c:${esc(p._t.color)}">
       <span class="det-emoji">${ico(p._t)}</span>
-      <div><small>Aniversari</small><h2>${esc(p.titol)}</h2></div>
+      <div><small>${p.sant ? 'Sant' : 'Aniversari'}</small><h2>${esc(p.titol)}</h2></div>
       <button type="button" class="x" data-tanca aria-label="Tanca">×</button>
     </header>
     <div class="dlg-cos">
@@ -1525,7 +1585,7 @@ function obreAniversari(p) {
         ${falten(p.data) ? `<li><span class="et">Falten</span>${esc(cap(falten(p.data)))}</li>` : ''}
         ${pe.tel ? `<li><span class="et">Telèfon</span>${esc(pe.tel)}</li>` : ''}
       </ul>
-      <p class="help">Surt sol cada any perquè la fitxa de ${esc(pe.nom)} té l'aniversari. Per canviar-lo o treure'l, edita la fitxa.</p>
+      <p class="help">Surt sol cada any perquè la fitxa de ${esc(pe.nom)} té ${p.sant ? 'el sant' : "l'aniversari"}. Per canviar-lo o treure'l, edita la fitxa.</p>
     </div>
     <footer class="dlg-peu det-accions">
       ${pe.tel ? `<a class="btn primary" href="https://wa.me/${esc(waNum(pe.tel))}" target="_blank" rel="noopener">Felicita'l per WhatsApp</a>` : ''}
