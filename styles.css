@@ -719,3 +719,9 @@ body.mode-inici .top .nou { display: none; }   /* a la portada ja hi ha el botó
 .dp-dia:disabled { color: color-mix(in srgb, var(--muted) 35%, transparent); cursor: default; }
 .dp-peu { display: flex; justify-content: space-between; align-items: center; padding: 8px 6px 2px; }
 .dp-peu .enllac { font-size: 15px; font-weight: 700; }
+
+/* Portada: centrada a l'espai lliure (mateix aire a dalt i a baix) i salutació discreta */
+body.mode-inici main { padding-top: 0; padding-bottom: 0; }
+.portada { height: var(--alt-portada, auto); min-height: 0; padding: 0 16px; box-sizing: border-box; justify-content: center; }
+.portada h1 { font-family: inherit; font-weight: 600; font-size: 20px; letter-spacing: 0; color: var(--text); margin: 0 0 4px; }
+.portada-data { font-weight: 500; }

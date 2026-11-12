@@ -968,6 +968,14 @@ function vistaEntrada() {
 
 /* ---------- Pintar ---------- */
 /* ---------- Portada (el que surt en obrir l'app) ---------- */
+// La portada ocupa exactament l'espai entre la capçalera i el menú de baix, i el contingut queda centrat
+function ajustaPortada() {
+  const cap = document.querySelector('header.top'), menu = document.getElementById('tabs');
+  const fix = menu && getComputedStyle(menu).position === 'fixed' ? menu.offsetHeight : 0;
+  const alt = window.innerHeight - (cap ? cap.getBoundingClientRect().bottom : 0) - fix;
+  document.documentElement.style.setProperty('--alt-portada', Math.max(alt, 360) + 'px');
+}
+addEventListener('resize', () => { if (ui.view === 'inici') ajustaPortada(); });
 function vistaInici() {
   const h = new Date().getHours();
   const salut = h < 6 ? 'Bona nit' : h < 13 ? 'Bon dia' : h < 20 ? 'Bona tarda' : 'Bona nit';
@@ -995,6 +1003,7 @@ function render() {
   if (ui.view === 'entrada' && !sync()?.disponible) ui.view = 'propers';
   document.body.classList.toggle('mode-entrada', ui.view === 'entrada');
   document.body.classList.toggle('mode-inici', ui.view === 'inici');
+  if (ui.view === 'inici') requestAnimationFrame(ajustaPortada);
   if ($('#syncBtn') && sync()?.disponible) $('#syncBtn').hidden = ui.view === 'entrada';
   $$('#tabs button').forEach((b) => b.setAttribute('aria-current', b.dataset.view === ui.view ? 'page' : 'false'));
   const focus = document.activeElement?.id === 'cerca' ? document.activeElement.selectionStart : null;
