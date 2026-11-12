@@ -296,13 +296,19 @@ const anysAniv = () => [...new Set([new Date().getFullYear(), new Date().getFull
 const externs = () => (Array.isArray(state.ajustos.externs) ? state.ajustos.externs : []);
 const CAU_EXT = 'qqq-externs-cau';
 let cauExt = (() => { try { return JSON.parse(localStorage.getItem(CAU_EXT)) || {}; } catch (e) { return {}; } })();
+// Títols d'altres calendaris: sense emoji al davant i sense parts repetides («Blanc & Negre · Blanc & Negre» → «Blanc & Negre»)
+function netejaTitolExt(t) {
+  const net = String(t || '').replace(/^[\p{Extended_Pictographic}️\s]+/u, '').trim();
+  const parts = net.split(/\s+·\s+/).filter((x, i, a) => x && a.findIndex((y) => normal(y) === normal(x)) === i);
+  return parts.join(' · ') || String(t || '');
+}
 function plansExterns() {
   const out = [];
   externs().forEach((c) => (cauExt[c.id]?.events || []).forEach((ev) => {
     if (ev.cancellat) return;
     out.push({
       id: 'ext|' + c.id + '|' + ev.uid, extern: c, data: ev.data, hora: ev.hora, horaFi: ev.horaFi, totElDia: ev.totElDia,
-      titol: String(ev.titol || '').replace(/^[\p{Extended_Pictographic}️\s]+/u, '') || ev.titol, lloc: ev.lloc, notes: ev.notes, estat: 'confirmat', qui: [], _amb: [],
+      titol: netejaTitolExt(ev.titol), lloc: ev.lloc, notes: ev.notes, estat: 'confirmat', qui: [], _amb: [],
       _t: { nom: c.nom, color: c.color || '#2F9E44' },
     });
   }));
