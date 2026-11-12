@@ -1051,7 +1051,7 @@ const fiEntrada = () => { ui.view = 'inici'; render(); };
 $('#tabs').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-view]');
   if (!b) return;
-  ui.view = b.dataset.view; ui.persona = '';
+  ui.view = b.dataset.view; ui.persona = ''; ui.cercaGent = '';
   desaPref('view', ui.view);
   render(); window.scrollTo(0, 0);
 });
@@ -1115,7 +1115,7 @@ $('#main').addEventListener('click', (e) => {
   const ad = t.closest('[data-anadia]');
   if (ad) { ui.diaSel = ad.dataset.anadia; ui.calMode = 'dia'; desaPref('calMode', 'dia'); render(); window.scrollTo(0, 0); return; }
   const pe = t.closest('[data-persona]');
-  if (pe) { ui.persona = pe.dataset.persona; render(); window.scrollTo(0, 0); return; }
+  if (pe) { ui.persona = pe.dataset.persona; ui.cercaGent = ''; render(); window.scrollTo(0, 0); return; }
   if (t.id === 'pRenom') {
     const p = pers(ui.persona);
     const n = prompt('Nom nou:', p.nom);
