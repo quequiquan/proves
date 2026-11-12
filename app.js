@@ -1780,7 +1780,7 @@ function obreForm(p, base = {}) {
     env.hidden = !usuari() || !ll.length;
     env.querySelector('span').textContent = `Envia-ho a la seva app: ${llistaNoms(ll.map((pe) => pe.nom))}`;
   };
-  const xipTipus = (t) => `<button type="button" class="etq" data-tipus="${esc(t.id)}" aria-pressed="${d.tipusId === t.id}" style="--c:${esc(t.color)}">${esc(nomCurt(t))}</button>`;
+  const xipTipus = (t) => `<button type="button" class="etq${nomCurt(t).length > 11 ? ' llarg' : ''}" data-tipus="${esc(t.id)}" aria-pressed="${d.tipusId === t.id}" style="--c:${esc(t.color)}">${esc(nomCurt(t))}</button>`;
   const tipusXips = () => {
     const pr = principals();
     const resta = GRUPS.map(([g, nomG]) => {

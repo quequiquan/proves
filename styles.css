@@ -734,3 +734,4 @@ body.mode-inici main { padding-top: 0; padding-bottom: 0; }
   border-radius: 12px; background: var(--surface); color: var(--c); font: inherit; font-weight: 700; text-align: left; cursor: pointer; }
 .cal-etq .punt { width: 12px; height: 12px; }
 .cal-etq.fet { background: color-mix(in srgb, var(--c) 12%, var(--surface)); }
+.etq.llarg { font-size: 11px; letter-spacing: 0; padding-left: 3px; padding-right: 3px; }
