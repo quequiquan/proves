@@ -8,6 +8,7 @@ const KEY = 'qqq-dades-v1' + (PROVES ? '-proves' : '');
 /* ---------- Tipus de pla de sèrie (es poden canviar des d'Ajustos) ---------- */
 // Identificadors fixos: així els dispositius nous no dupliquen els tipus en sincronitzar
 const GRUPS = [
+  ['principals', 'Principals'],
   ['apats', 'Àpats i trobades'],
   ['cultura', 'Cultura i lleure'],
   ['celebracions', 'Celebracions'],
@@ -69,6 +70,39 @@ const TIPUS_INICIALS = [
   { id: 't-vacances', nom: 'Vacances', emoji: '', color: '#20C997', grup: 'personal' },
   { id: 't-perruqueria', nom: 'Perruqueria', emoji: '', color: '#40C057', grup: 'personal' },
 ];
+// Les 6 etiquetes principals: surten sempre al formulari, amb colors vius i ben diferents.
+// La resta queden al desplegable «Més tipus». (Es poden canviar a Ajustos, amb la ★.)
+const VERSIO_PRINCIPALS = 1;
+const PRINCIPALS = [
+  { id: 't-social', nom: 'Social', color: '#F76707', paraules: ['social', 'sopar', 'dinar', 'esmorzar', 'berenar', 'vermut', 'cafe', 'trobada', 'amics', 'festa', 'calcotada', 'barbacoa', 'copa', 'casament', 'bateig', 'comunio'] },
+  { id: 't-personal', nom: 'Personal', color: '#1C7ED6', paraules: ['personal', 'metge', 'doctor', 'dentista', 'revisio', 'analitica', 'perruqueria', 'compres', 'gestio', 'banc', 'gimnas', 'esport', 'entrenament', 'ioga', 'fisio'] },
+  { id: 't-podcast', nom: 'Podcast', color: '#7048E8', paraules: ['podcast', 'gravacio', 'entrevista', 'episodi', 'programa'] },
+  { id: 't-escapada', nom: 'Escapades', color: '#2B8A3E', paraules: ['escapada', 'escapades', 'viatge', 'vacances', 'cap de setmana', 'excursio', 'ruta'] },
+  { id: 't-botifarra', nom: 'Botifarra', color: '#E03131', paraules: ['botifarra', 'partida', 'cartes', 'campionat', 'torneig'] },
+  { id: 't-aniversari', nom: 'Aniversaris', color: '#D6336C', paraules: ['aniversari', 'aniversaris', 'celebracio', 'sant'] },
+];
+// Les principals són les del grup «Principals» (a Ajustos s'hi poden posar o treure, i ordenar amb ▲ ▼)
+const principals = () => tipusOrdenats().filter((t) => grupDe(t) === 'principals');
+// Endevina el tipus a partir del nom del pla: «Sopar a can Pere» → Social, «Botifarra al casal» → Botifarra
+function endevinaTipus(titol) {
+  const txt = ' ' + normal(titol).replace(/[^a-z0-9]+/g, ' ') + ' ';
+  if (txt.trim().length < 3) return null;
+  const te = (w) => { const n = normal(w).replace(/[^a-z0-9]+/g, ' ').trim(); return n.length > 2 && txt.includes(' ' + n); };
+  for (const t of principals()) {
+    const pr = PRINCIPALS.find((x) => x.id === t.id);
+    if (te(nomCurt(t)) || (pr && pr.paraules.some(te))) return t;
+  }
+  return state.tipus.find((t) => grupDe(t) !== 'principals' && te(nomCurt(t))) || null;
+}
+const ambPrincipals = (llista) => {
+  const out = llista.map((t) => ({ ...t }));
+  PRINCIPALS.forEach(({ paraules, ...pr }, i) => {
+    const t = out.find((x) => x.id === pr.id);
+    if (t) Object.assign(t, pr, { grup: 'principals', ordre: i - 100 });
+    else out.push({ ...pr, emoji: '', grup: 'principals', ordre: i - 100 });
+  });
+  return out;
+};
 // Colors per als tipus nous que es creen des del formulari
 const COLORS_NOUS = ['#5C7CFA', '#20C997', '#FF922B', '#CC5DE8', '#F06595', '#339AF0', '#94D82D', '#FAB005'];
 // Icones (Material Symbols) dels tipus de sèrie. Si un tipus té «icona: ''», es mostra el seu emoji.
@@ -105,7 +139,7 @@ const llistaNoms = (n) => (n.length < 2 ? n.join('') : n.slice(0, -1).join(', ')
 
 /* ---------- Dades ---------- */
 function seed() {
-  return { tipus: TIPUS_INICIALS.map((t) => ({ ...t })), persones: [], plans: [], ajustos: { nom: '', categories: VERSIO_CATEGORIES } };
+  return { tipus: ambPrincipals(TIPUS_INICIALS), persones: [], plans: [], ajustos: { nom: '', categories: VERSIO_CATEGORIES, principals: VERSIO_PRINCIPALS } };
 }
 function normalize(d) {
   const arr = (x) => (Array.isArray(x) ? x : []);
@@ -128,6 +162,7 @@ function save() {
 
 let state = load();
 actualitzaCategories();
+actualitzaPrincipals();
 save();
 // Si les dades tenen la llista de categories antiga, es canvia per la nova (els plans conserven la seva
 // categoria quan existeix a la llista nova; si no, queden sense categoria)
@@ -137,6 +172,13 @@ function actualitzaCategories() {
   state.ajustos.categories = VERSIO_CATEGORIES;
   const valids = new Set(state.tipus.map((t) => t.id));
   state.plans.forEach((p) => { if (p.tipusId && !valids.has(p.tipusId)) p.tipusId = ''; });
+}
+// Una sola vegada: s'afegeixen les 6 etiquetes principals (l'Escapada i l'Aniversari que ja hi havia
+// passen a «Escapades» i «Aniversaris», i els seus plans no canvien)
+function actualitzaPrincipals() {
+  if ((state.ajustos.principals || 0) >= VERSIO_PRINCIPALS) return;
+  state.tipus = ambPrincipals(state.tipus);
+  state.ajustos.principals = VERSIO_PRINCIPALS;
 }
 // En sortir del compte (o si entra una altra persona en aquest dispositiu) es comença de zero
 function reiniciaDades() {
@@ -223,7 +265,7 @@ function llegeixAniv(txt) {
   m = t.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   return m ? { d: Number(m[3]), m: Number(m[2]), y: Number(m[1]) } : null;
 }
-const tipusAniv = () => state.tipus.find((t) => normal(t.nom) === 'aniversari');
+const tipusAniv = () => state.tipus.find((t) => t.id === 't-aniversari') || state.tipus.find((t) => /^aniversaris?$/.test(normal(t.nom)));
 function aniversaris(anys) {
   const out = [];
   const ta = tipusAniv();
@@ -308,7 +350,7 @@ function snapshotPla(p, em) {
   };
 }
 const nomDeCorreu = (em) => state.persones.find((x) => normal(x.email) === em)?.nom || em;
-const RESPOSTES = { si: '✅ Hi va', no: '❌ No hi va', pendent: '⏳ Sense resposta' };
+const RESPOSTES = { si: 'Hi va', no: 'No hi va', pendent: 'Sense resposta' };
 
 function etiquetaDia(ds) {
   const a = avui();
@@ -485,9 +527,9 @@ addEventListener('unhandledrejection', (e) => { try { toast('⚠️ Error: ' + (
 /* ---------- Targeta d'un pla ---------- */
 function targeta(p, ambData = false) {
   const t = tipDe(p);
-  const info = [ambData ? dataCurta(p.data) : '', horaText(p), p.lloc ? '📍 ' + p.lloc : ''].filter(Boolean);
-  const gent = (p.titol || '').trim() && noms(p).length ? `<small class="pla-qui">👥 ${esc(llistaNoms(noms(p)))}</small>` : '';
-  const de = p.rebut ? `<small class="pla-de">📨 De part de ${esc(p.rebut.de_nom || p.rebut.de_email)}</small>` : '';
+  const info = [ambData ? dataCurta(p.data) : '', horaText(p), p.lloc || ''].filter(Boolean);
+  const gent = (p.titol || '').trim() && noms(p).length ? `<small class="pla-qui">${esc(llistaNoms(noms(p)))}</small>` : '';
+  const de = p.rebut ? `<small class="pla-de">De part de ${esc(p.rebut.de_nom || p.rebut.de_email)}</small>` : '';
   const env = '';
   const estat = p.estat !== 'confirmat' ? `<span class="badge ${p.estat}">${esc((ESTATS.find((e) => e[0] === p.estat) || [, p.estat])[1])}</span>` : '';
   return `<button class="pla ${esc(p.estat)}${diesPla(p) < avui() ? ' passat' : ''}${p.rebut ? ' rebut' : ''}" data-pla="${esc(p.id)}" style="--c:${esc(t.color)}">
@@ -531,9 +573,9 @@ function vistaPropers() {
     ? `<p class="resum">${setmana ? `Aquesta setmana tens <b>${setmana} ${setmana === 1 ? 'pla' : 'plans'}</b>.` : 'Aquesta setmana encara no tens cap pla.'}</p>` : '';
   // Plans que t'han enviat i encara no has contestat
   const inv = !q && !ui.passats ? rebuts().filter((p) => p.rebut.resposta === 'pendent' && p.data >= avui()).sort(perOrdre) : [];
-  const invHtml = inv.length ? `<section class="invitacions"><h3>📨 T'han enviat ${inv.length === 1 ? 'un pla' : inv.length + ' plans'}</h3>
+  const invHtml = inv.length ? `<section class="invitacions"><h3>T'han enviat ${inv.length === 1 ? 'un pla' : inv.length + ' plans'}</h3>
       ${inv.map((p) => `<div class="invitacio">${targeta(p, true)}
-        <div class="grp"><button class="btn primary" data-respon="si" data-r="${esc(p.id)}">✅ Hi vaig</button><button class="btn" data-respon="no" data-r="${esc(p.id)}">No hi vaig</button></div>
+        <div class="grp"><button class="btn primary" data-respon="si" data-r="${esc(p.id)}">Hi vaig</button><button class="btn" data-respon="no" data-r="${esc(p.id)}">No hi vaig</button></div>
         ${p.rebut.de_email ? `<button class="enllac sempre" data-sempre="${esc(p.id)}">Accepta sempre els plans de ${esc(p.rebut.de_nom || p.rebut.de_email)}</button>` : ''}</div>`).join('')}
     </section>` : '';
   return `${invHtml}<div class="barra">
@@ -575,7 +617,7 @@ function vistaCalendari() {
     cos = `<section class="vista-dia">
         ${plans.map((p) => `<div class="franja"><span class="franja-hora">${esc(p.totElDia ? 'Tot el dia' : p.hora || '—')}</span>${targeta(p)}</div>`).join('') || '<p class="buit">Cap pla aquest dia.</p>'}
         <button class="btn afegeix-dia" data-nou="${ui.diaSel}">+ Afegeix un pla aquest dia</button>
-        <button class="btn llista-btn" data-llista="dia">📋 Llista del dia</button>
+        <button class="btn llista-btn" data-llista="dia">Llista del dia</button>
       </section>`;
   } else if (mode === 'setmana') {
     const dl = mondayOf(sel), dg = addDays(dl, 6);
@@ -588,7 +630,7 @@ function vistaCalendari() {
           <button class="setm-cap" data-anadia="${ds}" aria-label="Veure el dia"><b>${DIES[i]}</b><span>${d.getDate()}</span></button>
           <div class="setm-plans">${plans.map((p) => targeta(p)).join('') || `<button class="setm-buit" data-nou="${ds}">+ Afegeix</button>`}</div>
         </section>`;
-    }).join('') + '</div><button class="btn llista-btn" data-llista="setmana">📋 Llista de la setmana</button>';
+    }).join('') + '</div><button class="btn llista-btn" data-llista="setmana">Llista de la setmana</button>';
   } else if (mode === 'any') {
     const y = ui.cursor.getFullYear();
     titol = String(y);
@@ -652,10 +694,10 @@ function vistaGent() {
     const wa = (t) => { let n = telNet(t).replace(/^\+/, '').replace(/^00/, ''); if (/^[6789]\d{8}$/.test(n)) n = '34' + n; return 'https://wa.me/' + n; };
     const camp = (k, etiqueta, attrs = '') => `<label class="camp">${etiqueta}<input data-pcamp="${k}" value="${esc(pe[k] || '')}" autocomplete="off" ${attrs}></label>`;
     const accions = [
-      pe.tel ? `<a class="btn" href="tel:${esc(telNet(pe.tel))}">📞 Truca</a>` : '',
-      pe.tel ? `<a class="btn" href="${esc(wa(pe.tel))}" target="_blank" rel="noopener">💬 WhatsApp</a>` : '',
-      pe.email ? `<a class="btn" href="mailto:${esc(pe.email)}">✉️ Correu</a>` : '',
-      pe.adreca ? `<a class="btn" href="${esc(Cal.mapa(pe.adreca))}" target="_blank" rel="noopener">📍 Mapa</a>` : '',
+      pe.tel ? `<a class="btn" href="tel:${esc(telNet(pe.tel))}">Truca</a>` : '',
+      pe.tel ? `<a class="btn" href="${esc(wa(pe.tel))}" target="_blank" rel="noopener">WhatsApp</a>` : '',
+      pe.email ? `<a class="btn" href="mailto:${esc(pe.email)}">Correu</a>` : '',
+      pe.adreca ? `<a class="btn" href="${esc(Cal.mapa(pe.adreca))}" target="_blank" rel="noopener">Mapa</a>` : '',
     ].filter(Boolean).join('');
     return `<div class="cal-cap"><button class="btn" data-persona="">‹ Contactes</button><h2 id="fitxaNom">${esc(pe.nom)}</h2></div>
       ${accions ? `<div class="grp fitxa-accions">${accions}</div>` : ''}
@@ -681,14 +723,14 @@ ${camp('aniversari', 'Aniversari <small>(dia/mes o dia/mes/any: sortirà sol al 
   const llista = [...state.persones].sort((a, b) => a.nom.localeCompare(b.nom, 'ca'));
   const qg = normal(ui.cercaGent.trim());
   const coincideix = (pe) => !qg || normal([pe.nom, pe.tel, pe.tel2, pe.email, pe.empresa].join(' ')).includes(qg);
-  return `${llista.length > 3 ? `<input type="search" id="cercaGent" class="cerca-gent" placeholder="🔍 Cerca un contacte" value="${esc(ui.cercaGent)}" autocomplete="off">` : ''}
+  return `${llista.length > 3 ? `<input type="search" id="cercaGent" class="cerca-gent" placeholder="Cerca un contacte" value="${esc(ui.cercaGent)}" autocomplete="off">` : ''}
     <form class="barra" id="formPersona">
       <input name="nom" placeholder="Nom d'una persona" autocomplete="off">
       <button class="btn primary">Afegeix</button>
     </form>
     <div class="grp">
-      ${potContactes() ? '<button class="btn" id="gContactes">📇 Tria dels contactes</button>' : ''}
-      <label class="btn">📥 Importa contactes<input type="file" id="gVcf" accept=".vcf,text/vcard,text/x-vcard" multiple hidden></label>
+      ${potContactes() ? '<button class="btn" id="gContactes">Tria dels contactes</button>' : ''}
+      <label class="btn">Importa contactes<input type="file" id="gVcf" accept=".vcf,text/vcard,text/x-vcard" multiple hidden></label>
     </div>
     ${potContactes() ? '' : AJUDA_CONTACTES}
     ${llista.length ? (() => {
@@ -746,7 +788,7 @@ function vistaAjustos() {
         tots els plans i els <b>aniversaris</b> dels contactes (cada any, amb un avís el mateix dia). S'actualitza sol, sense preguntar res.</p>
       ${usuari()
         ? `<div class="grp">
-            <button class="btn primary" id="calSubscriu">📆 Afegeix l'agenda al calendari de l'iPhone</button>
+            <button class="btn primary" id="calSubscriu">Afegeix l'agenda al calendari de l'iPhone</button>
             <button class="btn" id="calCopia">Copia l'enllaç (Google, Outlook…)</button>
           </div>
           <details class="ajuda"><summary>Més informació</summary>
@@ -770,8 +812,8 @@ function vistaAjustos() {
       <input id="nomMeu" value="${esc(state.ajustos.nom || '')}" placeholder="El teu nom">
     </div>
     <div class="section" id="seccioTipus">
-      <h2>Tipus de pla</h2>
-      <p class="help">Toca el cercle per canviar-ne el color. Amb ▲ ▼ ordenes les categories dins del seu grup (les de dalt surten primer al formulari), i amb el desplegable les canvies de grup. Els canvis es desen sols.</p>
+      <h2>Etiquetes</h2>
+      <p class="help">Les del grup <b>Principals</b> surten sempre al formulari (millor que no en siguin més de 6); la resta, al desplegable «Més tipus». Per fer-ne una de principal, canvia-li el grup. Toca el cercle per canviar el color, i amb ▲ ▼ les ordenes. Els canvis es desen sols.</p>
       ${files}
       <form class="barra" id="formTipus">
         ${botoColor(COLORS_NOUS[state.tipus.length % COLORS_NOUS.length], 'name="color"')}
@@ -791,7 +833,7 @@ function vistaAjustos() {
     <div class="section">
       <h2>Guia d'ús</h2>
       <p class="help">Una guia pràctica de dues pàgines per imprimir o enviar a qui comenci a fer servir l'app.</p>
-      <a class="btn" href="guia.html" target="_blank" rel="noopener">📄 Obre la guia</a>
+      <a class="btn" href="guia.html" target="_blank" rel="noopener">Obre la guia</a>
     </div>
     <p class="versio">Què · Qui · Quan${PROVES ? ' · versió de proves' : ''}</p>`;
 }
@@ -1020,7 +1062,7 @@ $('#main').addEventListener('change', (e) => {
     save();
     toast(!t.checked ? 'Desat: els plans nous ja no li arribaran a la seva app'
       : !usuari() ? 'Desat. Perquè li arribin, entra amb el teu correu (Ajustos → Compte)'
-      : nous.length ? (nous.length === 1 ? 'Desat. Li ha arribat 1 pla a la seva app 📲' : `Desat. Li han arribat ${nous.length} plans a la seva app 📲`) : 'Desat: els plans on surti li arribaran a la seva app');
+      : nous.length ? (nous.length === 1 ? 'Desat. Li ha arribat 1 pla a la seva app' : `Desat. Li han arribat ${nous.length} plans a la seva app`) : 'Desat: els plans on surti li arribaran a la seva app');
     return;
   }
   if (t.dataset.pcamp) {
@@ -1085,7 +1127,7 @@ async function acceptaAutomatics() {
 async function respon(p, resposta) {
   try {
     await sync().respon(p.rebut, resposta);
-    toast(resposta === 'si' ? 'Apuntat! Ja el tens als teus plans 🎉' : 'Fet. Ja saben que no hi vas.');
+    toast(resposta === 'si' ? 'Apuntat! Ja el tens als teus plans' : 'Fet. Ja saben que no hi vas.');
     if (dlg.open) tancaDlg();
     render();
   } catch (err) { toast(navigator.onLine ? "No s'ha pogut enviar la resposta." : 'Cal connexió a internet per respondre.'); }
@@ -1117,7 +1159,7 @@ $('#main').addEventListener('submit', async (e) => {
   if (e.target.id === 'formNom') {
     const nom = String(f.get('nom') || '').trim();
     if (!nom) return;
-    state.ajustos.nom = nom; save(); fiEntrada(); toast(`Benvingut/da, ${nom}! 🎉`);
+    state.ajustos.nom = nom; save(); fiEntrada(); toast(`Benvingut/da, ${nom}!`);
     return;
   }
   if (e.target.id === 'formPersona') {
@@ -1264,7 +1306,7 @@ function htmlLlista(dies) {
         <h2>${esc(cap(dataLlarga(ds)) + (parseYmd(ds).getFullYear() !== new Date().getFullYear() ? ' de ' + parseYmd(ds).getFullYear() : ''))}</h2>
         ${ps.length ? `<ul>${ps.map((p) => {
           const n = noms(p);
-          const detalls = [p.lloc ? '📍 ' + p.lloc : '', n.length && (p.titol || '').trim() ? '👥 ' + llistaNoms(n) : '', p.extern ? p.extern.nom : ''].filter(Boolean);
+          const detalls = [p.lloc || '', n.length && (p.titol || '').trim() ? 'Amb ' + llistaNoms(n) : '', p.extern ? p.extern.nom : ''].filter(Boolean);
           return `<li style="--c:${esc(tipDe(p).color)}">
               <span class="ll-casella"></span>
               <span class="ll-hora">${esc(p.totElDia || !p.hora ? 'Tot el dia' : p.hora + (p.horaFi ? '–' + p.horaFi : ''))}</span>
@@ -1281,7 +1323,7 @@ function textLlista(dies) {
     if (!ps.length && dies.length > 1) return '';
     return [cap(dataLlarga(ds)).toUpperCase(), ...(ps.length ? ps.map((p) => {
       const n = noms(p);
-      return `☐ ${p.totElDia || !p.hora ? 'Tot el dia' : p.hora + (p.horaFi ? '–' + p.horaFi : '')} · ${titolPla(p)}${p.lloc ? ' · 📍 ' + p.lloc : ''}${n.length && (p.titol || '').trim() ? ' · 👥 ' + llistaNoms(n) : ''}`;
+      return `☐ ${p.totElDia || !p.hora ? 'Tot el dia' : p.hora + (p.horaFi ? '–' + p.horaFi : '')} · ${titolPla(p)}${p.lloc ? ' · ' + p.lloc : ''}${n.length && (p.titol || '').trim() ? ' · amb ' + llistaNoms(n) : ''}`;
     }) : ['(cap activitat)'])].join('\n');
   }).filter(Boolean).join('\n\n');
 }
@@ -1291,8 +1333,8 @@ function obreLlista(quin) {
   obreDlg(`<header class="dlg-cap"><h2>${titol}</h2><button type="button" class="x" data-tanca aria-label="Tanca">×</button></header>
     <div class="dlg-cos"><div class="llista-full">${htmlLlista(dies)}</div></div>
     <footer class="dlg-peu">
-      <button type="button" class="btn" id="llText">📤 Envia el text</button>
-      <button type="button" class="btn primary" id="llImprimeix">🖨️ Imprimeix</button>
+      <button type="button" class="btn" id="llText">Envia el text</button>
+      <button type="button" class="btn primary" id="llImprimeix">Imprimeix</button>
     </footer>`, 'form');
   dlgForm.onclick = async (e) => {
     if (e.target.closest('#llImprimeix')) {
@@ -1364,10 +1406,10 @@ function obreExtern(p) {
     </header>
     <div class="dlg-cos">
       <ul class="det">
-        <li><span>📅</span>${esc(cap(dataLlarga(p.data)))}</li>
-        <li><span>🕘</span>${esc(horaText(p))}</li>
-        ${p.lloc ? `<li><span>📍</span><a href="${esc(mapaDe(p))}" target="_blank" rel="noopener">${esc(p.lloc)}</a></li>` : ''}
-        ${p.notes ? `<li class="notes"><span>📝</span><div>${esc(p.notes).replace(/\n/g, '<br>')}</div></li>` : ''}
+        <li><span class="et">Quan</span>${esc(cap(dataLlarga(p.data)))}</li>
+        <li><span class="et">Hora</span>${esc(horaText(p))}</li>
+        ${p.lloc ? `<li><span class="et">On</span><a href="${esc(mapaDe(p))}" target="_blank" rel="noopener">${esc(p.lloc)}</a></li>` : ''}
+        ${p.notes ? `<li class="notes"><span class="et">Notes</span><div>${esc(p.notes).replace(/\n/g, '<br>')}</div></li>` : ''}
       </ul>
       <p class="help">Ve del calendari «${esc(p.extern.nom)}». Per canviar-lo, fes-ho a la seva app.</p>
     </div>`, 'detall');
@@ -1381,15 +1423,15 @@ function obreAniversari(p) {
     </header>
     <div class="dlg-cos">
       <ul class="det">
-        <li><span>🎂</span>${esc(cap(dataLlarga(p.data)))}</li>
-        ${falten(p.data) ? `<li><span>⏳</span>${esc(cap(falten(p.data)))}</li>` : ''}
-        ${pe.tel ? `<li><span>📞</span>${esc(pe.tel)}</li>` : ''}
+        <li><span class="et">Dia</span>${esc(cap(dataLlarga(p.data)))}</li>
+        ${falten(p.data) ? `<li><span class="et">Falten</span>${esc(cap(falten(p.data)))}</li>` : ''}
+        ${pe.tel ? `<li><span class="et">Telèfon</span>${esc(pe.tel)}</li>` : ''}
       </ul>
       <p class="help">Surt sol cada any perquè la fitxa de ${esc(pe.nom)} té l'aniversari. Per canviar-lo o treure'l, edita la fitxa.</p>
     </div>
     <footer class="dlg-peu det-accions">
-      ${pe.tel ? `<a class="btn primary" href="https://wa.me/${esc(waNum(pe.tel))}" target="_blank" rel="noopener">💬 Felicita'l per WhatsApp</a>` : ''}
-      <button type="button" class="btn" id="aFitxa">👤 Fitxa de ${esc(pe.nom)}</button>
+      ${pe.tel ? `<a class="btn primary" href="https://wa.me/${esc(waNum(pe.tel))}" target="_blank" rel="noopener">Felicita'l per WhatsApp</a>` : ''}
+      <button type="button" class="btn" id="aFitxa">Fitxa de ${esc(pe.nom)}</button>
     </footer>`, 'detall');
   dlgForm.onclick = (e) => {
     if (e.target.closest('#aFitxa')) { tancaDlg(); ui.view = 'gent'; ui.persona = pe.id; render(); window.scrollTo(0, 0); }
@@ -1407,22 +1449,22 @@ function obreDetall(p) {
   const r = p.rebut;
   const resp = !r && usuari() ? sync().respostes(p.id).filter((x) => (p.compartit || []).includes(x.email)) : [];
   const ambTel = r ? [] : (p.qui || []).map(pers).filter((pe) => pe && pe.tel);
-  const whatsapp = ambTel.length ? `<li><span>💬</span><div>Avisa per WhatsApp:<div class="wa-botons">${ambTel.map((pe) =>
+  const whatsapp = ambTel.length ? `<li><span class="et">WhatsApp</span><div><div class="wa-botons">${ambTel.map((pe) =>
     `<a class="btn wa" href="https://wa.me/${esc(waNum(pe.tel))}?text=${encodeURIComponent(textPla(p, pe))}" target="_blank" rel="noopener">${esc(pe.nom)}</a>`).join('')}</div>
       <small class="hint">S'obre el xat amb el missatge escrit: només has de prémer Enviar.</small></div></li>` : '';
   const enviat = (p.compartit || []).length
-    ? `<li><span>📲</span><div>A la seva app:<ul class="respostes">${(p.compartit || []).map((em) => {
+    ? `<li><span class="et">App</span><div><ul class="respostes">${(p.compartit || []).map((em) => {
       const x = resp.find((y) => y.email === em);
       return `<li><b>${esc(nomDeCorreu(em))}</b> <small>${esc(RESPOSTES[x?.resposta || 'pendent'])}</small></li>`;
     }).join('')}</ul>${usuari() ? '' : '<small class="hint">Entra amb el teu correu perquè els arribi.</small>'}</div></li>` : '';
   const peu = r
-    ? `<button type="button" class="btn${r.resposta === 'si' ? ' primary' : ''}" data-respon="si">✅ Hi vaig</button>
-       <button type="button" class="btn${r.resposta === 'no' ? ' primary' : ''}" data-respon="no">❌ No hi vaig</button>
+    ? `<button type="button" class="btn${r.resposta === 'si' ? ' primary' : ''}" data-respon="si">Hi vaig</button>
+       <button type="button" class="btn${r.resposta === 'no' ? ' primary' : ''}" data-respon="no">No hi vaig</button>
        <button type="button" class="btn" id="dCalendari">Al meu calendari</button>`
-    : `<button type="button" class="btn primary" id="dComparteix">📤 Comparteix</button>
+    : `<button type="button" class="btn primary" id="dComparteix">Comparteix</button>
        <button type="button" class="btn" id="dCalendari">Al meu calendari</button>
-       <button type="button" class="btn" id="dEdita">✏️ Edita</button>
-       <button type="button" class="btn" id="dDuplica">⧉ Duplica</button>`;
+       <button type="button" class="btn" id="dEdita">Edita</button>
+       <button type="button" class="btn" id="dDuplica">Duplica</button>`;
   obreDlg(`<header class="det-cap" style="--c:${esc(t.color)}">
       <span class="det-emoji">${ico(t)}</span>
       <div><small>${esc(t.nom)}</small><h2>${esc(titolPla(p))}</h2></div>
@@ -1430,17 +1472,17 @@ function obreDetall(p) {
     </header>
     <div class="dlg-cos">
       <ul class="det">
-        ${r ? `<li><span>💌</span>De part de <b>&nbsp;${esc(r.de_nom || r.de_email)}</b></li>` : ''}
-        <li><span>📅</span>${esc(textDies(vista.data, vista.dataFi))}</li>
-        ${p.repeteix ? `<li><span>🔁</span>${esc(nomRepeticio(p.repeteix))}${p.repeteixFins ? esc(', fins al ' + dataLlarga(p.repeteixFins)) : ''}</li>` : ''}
-        <li><span>🕘</span>${esc(horaSola(p))}</li>
-        ${p.lloc || p.llocUrl ? `<li><span>📍</span><a href="${esc(mapaDe(p))}" target="_blank" rel="noopener">${esc(p.lloc || 'Obre la ubicació al mapa')}</a></li>` : ''}
-        ${n.length ? `<li><span>👥</span>${esc(llistaNoms(n))}</li>` : ''}
-        ${p.estat !== 'confirmat' ? `<li><span>${p.estat === 'cancellat' ? '🚫' : '⏳'}</span>${esc((ESTATS.find((e) => e[0] === p.estat) || [, ''])[1])}</li>` : ''}
-        ${p.notes ? `<li class="notes"><span>📝</span><div>${esc(p.notes).replace(/\n/g, '<br>')}</div></li>` : ''}
+        ${r ? `<li><span class="et">De part de</span><b>${esc(r.de_nom || r.de_email)}</b></li>` : ''}
+        <li><span class="et">Quan</span>${esc(textDies(vista.data, vista.dataFi))}</li>
+        ${p.repeteix ? `<li><span class="et">Es repeteix</span>${esc(nomRepeticio(p.repeteix))}${p.repeteixFins ? esc(', fins al ' + dataLlarga(p.repeteixFins)) : ''}</li>` : ''}
+        <li><span class="et">Hora</span>${esc(horaSola(p))}</li>
+        ${p.lloc || p.llocUrl ? `<li><span class="et">On</span><a href="${esc(mapaDe(p))}" target="_blank" rel="noopener">${esc(p.lloc || 'Obre la ubicació al mapa')}</a></li>` : ''}
+        ${n.length ? `<li><span class="et">Qui</span>${esc(llistaNoms(n))}</li>` : ''}
+        ${p.estat !== 'confirmat' ? `<li><span class="et">Estat</span>${esc((ESTATS.find((e) => e[0] === p.estat) || [, ''])[1])}</li>` : ''}
+        ${p.notes ? `<li class="notes"><span class="et">Notes</span><div>${esc(p.notes).replace(/\n/g, '<br>')}</div></li>` : ''}
         ${enviat}
         ${whatsapp}
-        ${r && r.resposta === 'pendent' ? '<li><span>❓</span>Encara no has dit si hi vas.</li>' : ''}
+        ${r && r.resposta === 'pendent' ? '<li><span class="et">Resposta</span>Encara no has dit si hi vas.</li>' : ''}
       </ul>
     </div>
     <footer class="dlg-peu det-accions">${peu}</footer>`, 'detall');
@@ -1470,9 +1512,9 @@ function textPla(p, pe) {
   const quan = textDies(p.data, p.dataFi);
   return [
     titolPer(p, pe),
-    `📅 ${quan}${p.totElDia || !p.hora ? '' : ' · ' + horaSola(p)}`,
-    p.lloc ? `📍 ${p.lloc}` : '',
-    p.llocUrl ? `🗺️ ${p.llocUrl}` : '',
+    `${quan}${p.totElDia || !p.hora ? '' : ' · ' + horaSola(p)}`,
+    p.lloc ? p.lloc : '',
+    p.llocUrl ? p.llocUrl : '',
     '',
     'Afegeix-ho al teu calendari:',
     enllacPla(p, true, pe),
@@ -1499,8 +1541,8 @@ function obreAlCalendari(p) {
       <p class="help">On vols afegir «${esc(titolPla(p))}»? Si és un pla amb hora, t'avisarà una hora abans.</p>
       <div class="accions-cal">
         ${Cal.urlIcs(e)
-          ? `<a class="btn primary" href="${esc(Cal.urlIcs(e))}" target="_blank" rel="noopener">📱 Calendari de l'iPhone / Mac</a>`
-          : '<button type="button" class="btn primary" id="cIcs">📱 Calendari de l\'iPhone / Mac</button>'}
+          ? `<a class="btn primary" href="${esc(Cal.urlIcs(e))}" target="_blank" rel="noopener">Calendari de l'iPhone / Mac</a>`
+          : '<button type="button" class="btn primary" id="cIcs">Calendari de l\'iPhone / Mac</button>'}
         <a class="btn" href="${esc(Cal.google(e))}" target="_blank" rel="noopener">Google Calendar</a>
         <a class="btn" href="${esc(Cal.outlook(e))}" target="_blank" rel="noopener">Outlook</a>
       </div>
@@ -1536,10 +1578,10 @@ function obreComparteix(p) {
        <button type="button" class="btn" data-entra>Entra amb el teu correu</button>`;
   obreDlg(`<header class="dlg-cap"><h2>Comparteix</h2><button type="button" class="x" data-tanca aria-label="Tanca">×</button></header>
     <div class="dlg-cos">
-      <fieldset><legend>📲 A la seva app</legend>${app}</fieldset>
-      <fieldset><legend>💬 Per WhatsApp, missatge o correu</legend>
+      <fieldset><legend>A la seva app</legend>${app}</fieldset>
+      <fieldset><legend>Per WhatsApp, missatge o correu</legend>
         <p class="help">Envia un enllaç: qui el rebi el podrà afegir al seu calendari, encara que no tingui l'app.</p>
-        <button type="button" class="btn ample" id="enllac">📤 Envia l'enllaç</button>
+        <button type="button" class="btn ample" id="enllac">Envia l'enllaç</button>
       </fieldset>
     </div>
     <footer class="dlg-peu"><button type="button" class="btn" id="torna">‹ Torna al pla</button></footer>`, 'form');
@@ -1587,7 +1629,7 @@ function obreComparteix(p) {
       save();
       const nous = triats.filter((em) => !abans.includes(em));
       const trets = abans.filter((em) => !triats.includes(em));
-      toast(nous.length ? `Enviat a ${llistaNoms(nous.map(nomDeCorreu))} 📨` : trets.length ? 'Fet: ja no ho veuran' : 'Desat');
+      toast(nous.length ? `Enviat a ${llistaNoms(nous.map(nomDeCorreu))}` : trets.length ? 'Fet: ja no ho veuran' : 'Desat');
       render();
       obreDetall(p);
     }
@@ -1641,29 +1683,28 @@ function obreForm(p, base = {}) {
     env.hidden = !usuari() || !ll.length;
     env.querySelector('span').textContent = `Envia-ho a la seva app: ${llistaNoms(ll.map((pe) => pe.nom))}`;
   };
-  const xipTipus = (t) => `<button type="button" class="txip" data-tipus="${esc(t.id)}" aria-pressed="${d.tipusId === t.id}" style="--c:${esc(t.color)}">${ico(t)}<span class="txip-nom">${esc(nomCurt(t))}</span></button>`;
-  const tipusXips = () => GRUPS.map(([g, nomG]) => {
-    const ts = tipusOrdenats().filter((t) => grupDe(t) === g);
-    return ts.length ? `<div class="tg-cap">${esc(nomG)}</div>` + ts.map(xipTipus).join('') : '';
-  }).join('')
-    + '<button type="button" class="txip nou-tipus" id="tNou"><span class="ms">add</span><span class="txip-nom">Nou tipus</span></button>';
+  const xipTipus = (t) => `<button type="button" class="etq" data-tipus="${esc(t.id)}" aria-pressed="${d.tipusId === t.id}" style="--c:${esc(t.color)}">${esc(nomCurt(t))}</button>`;
+  const tipusXips = () => {
+    const pr = principals();
+    const resta = GRUPS.map(([g, nomG]) => {
+      const ts = tipusOrdenats().filter((t) => g !== 'principals' && grupDe(t) === g);
+      return ts.length ? `<optgroup label="${esc(nomG)}">${ts.map((t) => `<option value="${esc(t.id)}"${d.tipusId === t.id ? ' selected' : ''}>${esc(t.nom)}</option>`).join('')}</optgroup>` : '';
+    }).join('');
+    const triatResta = d.tipusId && !pr.some((t) => t.id === d.tipusId);
+    return `<div class="etqs">${pr.map(xipTipus).join('')}</div>
+      <select name="tipusMes" class="mes-tipus${triatResta ? ' triat' : ''}" aria-label="Més tipus">
+        <option value=""${triatResta ? '' : ' selected'}>Més tipus…</option>${resta}
+        <option value="+nou">+ Nou tipus…</option>
+      </select>`;
+  };
+  // El tipus s'endevina pel nom del pla (fins que se'n tria un a mà)
+  let tipusAMa = Boolean(p && p.tipusId);
+  const pintaTipus = () => { $('#tipusGrid').innerHTML = tipusXips(); };
 
   obreDlg(`<header class="dlg-cap"><h2>${nou ? 'Nou pla' : 'Edita el pla'}</h2><button type="button" class="x" data-tanca aria-label="Tanca">×</button></header>
     <div class="dlg-cos">
       <fieldset><legend><span class="w-que">Què</span></legend>
         <input name="titol" value="${esc(d.titol)}" placeholder="Què faràs? Escriu-ho com vulguis" autocomplete="off">
-        <p class="help">I, si vols, tria'n el tipus (o crea'n un de nou):</p>
-        <div class="tipus-grid" id="tipusGrid">${tipusXips()}</div>
-        <div class="nou-tipus-fila" id="nouTipusFila" hidden>
-          ${botoColor(COLORS_NOUS[state.tipus.length % COLORS_NOUS.length], 'id="ntColor"')}
-          <input id="ntNom" placeholder="Nom del tipus (p. ex. Karaoke)" autocomplete="off" enterkeyhint="done">
-          <button type="button" class="btn primary" id="ntCrea">Crea</button>
-        </div>
-        <button type="button" class="enllac" id="tGestiona">✏️ Canvia o esborra els tipus</button>
-      </fieldset>
-      <fieldset><legend><span class="w-qui">Qui</span></legend>
-        <div class="afegeix"><input id="quiNou" type="search" placeholder="🔍 Cerca o afegeix una persona" autocomplete="off" enterkeyhint="done">${potContactes() ? '<button type="button" class="btn" id="quiContactes" aria-label="Tria dels contactes"><span class="ms">contacts</span></button>' : ''}</div>
-        <div class="xips xips-col" id="quiXips"></div>
       </fieldset>
       <fieldset><legend><span class="w-quan">Quan</span></legend>
         <div class="fila">
@@ -1679,16 +1720,29 @@ function obreForm(p, base = {}) {
           <input type="date" name="repeteixFins" value="${esc(d.repeteixFins || '')}"></label>
         <label class="check"><input type="checkbox" name="totElDia" ${d.totElDia ? 'checked' : ''}> Tot el dia</label>
       </fieldset>
+      <fieldset><legend><span class="w-qui">Qui</span></legend>
+        <div class="afegeix"><input id="quiNou" type="search" placeholder="Cerca o afegeix una persona" autocomplete="off" enterkeyhint="done">${potContactes() ? '<button type="button" class="btn" id="quiContactes" aria-label="Tria dels contactes"><span class="ms">contacts</span></button>' : ''}</div>
+        <div class="xips xips-col" id="quiXips"></div>
+      </fieldset>
       <fieldset><legend>On</legend>
         <div class="lloc-cerca">
           <input name="lloc" value="${esc(d.lloc || '')}" placeholder="Cerca un lloc o escriu-lo" autocomplete="off" enterkeyhint="done">
           <div class="sugg" id="llocSugg" hidden></div>
         </div>
-        <input name="llocUrl" type="url" value="${esc(d.llocUrl || '')}" placeholder="🔗 Enllaç de la ubicació (Google Maps, Apple Maps…)" autocomplete="off" autocapitalize="off" spellcheck="false" inputmode="url">
+        <input name="llocUrl" type="url" value="${esc(d.llocUrl || '')}" placeholder="Enllaç de la ubicació (Google Maps, Apple Maps…)" autocomplete="off" autocapitalize="off" spellcheck="false" inputmode="url">
         <div class="grp lloc-botons">
-          <button type="button" class="btn" id="llocMaps">🔎 Cerca a Maps</button>
-          <button type="button" class="btn" id="llocAra">📍 On soc ara</button>
+          <button type="button" class="btn" id="llocMaps">Cerca a Maps</button>
+          <button type="button" class="btn" id="llocAra">On soc ara</button>
         </div>
+      </fieldset>
+      <fieldset><legend>Tipus</legend>
+        <div id="tipusGrid">${tipusXips()}</div>
+        <div class="nou-tipus-fila" id="nouTipusFila" hidden>
+          ${botoColor(COLORS_NOUS[state.tipus.length % COLORS_NOUS.length], 'id="ntColor"')}
+          <input id="ntNom" placeholder="Nom del tipus (p. ex. Karaoke)" autocomplete="off" enterkeyhint="done">
+          <button type="button" class="btn primary" id="ntCrea">Crea</button>
+        </div>
+        <button type="button" class="enllac" id="tGestiona">Canvia les etiquetes</button>
       </fieldset>
       <fieldset><legend>Estat</legend>
         <div class="seg">${ESTATS.map(([v, n]) => `<label><input type="radio" name="estat" value="${v}" ${d.estat === v ? 'checked' : ''}><span>${n}</span></label>`).join('')}</div>
@@ -1724,8 +1778,8 @@ function obreForm(p, base = {}) {
     const ja = state.tipus.find((t) => normal(t.nom) === normal(nom));
     const t = ja || { id: 't-' + uid(), nom, emoji: '', icona: 'auto_awesome', color: COLORS_NOUS[state.tipus.length % COLORS_NOUS.length], grup: 'altres', color: $('#ntColor').value || '#5C7CFA' };
     if (!ja) { state.tipus.push(t); save(); }
-    d.tipusId = t.id;
-    $('#tipusGrid').innerHTML = tipusXips();
+    d.tipusId = t.id; tipusAMa = true;
+    pintaTipus();
     $('#nouTipusFila').hidden = true;
     $('#ntNom').value = '';
     toast(ja ? `«${t.nom}» ja existia: l'he triat` : `Tipus «${nom}» creat`);
@@ -1769,7 +1823,7 @@ function obreForm(p, base = {}) {
           const nom = [p.name, carrer, p.city || p.town || p.village || p.locality].filter(Boolean).filter((x, i, a) => a.indexOf(x) === i).join(', ');
           if (nom && !llocInp.value.trim()) llocInp.value = nom;
         } catch (err) { /* sense adreça: ja hi ha l'enllaç */ }
-        toast('Ubicació afegida 📍');
+        toast('Ubicació afegida');
       }, () => toast("No s'ha pogut saber on ets. Cal donar permís d'ubicació a l'app."), { enableHighAccuracy: true, timeout: 15000 });
       return;
     }
@@ -1780,7 +1834,6 @@ function obreForm(p, base = {}) {
       }).catch(() => {});
       return;
     }
-    if (e.target.closest('#tNou')) { $('#nouTipusFila').hidden = false; $('#ntNom').focus(); return; }
     if (e.target.id === 'ntCrea') { creaTipus(); return; }
     if (e.target.id === 'tGestiona') {
       if (!confirm("Vols anar a Ajustos per canviar els tipus? Aquest pla encara no s'ha desat.")) return;
@@ -1792,7 +1845,8 @@ function obreForm(p, base = {}) {
     if (tx) {
       // Tornar a tocar el tipus triat el treu (el tipus és opcional)
       d.tipusId = d.tipusId === tx.dataset.tipus ? '' : tx.dataset.tipus;
-      $$('#dlgForm [data-tipus]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.tipus === d.tipusId));
+      tipusAMa = true;
+      pintaTipus();
       return;
     }
     const q = e.target.closest('[data-qui]');
@@ -1827,7 +1881,17 @@ function obreForm(p, base = {}) {
   di.addEventListener('change', limits);
   di.addEventListener('input', limits);
   ['pointerdown', 'touchstart', 'focus'].forEach((ev) => df.addEventListener(ev, () => { if (!df.value && di.value) df.value = di.value; }, { passive: true }));
+  dlgForm.elements.titol.addEventListener('input', () => {
+    if (tipusAMa) return;
+    const t = endevinaTipus(dlgForm.elements.titol.value);
+    if ((t?.id || '') !== d.tipusId) { d.tipusId = t?.id || ''; pintaTipus(); }
+  });
   dlgForm.onchange = (e) => {
+    if (e.target.name === 'tipusMes') {
+      if (e.target.value === '+nou') { e.target.value = ''; $('#nouTipusFila').hidden = false; $('#ntNom').focus(); return; }
+      if (e.target.value) { d.tipusId = e.target.value; tipusAMa = true; pintaTipus(); }
+      return;
+    }
     if (e.target.name === 'repeteix') dlgForm.querySelector('.rep-fins').hidden = !e.target.value;
     if (e.target.name === 'totElDia') {
       dlgForm.elements.hora.disabled = e.target.checked;
@@ -1877,7 +1941,7 @@ function obreForm(p, base = {}) {
     render();
     obreDetall(desat);
     const perWa = dades.qui.map(pers).filter((pe) => pe && pe.tel && !(usuari() && teApp(pe)));
-    toast((nou ? 'Pla afegit' : 'Canvis desats') + (usuari() && perApp.length && dades.data >= avui() ? ` i enviat a l'app de ${llistaNoms(perApp.map((pe) => pe.nom))} 📲` : '')
+    toast((nou ? 'Pla afegit' : 'Canvis desats') + (usuari() && perApp.length && dades.data >= avui() ? ` i enviat a l'app de ${llistaNoms(perApp.map((pe) => pe.nom))}` : '')
       + (nou && perWa.length ? `. Per avisar ${perWa.length === 1 ? perWa[0].nom : 'els altres'} per WhatsApp, toca el seu nom aquí sota.` : ''), perWa.length ? 6000 : 3200);
   };
 }

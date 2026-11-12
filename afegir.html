@@ -17,7 +17,7 @@
     .franja { height: 8px; background: linear-gradient(90deg, var(--que) 0 33.3%, var(--qui) 33.3% 66.6%, var(--quan) 66.6%); }
     .dins { padding: 22px 20px 20px; }
     .de { color: var(--muted); font-size: 14px; margin: 0 0 6px; }
-    .gran-emoji { font-size: 46px; line-height: 1; }
+    .det li > span.et { width: 84px; flex: none; text-align: left; padding-top: 2px; font-size: 11px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; color: var(--muted); }
     h1 { font-family: var(--font-title); font-weight: 600; font-size: 26px; line-height: 1.2; margin: 8px 0 12px; }
     .accions { display: grid; gap: 8px; margin-top: 16px; }
     .accions .btn { min-height: 48px; font-size: 16px; }
@@ -43,7 +43,7 @@
     const e = Cal.descodifica(location.hash.slice(1));
     const dins = document.getElementById('dins');
     if (!e) {
-      dins.innerHTML = '<div class="gran-emoji">🤔</div><h1>Aquest enllaç no és complet</h1><p class="help">Demana a qui te l\'ha enviat que te\'l torni a passar.</p>';
+      dins.innerHTML = '<h1>Aquest enllaç no és complet</h1><p class="help">Demana a qui te l\'ha enviat que te\'l torni a passar.</p>';
     } else {
       const d = Cal.inici(e);
       const data = `${DIES[d.getDay()]} ${d.getDate()} de ${MESOS[d.getMonth()]} de ${d.getFullYear()}`.replace(/de ([ao])/, "d'$1");
@@ -53,19 +53,18 @@
       document.title = `${e.t} · Afegeix al calendari`;
       dins.innerHTML = `
         ${e.o ? `<p class="de">${esc(e.o)} t'envia aquest pla</p>` : ''}
-        <div class="gran-emoji">${esc(e.e || '📅')}</div>
         <h1>${esc(e.t)}</h1>
         <ul class="det">
-          <li><span>📅</span>${esc(data.charAt(0).toUpperCase() + data.slice(1) + fins)}</li>
-          ${repeteix ? `<li><span>🔁</span>${esc(repeteix)}</li>` : ''}
-          <li><span>🕘</span>${esc(hora)}</li>
-          ${e.l ? `<li><span>📍</span><a href="${esc(Cal.mapa(e.l))}" target="_blank" rel="noopener">${esc(e.l)}</a></li>` : ''}
-          ${e.n ? `<li class="notes"><span>📝</span><div>${esc(e.n).replace(/\n/g, '<br>')}</div></li>` : ''}
+          <li><span class="et">Quan</span>${esc(data.charAt(0).toUpperCase() + data.slice(1) + fins)}</li>
+          ${repeteix ? `<li><span class="et">Es repeteix</span>${esc(repeteix)}</li>` : ''}
+          <li><span class="et">Hora</span>${esc(hora)}</li>
+          ${e.l ? `<li><span class="et">On</span><a href="${esc(Cal.mapa(e.l))}" target="_blank" rel="noopener">${esc(e.l)}</a></li>` : ''}
+          ${e.n ? `<li class="notes"><span class="et">Notes</span><div>${esc(e.n).replace(/\n/g, '<br>')}</div></li>` : ''}
         </ul>
         <div class="accions">
           ${Cal.urlIcs(e)
-            ? `<a class="btn primary" href="${esc(Cal.urlIcs(e))}" target="_blank" rel="noopener">📆 Afegeix al calendari (iPhone, Mac…)</a>`
-            : '<button class="btn primary" id="bIcs">📆 Afegeix al calendari (iPhone, Mac…)</button>'}
+            ? `<a class="btn primary" href="${esc(Cal.urlIcs(e))}" target="_blank" rel="noopener">Afegeix al calendari (iPhone, Mac…)</a>`
+            : '<button class="btn primary" id="bIcs">Afegeix al calendari (iPhone, Mac…)</button>'}
           <a class="btn" href="${esc(Cal.google(e))}" target="_blank" rel="noopener">Google Calendar</a>
           <a class="btn" href="${esc(Cal.outlook(e))}" target="_blank" rel="noopener">Outlook</a>
         </div>`;

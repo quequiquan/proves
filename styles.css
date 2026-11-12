@@ -613,3 +613,25 @@ body.mode-inici .top .nou { display: none; }   /* a la portada ja hi ha el botó
 .te-app { display: flex; align-items: flex-start; gap: 8px; margin: 4px 0 10px; font-size: 14px; color: var(--muted); line-height: 1.35; }
 .te-app input { margin-top: 3px; flex: none; }
 .te-app b { color: var(--ink, inherit); }
+
+/* ===== Estil minimalista: etiquetes principals i detall sense icones ===== */
+.etqs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.etq {
+  min-height: 46px; padding: 8px 6px; border-radius: 12px; border: 1.5px solid color-mix(in srgb, var(--c) 45%, transparent);
+  background: transparent; color: var(--c); font: inherit; font-weight: 800; font-size: 12.5px; letter-spacing: .2px;
+  text-transform: uppercase; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  transition: background .15s, color .15s;
+}
+.etq[aria-pressed="true"] { background: var(--c); border-color: var(--c); color: #fff; }
+.mes-tipus { margin-top: 10px; width: 100%; color: var(--muted); }
+.mes-tipus.triat { color: var(--text); font-weight: 700; border-color: var(--text); }
+#tGestiona { margin-top: 8px; }
+
+/* Detall: petits títols en gris en lloc d'icones */
+.det li > span.et {
+  width: 84px; text-align: left; flex: none; padding-top: 2px;
+  font-size: 11px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; color: var(--muted);
+}
+.det .respostes { margin: 0; padding: 0; list-style: none; }
+.det .respostes li { border: 0; padding: 2px 0; }
+@media (max-width: 380px) { .det li > span.et { width: 70px; } }
