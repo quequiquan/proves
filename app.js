@@ -384,6 +384,82 @@ function enviaAApp(plans = state.plans) {
   });
   return enviats;
 }
+/* ---------- Calendari propi per triar dates (en català, igual a tots els dispositius) ---------- */
+const textData = (ds) => { if (!ds) return ''; const d = parseYmd(ds); return `${d.getDate()} ${MESOS[d.getMonth()].slice(0, 3)}. ${d.getFullYear()}`; };
+const campData = (nom, valor) => `<input type="hidden" name="${nom}" value="${esc(valor)}"><button type="button" class="data-btn${valor ? '' : ' buida'}" data-dp="${nom}">${valor ? esc(textData(valor)) : 'Tria…'}</button>`;
+function pintaDates() {
+  document.querySelectorAll('[data-dp]').forEach((b) => {
+    const inp = b.form?.elements[b.dataset.dp] || document.querySelector(`input[name="${b.dataset.dp}"]`);
+    if (!inp) return;
+    b.textContent = inp.value ? textData(inp.value) : 'Tria…';
+    b.classList.toggle('buida', !inp.value);
+  });
+}
+function obreCalendariDates(inp) {
+  const dlg = document.querySelector('dialog[open]') || document.body;
+  dlg.querySelector('.dp-fons')?.remove();
+  const obligatori = inp.name === 'data';
+  const min = inp.min || '';
+  const base = parseYmd(inp.value || (min && min > avui() ? min : '') || min || avui());
+  let mes = new Date(base.getFullYear(), base.getMonth(), 1);
+  const fons = document.createElement('div');
+  fons.className = 'dp-fons';
+  const pinta = () => {
+    const ini = mondayOf(mes);
+    let dies = '';
+    for (let i = 0; i < 42; i++) {
+      const d = addDays(ini, i);
+      if (i >= 35 && d.getMonth() !== mes.getMonth()) break;
+      const ds = ymd(d), fora = d.getMonth() !== mes.getMonth(), no = min && ds < min;
+      dies += `<button type="button" class="dp-dia${fora ? ' fora' : ''}${ds === avui() ? ' avui' : ''}${ds === inp.value ? ' triat' : ''}" data-dpdia="${ds}" ${no ? 'disabled' : ''}>${d.getDate()}</button>`;
+    }
+    fons.innerHTML = `<div class="dp" role="dialog" aria-label="Tria el dia">
+        <div class="dp-cap">
+          <button type="button" class="dp-nav" data-dpmes="-1" aria-label="Mes anterior">‹</button>
+          <b>${esc(cap(MESOS[mes.getMonth()]))} ${mes.getFullYear()}</b>
+          <button type="button" class="dp-nav" data-dpmes="1" aria-label="Mes següent">›</button>
+        </div>
+        <div class="dp-graella">${DIES.map((x) => `<span>${x}</span>`).join('')}${dies}</div>
+        <div class="dp-peu">
+          ${obligatori ? '<span></span>' : '<button type="button" class="enllac" data-dpbuida>Esborra</button>'}
+          <button type="button" class="enllac" data-dpavui>Avui</button>
+        </div>
+      </div>`;
+  };
+  const tria = (ds) => {
+    inp.value = ds;
+    inp.dispatchEvent(new Event('input', { bubbles: true }));
+    inp.dispatchEvent(new Event('change', { bubbles: true }));
+    pintaDates();
+    fons.remove();
+  };
+  fons.addEventListener('click', (e) => {
+    e.preventDefault(); e.stopPropagation();
+    const b = e.target.closest('button');
+    if (!b) { if (e.target === fons) fons.remove(); return; }
+    if (b.dataset.dpmes) { mes = new Date(mes.getFullYear(), mes.getMonth() + Number(b.dataset.dpmes), 1); pinta(); return; }
+    if (b.dataset.dpdia) { tria(b.dataset.dpdia); return; }
+    if (b.dataset.dpbuida !== undefined) { tria(''); return; }
+    if (b.dataset.dpavui !== undefined) { const a = avui(); if (min && a < min) { mes = new Date(parseYmd(min).getFullYear(), parseYmd(min).getMonth(), 1); pinta(); } else tria(a); }
+  });
+  // Lliscar per canviar de mes
+  let x0 = null;
+  fons.addEventListener('touchstart', (e) => { x0 = e.touches[0].clientX; }, { passive: true });
+  fons.addEventListener('touchend', (e) => {
+    if (x0 === null) return;
+    const dx = e.changedTouches[0].clientX - x0; x0 = null;
+    if (Math.abs(dx) > 50) { mes = new Date(mes.getFullYear(), mes.getMonth() + (dx < 0 ? 1 : -1), 1); pinta(); }
+  }, { passive: true });
+  pinta();
+  dlg.appendChild(fons);
+}
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-dp]');
+  if (!b) return;
+  e.preventDefault();
+  const inp = b.form?.elements[b.dataset.dp] || document.querySelector(`input[name="${b.dataset.dp}"]`);
+  if (inp) obreCalendariDates(inp);
+});
 function textDies(ds, fi) {
   const any = (x) => (parseYmd(x).getFullYear() !== new Date().getFullYear() ? ` de ${parseYmd(x).getFullYear()}` : '');
   const e = etiquetaDia(ds);
@@ -896,30 +972,20 @@ function vistaInici() {
   const h = new Date().getHours();
   const salut = h < 6 ? 'Bona nit' : h < 13 ? 'Bon dia' : h < 20 ? 'Bona tarda' : 'Bona nit';
   const nom = (state.ajustos.nom || '').trim().split(' ')[0];
-  // Només el que encara ha de venir: un pla amb hora desapareix quan acaba («Fins a», o una hora després de començar)
-  const ara = new Date(), minutsAra = ara.getHours() * 60 + ara.getMinutes();
-  const minuts = (h) => { const [a, b] = h.split(':').map(Number); return a * 60 + (b || 0); };
-  const pendent = (p) => {
-    if (p.totElDia || !p.hora || diesPla(p) > avui() || p.data < avui()) return true;
-    const ini = minuts(p.hora);
-    const fi = p.horaFi ? (minuts(p.horaFi) > ini ? minuts(p.horaFi) : 24 * 60) : ini + 60;
-    return fi > minutsAra;
-  };
-  const totsAvui = totsPlans().filter((p) => cobreix(p, avui()) && p.estat !== 'cancellat');
-  const dAvui = totsAvui.filter(pendent).sort(perOrdre);
   const inv = rebuts().filter((p) => p.rebut.resposta === 'pendent' && p.data >= avui()).length;
-  const encara = totsAvui.length > dAvui.length ? 'encara ' : '';
-  const resum = dAvui.length
-    ? `Avui ${encara}tens <b>${dAvui.length} ${dAvui.length === 1 ? 'pla' : 'plans'}</b>`
-    : totsAvui.length ? 'Avui ja no et queda cap pla' : 'Avui no tens cap pla';
+  // Portada minimalista: logotip, nom de l'app, salutació, data i un botó rodó per crear un pla
   return `<div class="portada">
-      <div class="portada-punt"></div>
+      <svg class="portada-logo" viewBox="160 160 704 680" aria-hidden="true">
+        <circle cx="512" cy="392" r="200" fill="#FF5A47" opacity=".92"/>
+        <circle cx="392" cy="600" r="200" fill="#FFC23D" opacity=".88"/>
+        <circle cx="632" cy="600" r="200" fill="#1FB39C" opacity=".88"/>
+        <circle cx="512" cy="528" r="34" style="fill: var(--bg)"/>
+      </svg>
+      <p class="portada-nom"><span class="w-que">Què</span> · <span class="w-qui">Qui</span> · <span class="w-quan">Quan</span></p>
       <h1>${esc(salut)}${nom ? ', ' + esc(nom) : ''}</h1>
       <p class="portada-data">${esc(cap(dataLlarga(avui())))}</p>
-      <p class="portada-resum">${resum}${inv ? ` · <b>${inv}</b> ${inv === 1 ? 'invitació' : 'invitacions'} per respondre` : ''}</p>
-      ${dAvui.length ? `<div class="portada-avui">${dAvui.slice(0, 4).map((p) => targeta(p)).join('')}${dAvui.length > 4 ? `<p class="help">i ${dAvui.length - 4} més…</p>` : ''}</div>` : ''}
-      <button class="btn primary portada-nou" data-nou="${avui()}">+ Nou pla</button>
-      ${inv ? '<button class="btn portada-veure" data-anar="propers">Veure les invitacions</button>' : ''}
+      <button class="portada-mes" data-nou="${avui()}" aria-label="Nou pla"><span>+</span></button>
+      ${inv ? `<button class="enllac portada-veure" data-anar="propers">${inv === 1 ? 'Tens 1 invitació per respondre' : `Tens ${inv} invitacions per respondre`}</button>` : ''}
     </div>`;
 }
 
@@ -1724,15 +1790,15 @@ function obreForm(p, base = {}) {
       </fieldset>
       <fieldset><legend><span class="w-quan">Quan</span></legend>
         <div class="quan-grid">
-          <label>Dia<input type="date" name="data" value="${esc(d.data)}" required></label>
+          <label>Dia${campData('data', d.data)}</label>
           <label>Hora<input type="time" name="hora" value="${esc(d.hora || '')}" ${d.totElDia ? 'disabled' : ''}></label>
           <label>Es repeteix<select name="repeteix">${REPETICIONS.map(([v, n]) => `<option value="${v}"${(d.repeteix || '') === v ? ' selected' : ''}>${({ '': 'No', setmana: 'Setmanal', '2setmanes': 'Quinzenal', mes: 'Mensual', any: 'Anual' })[v] || n}</option>`).join('')}</select></label>
-          <label>Fins al dia<input type="date" name="dataFi" value="${esc(d.dataFi || '')}"></label>
+          <label>Fins al dia${campData('dataFi', d.dataFi || '')}</label>
           <label>Fins a<input type="time" name="horaFi" value="${esc(d.horaFi || '')}" ${d.totElDia ? 'disabled' : ''}></label>
           <label class="tot-dia"><span>&nbsp;</span><span class="tot-dia-caixa"><input type="checkbox" name="totElDia" ${d.totElDia ? 'checked' : ''}> Tot el dia</span></label>
         </div>
         <label class="camp rep-fins" ${d.repeteix ? '' : 'hidden'}>Fins quan es repeteix <small>(opcional; si no hi poses res, sempre)</small>
-          <input type="date" name="repeteixFins" value="${esc(d.repeteixFins || '')}"></label>
+          ${campData('repeteixFins', d.repeteixFins || '')}</label>
       </fieldset>
       <fieldset><legend><span class="w-qui">Qui</span></legend>
         <div class="afegeix"><input id="quiNou" type="search" placeholder="Cerca o afegeix una persona" autocomplete="off" enterkeyhint="done">${potContactes() ? '<button type="button" class="btn" id="quiContactes" aria-label="Tria dels contactes"><span class="ms">contacts</span></button>' : ''}</div>
@@ -1890,11 +1956,12 @@ function obreForm(p, base = {}) {
   const limits = () => {
     [df, rf].forEach((el) => { if (el) el.min = di.value || ''; });
     if (df.value && di.value && df.value < di.value) df.value = '';
+    pintaDates();
   };
   limits();
   di.addEventListener('change', limits);
   di.addEventListener('input', limits);
-  ['pointerdown', 'touchstart', 'focus'].forEach((ev) => df.addEventListener(ev, () => { if (!df.value && di.value) df.value = di.value; }, { passive: true }));
+
   dlgForm.elements.titol.addEventListener('input', () => {
     if (tipusAMa) return;
     const t = endevinaTipus(dlgForm.elements.titol.value);

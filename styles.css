@@ -662,3 +662,60 @@ body.mode-inici .top .nou { display: none; }   /* a la portada ja hi ha el botó
 #dlgForm .quan-grid { grid-template-columns: minmax(0, 1.2fr) minmax(0, .85fr) minmax(0, 1fr); }
 #dlgForm .quan-grid input[type="date"], #dlgForm .quan-grid input[type="time"] { padding-left: 4px; padding-right: 4px; }
 #dlgForm .quan-grid select { padding-left: 6px; padding-right: 16px; background-position: right 4px center; }
+
+/* ===== Portada minimalista: logotip, nom, salutació, data i botó rodó ===== */
+.portada {
+  min-height: calc(100svh - 230px - var(--safe-t, 0px) - var(--safe-b, 0px));
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; padding: 24px 16px 32px;
+}
+.portada-logo { width: 132px; height: auto; display: block; margin: 0 auto 14px; }
+.portada-nom { font-family: var(--font-title); font-weight: 600; font-size: 30px; letter-spacing: .3px; margin: 0 0 44px; color: var(--muted); }
+.portada-nom .w-que { color: #F0503C; } .portada-nom .w-qui { color: #E0A100; } .portada-nom .w-quan { color: #14A28C; }
+.portada h1 { font-size: 26px; margin: 0 0 6px; }
+.portada-data { color: var(--muted); font-weight: 600; margin: 0 0 40px; }
+.portada-mes {
+  width: 76px; height: 76px; border-radius: 50%; border: 0; cursor: pointer; padding: 0;
+  background: var(--qui); color: #1A1A1A; display: grid; place-items: center;
+  box-shadow: 0 0 0 12px color-mix(in srgb, var(--qui) 18%, transparent), 0 10px 24px color-mix(in srgb, var(--qui) 35%, transparent);
+  transition: transform .12s;
+}
+.portada-mes span { font-size: 46px; font-weight: 300; line-height: 1; margin-top: -4px; }
+.portada-mes:active { transform: scale(.94); }
+.portada-veure { margin-top: 30px; }
+@media (max-height: 700px) {
+  .portada-logo { width: 104px; } .portada-nom { margin-bottom: 28px; } .portada-data { margin-bottom: 28px; }
+}
+
+/* ===== Camps de data i calendari propi (en català) ===== */
+.data-btn {
+  width: 100%; min-width: 0; height: 46px; box-sizing: border-box; padding: 0 6px; margin: 0;
+  border: 1px solid var(--border); border-radius: 12px; background: var(--surface, #fff); color: var(--text);
+  font: inherit; font-size: 16px; font-weight: 500; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer;
+}
+.data-btn.buida { color: var(--muted); font-weight: 400; }
+.rep-fins .data-btn { margin-top: 4px; }
+.dp-fons {
+  position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 16px;
+  background: color-mix(in srgb, #000 28%, transparent);
+}
+.dp {
+  width: min(360px, 100%); background: var(--surface, #fff); color: var(--text); border-radius: 22px; padding: 14px 14px 10px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .25);
+}
+.dp-cap { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.dp-cap b { font-family: var(--font-title); font-weight: 600; font-size: 20px; }
+.dp-nav { width: 42px; height: 42px; border-radius: 50%; border: 0; background: transparent; color: var(--text); font-size: 28px; line-height: 1; cursor: pointer; }
+.dp-nav:active { background: var(--border); }
+.dp-graella { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; }
+.dp-graella > span { font-size: 11px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; color: var(--muted); padding: 6px 0; }
+.dp-dia {
+  aspect-ratio: 1; width: 100%; max-width: 44px; justify-self: center; border: 0; border-radius: 50%;
+  background: transparent; color: var(--text); font: inherit; font-size: 16px; cursor: pointer;
+}
+.dp-dia.fora { color: color-mix(in srgb, var(--muted) 55%, transparent); }
+.dp-dia.avui { box-shadow: inset 0 0 0 1.5px var(--qui); font-weight: 700; }
+.dp-dia.triat { background: var(--qui); color: #1A1A1A; font-weight: 800; box-shadow: none; }
+.dp-dia:disabled { color: color-mix(in srgb, var(--muted) 35%, transparent); cursor: default; }
+.dp-peu { display: flex; justify-content: space-between; align-items: center; padding: 8px 6px 2px; }
+.dp-peu .enllac { font-size: 15px; font-weight: 700; }
