@@ -727,3 +727,10 @@ body.mode-inici main { padding-top: 0; padding-bottom: 0; }
 .portada-data { font-weight: 500; }
 .portada-data { margin-bottom: 66px; }
 @media (max-height: 700px) { .portada-data { margin-bottom: 44px; } }
+
+/* Ajustos: un calendari subscrit per etiqueta */
+.cal-etqs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 10px 0; }
+.cal-etq { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1.5px solid color-mix(in srgb, var(--c) 45%, transparent);
+  border-radius: 12px; background: var(--surface); color: var(--c); font: inherit; font-weight: 700; text-align: left; cursor: pointer; }
+.cal-etq .punt { width: 12px; height: 12px; }
+.cal-etq.fet { background: color-mix(in srgb, var(--c) 12%, var(--surface)); }

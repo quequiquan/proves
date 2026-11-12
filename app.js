@@ -354,7 +354,7 @@ function snapshotPla(p, em) {
   const t = tip(p.tipusId);
   const amb = [nomPropi(), ...(p.qui || []).map(pers).filter((x) => x && normal(x.email) !== em).map((x) => x.nom)];
   return {
-    tipusNom: t.nom, emoji: t.emoji, icona: iconaDe(t), color: t.color, titol: p.titol || '', amb, data: p.data,
+    tipusId: t.id, tipusNom: t.nom, emoji: t.emoji, icona: iconaDe(t), color: t.color, titol: p.titol || '', amb, data: p.data,
     hora: p.totElDia ? '' : p.hora || '', horaFi: p.totElDia ? '' : p.horaFi || '', totElDia: Boolean(p.totElDia),
     lloc: p.lloc || '', llocUrl: p.llocUrl || '', estat: p.estat || 'confirmat', versio: p.versio || 1,
     dataFi: p.dataFi || '', repeteix: p.repeteix || '', repeteixFins: p.repeteixFins || '',
@@ -871,12 +871,17 @@ function vistaAjustos() {
     </div>
     ${sync()?.disponible ? `<div class="section" id="seccioCal">
       <h2>Calendari de l'iPhone</h2>
-      <p class="help">Fes-ho <b>una sola vegada</b>: el calendari de l'iPhone se subscriu a la teva agenda i hi apareixen sols
-        tots els plans i els <b>aniversaris</b> dels contactes (cada any, amb un avís el mateix dia). S'actualitza sol, sense preguntar res.</p>
+      <p class="help">Un calendari per a cada etiqueta, perquè a l'iPhone cadascun tingui <b>el seu color</b>. Toca-les <b>una a una</b>
+        i, a cada una, «Subscriure't»; després, a l'iPhone, tria-li el color. Els <b>aniversaris</b> dels contactes van a «Aniversaris».
+        S'actualitzen sols, sense preguntar res.</p>
       ${usuari()
-        ? `<div class="grp">
-            <button class="btn primary" id="calSubscriu">Afegeix l'agenda al calendari de l'iPhone</button>
-            <button class="btn" id="calCopia">Copia l'enllaç (Google, Outlook…)</button>
+        ? `<div class="cal-etqs">
+            ${principals().map((t) => `<button class="cal-etq" data-calg="${esc(t.id)}" style="--c:${esc(t.color)}"><i class="punt"></i>${esc(t.nom.split(' / ')[0])}</button>`).join('')}
+            <button class="cal-etq" data-calg="resta" style="--c:#868E96"><i class="punt"></i>Altres</button>
+          </div>
+          <p class="help">Si abans t'havies subscrit a l'agenda sencera, esborra-la de l'iPhone (Calendari → Calendaris → ⓘ → Eliminar el calendari), o els plans sortiran dues vegades.</p>
+          <div class="grp">
+            <button class="btn" id="calCopia">Copia l'enllaç de l'agenda sencera (Google, Outlook…)</button>
           </div>
           <details class="ajuda"><summary>Més informació</summary>
             <p>Els canvis poden trigar una estona a sortir a l'iPhone (normalment menys d'una hora). Per fer-ho més ràpid:
@@ -1366,12 +1371,13 @@ $('#main').addEventListener('click', (e) => {
 
 /* ---------- Ajustos: subscripció al calendari ---------- */
 $('#main').addEventListener('click', async (e) => {
-  const b = e.target.closest('#calSubscriu, #calCopia, #calNou');
+  const b = e.target.closest('#calSubscriu, #calCopia, #calNou, [data-calg]');
   if (!b) return;
   if (b.id === 'calNou' && !confirm("Fer un enllaç nou? L'antic deixarà de funcionar i t'hauràs de tornar a subscriure des de l'iPhone.")) return;
   try {
     const en = await sync().enllacCalendari(b.id === 'calNou');
     if (b.id === 'calSubscriu') { location.href = en.webcal; return; }
+    if (b.dataset.calg) { location.href = en.webcal + '&g=' + encodeURIComponent(b.dataset.calg); b.classList.add('fet'); return; }
     if (b.id === 'calNou') { toast('Enllaç nou creat. Torna a prémer «Afegeix l\'agenda…»'); return; }
     try { await navigator.clipboard.writeText(en.https); toast('Enllaç copiat'); }
     catch (x) { prompt('Copia aquest enllaç:', en.https); }
