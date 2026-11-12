@@ -302,7 +302,7 @@ function plansExterns() {
     if (ev.cancellat) return;
     out.push({
       id: 'ext|' + c.id + '|' + ev.uid, extern: c, data: ev.data, hora: ev.hora, horaFi: ev.horaFi, totElDia: ev.totElDia,
-      titol: ev.titol, lloc: ev.lloc, notes: ev.notes, estat: 'confirmat', qui: [], _amb: [],
+      titol: String(ev.titol || '').replace(/^[\p{Extended_Pictographic}️\s]+/u, '') || ev.titol, lloc: ev.lloc, notes: ev.notes, estat: 'confirmat', qui: [], _amb: [],
       _t: { nom: c.nom, color: c.color || '#2F9E44' },
     });
   }));
@@ -397,7 +397,7 @@ const PALETA = [
   '#E03131', '#F76707', '#F08C00', '#FAB005', '#FFD43B', '#94D82D', '#66A80F', '#2F9E44',
   '#0CA678', '#12B886', '#15AABF', '#1098AD', '#228BE6', '#1C7ED6', '#4263EB', '#5C7CFA',
   '#7048E8', '#7950F2', '#9C36B5', '#BE4BDB', '#E64980', '#F06595', '#C2255C', '#E8738A',
-  '#A0522D', '#8D6E63', '#495057', '#868E96',
+  '#A0522D', '#8D6E63', '#495057', '#868E96', '#1A1A1A',
 ];
 const botoColor = (color, attrs) => `<button type="button" class="emoji-btn" aria-label="Tria el color" style="--c:${esc(color)}"><span class="punt"></span></button><input type="hidden" ${attrs} value="${esc(color)}">`;
 let botoEmojiActiu = null;
