@@ -635,3 +635,30 @@ body.mode-inici .top .nou { display: none; }   /* a la portada ja hi ha el botó
 .det .respostes { margin: 0; padding: 0; list-style: none; }
 .det .respostes li { border: 0; padding: 2px 0; }
 @media (max-width: 380px) { .det li > span.et { width: 70px; } }
+
+/* «Quan»: graella de 3 columnes (inici a dalt, final a sota), totes de la mateixa mida */
+.quan-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 8px; }
+.quan-grid label { min-width: 0; font-size: 13px; font-weight: 700; color: var(--muted); display: flex; flex-direction: column; gap: 3px; }
+.quan-grid input, .quan-grid select { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; height: 46px; min-height: 46px; margin: 0; }
+.quan-grid input[type="date"], .quan-grid input[type="time"] { -webkit-appearance: none; appearance: none; display: block; text-align: center; padding-left: 4px; padding-right: 4px; }
+.quan-grid input::-webkit-date-and-time-value { text-align: center; }
+.quan-grid select { padding-left: 8px; padding-right: 22px; text-overflow: ellipsis; }
+.quan-grid .tot-dia-caixa {
+  display: flex; align-items: center; gap: 8px; height: 46px; padding: 0 10px; box-sizing: border-box;
+  border: 1px solid var(--border); border-radius: 12px; background: var(--surface, #fff);
+  color: var(--text); font-weight: 600; font-size: 14px; cursor: pointer; white-space: nowrap;
+}
+.quan-grid .tot-dia-caixa input { width: 18px; height: 18px; min-height: 0; flex: none; }
+@media (max-width: 400px) {
+  .quan-grid { gap: 10px 6px; }
+  .quan-grid .tot-dia-caixa { padding: 0 8px; font-size: 13px; gap: 6px; }
+}
+.quan-grid input::-webkit-calendar-picker-indicator { margin: 0; padding: 0; width: 14px; height: 14px; }
+@media (hover: hover) and (pointer: fine) { .quan-grid input, .quan-grid select { font-size: 14px; } }
+@media (pointer: coarse) {
+  .quan-grid input::-webkit-calendar-picker-indicator { display: none; }
+  .quan-grid input[type="date"], .quan-grid input[type="time"] { padding-left: 2px; padding-right: 2px; letter-spacing: -.2px; }
+}
+#dlgForm .quan-grid { grid-template-columns: minmax(0, 1.2fr) minmax(0, .85fr) minmax(0, 1fr); }
+#dlgForm .quan-grid input[type="date"], #dlgForm .quan-grid input[type="time"] { padding-left: 4px; padding-right: 4px; }
+#dlgForm .quan-grid select { padding-left: 6px; padding-right: 16px; background-position: right 4px center; }

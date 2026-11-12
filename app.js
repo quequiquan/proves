@@ -72,14 +72,17 @@ const TIPUS_INICIALS = [
 ];
 // Les 6 etiquetes principals: surten sempre al formulari, amb colors vius i ben diferents.
 // La resta queden al desplegable «Més tipus». (Es poden canviar a Ajustos, amb la ★.)
-const VERSIO_PRINCIPALS = 1;
+const VERSIO_PRINCIPALS = 2;
 const PRINCIPALS = [
   { id: 't-social', nom: 'Social', color: '#F76707', paraules: ['social', 'sopar', 'dinar', 'esmorzar', 'berenar', 'vermut', 'cafe', 'trobada', 'amics', 'festa', 'calcotada', 'barbacoa', 'copa', 'casament', 'bateig', 'comunio'] },
-  { id: 't-personal', nom: 'Personal', color: '#1C7ED6', paraules: ['personal', 'metge', 'doctor', 'dentista', 'revisio', 'analitica', 'perruqueria', 'compres', 'gestio', 'banc', 'gimnas', 'esport', 'entrenament', 'ioga', 'fisio'] },
+  { id: 't-personal', nom: 'Personal', color: '#1C7ED6', paraules: ['personal', 'perruqueria', 'compres', 'gestio', 'banc', 'gimnas', 'esport', 'entrenament', 'ioga', 'pilates'] },
   { id: 't-podcast', nom: 'Podcast', color: '#7048E8', paraules: ['podcast', 'gravacio', 'entrevista', 'episodi', 'programa'] },
   { id: 't-escapada', nom: 'Escapades', color: '#2B8A3E', paraules: ['escapada', 'escapades', 'viatge', 'vacances', 'cap de setmana', 'excursio', 'ruta'] },
   { id: 't-botifarra', nom: 'Botifarra', color: '#E03131', paraules: ['botifarra', 'partida', 'cartes', 'campionat', 'torneig'] },
   { id: 't-aniversari', nom: 'Aniversaris', color: '#D6336C', paraules: ['aniversari', 'aniversaris', 'celebracio', 'sant'] },
+  { id: 't-oci', nom: 'Oci', color: '#E8A400', des: 2, paraules: ['oci', 'cinema', 'cine', 'pel licula', 'teatre', 'concert', 'museu', 'exposicio', 'festival', 'espectacle', 'musical', 'opera'] },
+  { id: 't-reunio', nom: 'Reunió', color: '#495057', des: 2, paraules: ['reunio', 'assemblea', 'junta', 'comunitat', 'tutoria', 'escola', 'consell', 'comissio'] },
+  { id: 't-salut', nom: 'Salut', color: '#0C8599', des: 2, paraules: ['salut', 'metge', 'metgessa', 'doctor', 'doctora', 'dentista', 'revisio', 'analitica', 'analisi', 'fisio', 'fisioterapeuta', 'hospital', 'cap', 'vacuna', 'oculista', 'ginecoleg', 'farmacia'] },
 ];
 // Les principals són les del grup «Principals» (a Ajustos s'hi poden posar o treure, i ordenar amb ▲ ▼)
 const principals = () => tipusOrdenats().filter((t) => grupDe(t) === 'principals');
@@ -94,9 +97,10 @@ function endevinaTipus(titol) {
   }
   return state.tipus.find((t) => grupDe(t) !== 'principals' && te(nomCurt(t))) || null;
 }
-const ambPrincipals = (llista) => {
+const ambPrincipals = (llista, desDe = 0) => {
   const out = llista.map((t) => ({ ...t }));
-  PRINCIPALS.forEach(({ paraules, ...pr }, i) => {
+  PRINCIPALS.forEach(({ paraules, des = 1, ...pr }, i) => {
+    if (des <= desDe) return;   // ja hi era: no es toca (pot tenir colors o ordre canviats)
     const t = out.find((x) => x.id === pr.id);
     if (t) Object.assign(t, pr, { grup: 'principals', ordre: i - 100 });
     else out.push({ ...pr, emoji: '', grup: 'principals', ordre: i - 100 });
@@ -177,7 +181,7 @@ function actualitzaCategories() {
 // passen a «Escapades» i «Aniversaris», i els seus plans no canvien)
 function actualitzaPrincipals() {
   if ((state.ajustos.principals || 0) >= VERSIO_PRINCIPALS) return;
-  state.tipus = ambPrincipals(state.tipus);
+  state.tipus = ambPrincipals(state.tipus, state.ajustos.principals || 0);
   state.ajustos.principals = VERSIO_PRINCIPALS;
 }
 // En sortir del compte (o si entra una altra persona en aquest dispositiu) es comença de zero
@@ -1668,16 +1672,15 @@ function obreForm(p, base = {}) {
       altres = totes().filter((pe) => !d.qui.includes(pe.id) && normal([pe.nom, pe.tel, pe.email].join(' ')).includes(q))
         .sort((a, b) => (normal(b.nom).startsWith(q) - normal(a.nom).startsWith(q)) || a.nom.localeCompare(b.nom, 'ca')).slice(0, 30);
     } else {
-      altres = totes().filter((pe) => !d.qui.includes(pe.id) && usos(pe.id) > 0)
-        .sort((a, b) => (usos(b.id) - usos(a.id)) || a.nom.localeCompare(b.nom, 'ca')).slice(0, 8);
+      altres = [];
     }
     const boto = (pe) => `<button type="button" class="xip" data-qui="${esc(pe.id)}" aria-pressed="${d.qui.includes(pe.id)}">${esc(pe.nom)}</button>`;
     const exacte = q && totes().some((pe) => normal(pe.nom) === q);
     // A dalt, qui ve al pla (groc). A sota, separades, les dreceres per afegir-ne més amb un toc
-    const rotol = altres.length ? `<div class="qui-rotol">${q ? 'Toca per afegir:' : (triades.length ? 'Afegeix-ne amb un toc:' : 'Els habituals (toca per afegir):')}</div>` : '';
+    const rotol = altres.length && triades.length ? '<div class="qui-rotol">Toca per afegir:</div>' : '';
     return (triades.map(boto).join('') + rotol + altres.map((pe) => boto(pe).replace('class="xip"', 'class="xip suggerit"')).join(''))
       + (q && !exacte ? `<button type="button" class="xip xip-nou" id="quiAfegeix">+ Afegeix «${esc($('#quiNou').value.trim())}»</button>` : '')
-      || `<span class="help">${totes().length ? 'Escriu per cercar entre els teus contactes.' : 'Encara no hi ha ningú: escriu un nom per afegir-lo.'}</span>`;
+      || '';
   };
   // Tipus agrupats (Àpats i trobades, Cultura i lleure…), amb el nom del grup a sobre
   // Persones de «Qui» amb correu: rebran el pla a la seva app quan es desi
@@ -1713,18 +1716,16 @@ function obreForm(p, base = {}) {
         <input name="titol" value="${esc(d.titol)}" placeholder="Què faràs? Escriu-ho com vulguis" autocomplete="off">
       </fieldset>
       <fieldset><legend><span class="w-quan">Quan</span></legend>
-        <div class="fila">
+        <div class="quan-grid">
           <label>Dia<input type="date" name="data" value="${esc(d.data)}" required></label>
           <label>Hora<input type="time" name="hora" value="${esc(d.hora || '')}" ${d.totElDia ? 'disabled' : ''}></label>
+          <label>Es repeteix<select name="repeteix">${REPETICIONS.map(([v, n]) => `<option value="${v}"${(d.repeteix || '') === v ? ' selected' : ''}>${({ '': 'No', setmana: 'Setmanal', mes: 'Mensual', any: 'Anual' })[v] || n}</option>`).join('')}</select></label>
+          <label>Fins al dia<input type="date" name="dataFi" value="${esc(d.dataFi || '')}"></label>
           <label>Fins a<input type="time" name="horaFi" value="${esc(d.horaFi || '')}" ${d.totElDia ? 'disabled' : ''}></label>
-        </div>
-        <div class="fila fila2">
-          <label>Fins al dia <small>(si dura més d'un dia)</small><input type="date" name="dataFi" value="${esc(d.dataFi || '')}"></label>
-          <label>Es repeteix<select name="repeteix">${REPETICIONS.map(([v, n]) => `<option value="${v}"${(d.repeteix || '') === v ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
+          <label class="tot-dia"><span>&nbsp;</span><span class="tot-dia-caixa"><input type="checkbox" name="totElDia" ${d.totElDia ? 'checked' : ''}> Tot el dia</span></label>
         </div>
         <label class="camp rep-fins" ${d.repeteix ? '' : 'hidden'}>Fins quan es repeteix <small>(opcional; si no hi poses res, sempre)</small>
           <input type="date" name="repeteixFins" value="${esc(d.repeteixFins || '')}"></label>
-        <label class="check"><input type="checkbox" name="totElDia" ${d.totElDia ? 'checked' : ''}> Tot el dia</label>
       </fieldset>
       <fieldset><legend><span class="w-qui">Qui</span></legend>
         <div class="afegeix"><input id="quiNou" type="search" placeholder="Cerca o afegeix una persona" autocomplete="off" enterkeyhint="done">${potContactes() ? '<button type="button" class="btn" id="quiContactes" aria-label="Tria dels contactes"><span class="ms">contacts</span></button>' : ''}</div>
