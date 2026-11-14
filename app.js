@@ -735,6 +735,8 @@ function festiusAny(y) {
   return tot;
 }
 const festiu = (ds) => festiusAny(Number(ds.slice(0, 4)))[ds.slice(5)] || '';
+// Diumenges i festius: casella en vermell
+const esFestiu = (ds) => Boolean(festiu(ds)) || parseYmd(ds).getDay() === 0;
 
 function vistaCalendari() {
   const mode = ui.calMode;
@@ -767,7 +769,7 @@ function vistaCalendari() {
       : `${dl.getDate()} ${MESOS[dl.getMonth()].slice(0, 3)}. – ${dg.getDate()} ${MESOS[dg.getMonth()].slice(0, 3)}.`;
     cos = '<div class="vista-setmana">' + Array.from({ length: 7 }, (_, i) => {
       const d = addDays(dl, i), ds = ymd(d), plans = delDia(ds);
-      return `<section class="setm-dia${festiu(ds) ? ' festiu' : ''}${ds === avui() ? ' avui' : ''}">
+      return `<section class="setm-dia${esFestiu(ds) ? ' festiu' : ''}${ds === avui() ? ' avui' : ''}">
           <button class="setm-cap" data-anadia="${ds}" aria-label="Veure el dia"><b>${DIES[i]}</b><span>${d.getDate()}</span></button>
           <div class="setm-plans">${plans.map((p) => targeta(p)).join('') || `<button class="setm-buit" data-nou="${ds}">+ Afegeix</button>`}</div>
         </section>`;
@@ -784,7 +786,7 @@ function vistaCalendari() {
         if (d.getMonth() !== m) { dies += '<span></span>'; continue; }
         const ds = ymd(d), plans = delDia(ds).filter((p) => p.estat !== 'cancellat');
         const c = plans.length ? tipDe(plans[0]).color : '';
-        dies += `<button class="any-dia${plans.length ? ' te' : ''}${festiu(ds) ? ' festiu' : ''}${ds === avui() ? ' avui' : ''}" data-anadia="${ds}" ${c ? `style="--c:${esc(c)}"` : ''}>${d.getDate()}</button>`;
+        dies += `<button class="any-dia${plans.length ? ' te' : ''}${esFestiu(ds) ? ' festiu' : ''}${ds === avui() ? ' avui' : ''}" data-anadia="${ds}" ${c ? `style="--c:${esc(c)}"` : ''}>${d.getDate()}</button>`;
       }
       return `<section class="any-mes">
           <button class="any-nom" data-anames="${m}">${cap(nomMes)}</button>
@@ -802,7 +804,7 @@ function vistaCalendari() {
       const ds = ymd(d), plans = delDia(ds), fora = d.getMonth() !== c.getMonth();
       const marques = plans.slice(0, 3).map((p) => `<i class="${p.estat === 'cancellat' ? 'canc' : ''}" style="--c:${esc(tipDe(p).color)}">${ico(tipDe(p))}</i>`).join('')
         + (plans.length > 3 ? `<em>+${plans.length - 3}</em>` : '');
-      cel += `<button class="cel${fora ? ' fora' : ''}${festiu(ds) ? ' festiu' : ''}${ds === avui() ? ' avui' : ''}${ds === ui.diaSel ? ' sel' : ''}" data-dia="${ds}">
+      cel += `<button class="cel${fora ? ' fora' : ''}${esFestiu(ds) ? ' festiu' : ''}${ds === avui() ? ' avui' : ''}${ds === ui.diaSel ? ' sel' : ''}" data-dia="${ds}">
         <span class="num">${d.getDate()}</span><span class="marques">${marques}</span></button>`;
     }
     const delSel = delDia(ui.diaSel);
