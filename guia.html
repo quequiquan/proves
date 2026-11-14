@@ -133,6 +133,22 @@ section.final h2 { font-size: clamp(24px, 4vw, 30px); }
   .cap svg { width: 72px; height: 72px; }
 }
 @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+/* Per imprimir: A4, cada apartat sencer en una pàgina, sense l'índex ni l'enllaç de tornada */
+@page { size: A4; margin: 12mm 12mm 14mm; }
+@media print {
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-size: 13px; background: #fff; }
+  .wrap { max-width: none; padding: 0; }
+  .index, .torna { display: none !important; }
+  .cap { padding-bottom: 16px; }
+  section.ap, section.ap:nth-of-type(even) { grid-template-columns: minmax(0, 1fr) 230px; gap: 24px; padding: 20px 0; break-inside: avoid; }
+  section.ap:nth-of-type(even) .text { order: 0; }
+  .mobil { max-width: 230px; box-shadow: none; border-width: 7px; }
+  .m-cos { min-height: 0; }
+  section.ap h2, section.final h2 { font-size: 22px; }
+  section.final { break-before: page; padding-top: 0; }
+  .dubtes details { break-inside: avoid; }
+}
 </style>
 </head>
 <body>
@@ -522,13 +538,13 @@ section.final h2 { font-size: clamp(24px, 4vw, 30px); }
     <div class="dubtes">
       <details open><summary>No em surt un canvi nou de l'app</summary>
         <p>Tanca l'app del tot (llisca-la cap amunt al selector d'apps) i torna-la a obrir. A vegades cal fer-ho dues vegades.</p></details>
-      <details><summary>Un pla no surt a l'agenda de l'iPhone</summary>
+      <details open><summary>Un pla no surt a l'agenda de l'iPhone</summary>
         <p>A l'app Calendari de l'iPhone, toca Calendaris i arrossega la llista cap avall. Comprova també que estàs subscrit al calendari de l'etiqueta d'aquest pla.</p></details>
-      <details><summary>Els plans em surten dues vegades a l'iPhone</summary>
+      <details open><summary>Els plans em surten dues vegades a l'iPhone</summary>
         <p>Tens encara la subscripció antiga a l'agenda sencera. Esborra-la: Calendari → Calendaris → ⓘ al costat de «Què · Qui · Quan» → Eliminar el calendari.</p></details>
-      <details><summary>Les alertes dels aniversaris no sonen</summary>
+      <details open><summary>Les alertes dels aniversaris no sonen</summary>
         <p>A cada calendari subscrit (Calendaris → ⓘ), desactiva «Elimina les alertes».</p></details>
-      <details><summary>He canviat de mòbil o he perdut els plans</summary>
+      <details open><summary>He canviat de mòbil o he perdut els plans</summary>
         <p>Entra amb el mateix correu a Ajustos → Compte i es recuperen del núvol. Si no hi tenies compte, fes servir la còpia de seguretat.</p></details>
     </div>
   </section>
