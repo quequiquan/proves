@@ -94,6 +94,14 @@ h2, h3 { font-family: var(--font-title); font-weight: 600; margin: 0; }
 .sync-pill[data-estat="error"] svg, .sync-pill[data-estat="clau-dolenta"] svg { stroke: #FF7A69; }
 .sync-pill[data-estat="sync"] svg { animation: batec 1s ease-in-out infinite; }
 @keyframes batec { 50% { opacity: .3; } }
+/* Botó «?» de la capçalera: obre la guia d'ús */
+.ajuda-btn {
+  flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+  background: rgba(255, 255, 255, .1); color: inherit; text-decoration: none;
+  font-family: var(--font-title); font-weight: 600; font-size: 17px; line-height: 1;
+}
+.ajuda-btn:hover, .ajuda-btn:focus-visible { background: rgba(255, 255, 255, .2); outline: none; }
+body.mode-entrada .ajuda-btn { display: grid; }
 
 /* ---------- Botons ---------- */
 .btn {
@@ -274,8 +282,9 @@ fieldset > input { margin-top: 8px; }
   .top { padding: calc(8px + var(--safe-t)) 16px 8px; }
   .brand-nom b { font-size: 19px; }
   .logo { width: 30px; height: 30px; }
-  .sync-pill { margin-left: auto; }
+  .sync-pill { margin-left: 8px; }
   .sync-pill span { display: none; }
+  .ajuda-btn { margin-left: auto; }
   .tabs {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; margin: 0;
     background: var(--head-bg); justify-content: space-around; padding: 6px 4px calc(6px + var(--safe-b));
