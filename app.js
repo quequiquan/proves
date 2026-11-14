@@ -712,7 +712,7 @@ const FESTIUS_OFICIALS = {
     '12-08': 'La Immaculada', '12-25': 'Nadal' },
 };
 // Festius locals de Girona
-const FESTIUS_GIRONA = { '10-29': 'Sant Narcís (Girona)' };
+const FESTIUS_GIRONA = { '07-25': 'Sant Jaume (Girona)', '10-29': 'Sant Narcís (Girona)' };
 // Diumenge de Pasqua (càlcul de Gauss/Butcher)
 function pasqua(y) {
   const a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25);
