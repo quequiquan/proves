@@ -768,3 +768,11 @@ body.mode-inici main { padding-top: 0; padding-bottom: 0; }
 .setm-dia.festiu:not(.avui) .setm-cap b, .setm-dia.festiu:not(.avui) .setm-cap span { color: #E03131; }
 .any-dia.festiu:not(.te) { color: #E03131; font-weight: 800; }
 .festiu-nom { display: inline-block; margin-left: 6px; font-size: 13px; font-weight: 700; color: #E03131; }
+
+/* Ajustos: persones convidades */
+.convidats { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 6px; }
+.convidats li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.convidats li span { display: flex; flex-direction: column; min-width: 0; }
+.convidats li small { color: var(--muted); overflow-wrap: anywhere; }
+#formConvida { flex-wrap: wrap; }
+#formConvida input { flex: 1 1 160px; min-width: 0; }

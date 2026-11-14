@@ -247,6 +247,8 @@ const usos = (pid) => state.plans.filter((p) => (p.qui || []).includes(pid)).len
 
 const sync = () => (typeof Sync !== 'undefined' ? Sync : null);
 const usuari = () => sync()?.usuari() || null;
+// Si el compte és l'administrador de la llista de convidats (es mira en obrir Ajustos)
+const admin = { es: false, mirat: '', llista: null };
 const nomPropi = () => (state.ajustos.nom || '').trim() || (usuari()?.email || '').split('@')[0] || 'Algú';
 function planRebut(r) {
   const s = r.pla || {};
@@ -900,6 +902,7 @@ function vistaGent() {
 
 /* ---------- Vista: Ajustos ---------- */
 function vistaAjustos() {
+  if (usuari() && admin.mirat !== usuari().id) setTimeout(() => carregaAdmin(), 0);
   const files = GRUPS.map(([g, nomG]) => {
     const ts = tipusOrdenats().filter((t) => grupDe(t) === g);
     if (!ts.length) return '';
@@ -934,6 +937,20 @@ function vistaAjustos() {
       </form>
       ${externs().length ? '<button class="btn" id="extActualitza">Actualitza ara</button>' : ''}
     </div>
+    ${usuari() && admin.es ? `<div class="section" id="seccioConvidats">
+      <h2>Qui pot fer servir l'app</h2>
+      <p class="help">Només les persones d'aquesta llista es poden crear un compte. Encara que l'enllaç corri, qui no hi sigui no podrà entrar.
+        Afegeix el correu de la persona i després envia-li l'enllaç <b>quequiquan.github.io</b>.</p>
+      <form class="barra" id="formConvida">
+        <input name="email" type="email" inputmode="email" placeholder="Correu de la persona" autocomplete="off" required>
+        <input name="nom" placeholder="Nom (opcional)" autocomplete="off">
+        <button class="btn primary">Convida</button>
+      </form>
+      ${admin.llista ? `<ul class="convidats">${admin.llista.map((c) => `<li><span><b>${esc(c.nom || c.email.split('@')[0])}</b><small>${esc(c.email)}</small></span>
+        ${normal(c.email) === normal(usuari().email) ? '<small>Tu</small>' : `<button class="enllac" data-desconvida="${esc(c.email)}">Treu</button>`}</li>`).join('')}</ul>
+        <p class="help">${admin.llista.length} persones a la llista. Treure algú evita que es pugui crear un compte; si ja en tenia un, el conserva.</p>`
+        : '<p class="help">Carregant la llista…</p>'}
+    </div>` : ''}
     ${sync()?.disponible ? `<div class="section" id="seccioCal">
       <h2>Calendari de l'iPhone</h2>
       <p class="help">Un calendari per a cada etiqueta, perquè a l'iPhone cadascun tingui <b>el seu color</b>. Toca-les <b>una a una</b>
@@ -1244,6 +1261,7 @@ $('#main').addEventListener('change', (e) => {
     const pe = pers(ui.persona);
     if (t.checked && !emailValid(pe.email)) { t.checked = false; toast("Primer posa el seu correu (el mateix amb què entra a l'app)"); return; }
     pe.teApp = t.checked;
+    if (t.checked) convidaEmail(pe.email, pe.nom).catch(() => {});
     const nous = t.checked ? enviaAApp() : [];
     save();
     toast(!t.checked ? 'Desat: els plans nous ja no li arribaran a la seva app'
@@ -1287,6 +1305,7 @@ $('#main').addEventListener('change', (e) => {
 });
 function errorEntrada(err) {
   const m = String(err?.message || err || '');
+  if (/NOMES_CONVIDATS|not allowed|signups? not allowed|403/i.test(m)) return "Aquesta app és només per a persones convidades. Demana a qui te l'ha passat que t'hi afegeixi i torna-ho a provar.";
   if (/rate|seconds|too many/i.test(m)) return "Massa intents seguits. Espera uns minuts i torna-ho a provar.";
   if (/expired|invalid|token/i.test(m)) return 'El codi no és correcte o ha caducat. Torna-ho a provar.';
   if (!navigator.onLine) return 'No hi ha connexió a internet.';
@@ -1457,6 +1476,44 @@ $('#main').addEventListener('click', (e) => {
     save(); render(); return;
   }
   if (e.target.closest('#extActualitza')) { toast('Llegint…'); actualitzaExterns(true); }
+});
+
+/* ---------- Ajustos: persones convidades ---------- */
+async function carregaAdmin(forca = false) {
+  const u = usuari();
+  if (!u) { admin.es = false; admin.mirat = ''; admin.llista = null; return; }
+  if (!forca && admin.mirat === u.id) return;
+  admin.mirat = u.id;
+  admin.es = await sync().esAdmin();
+  admin.llista = null;
+  if (admin.es) { try { admin.llista = await sync().convidats(); } catch (e) { admin.llista = []; } }
+  if (ui.view === 'ajustos') render();
+}
+async function convidaEmail(email, nom = '') {
+  if (!admin.es || !emailValid(email)) return false;
+  if ((admin.llista || []).some((c) => normal(c.email) === normal(email))) return false;
+  await sync().convida(email, nom);
+  admin.llista = await sync().convidats();
+  return true;
+}
+$('#main').addEventListener('submit', async (e) => {
+  if (e.target.id !== 'formConvida') return;
+  e.preventDefault();
+  const f = e.target, email = f.email.value.trim().toLowerCase(), nom = f.nom.value.trim();
+  if (!emailValid(email)) { toast('Aquest correu no sembla correcte'); return; }
+  try {
+    const nou = await convidaEmail(email, nom);
+    toast(nou ? `${nom || email} ja pot entrar a l'app` : 'Aquesta persona ja hi era');
+    render();
+  } catch (err) { toast(navigator.onLine ? "No s'ha pogut afegir. Torna-ho a provar." : 'Cal connexió a internet.'); }
+});
+$('#main').addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-desconvida]');
+  if (!b) return;
+  const email = b.dataset.desconvida;
+  if (b.dataset.segur !== '1') { b.dataset.segur = '1'; b.textContent = 'Segur? Toca per treure'; return; }
+  try { await sync().desconvida(email); admin.llista = await sync().convidats(); toast('Tret de la llista'); render(); }
+  catch (err) { toast("No s'ha pogut treure. Torna-ho a provar."); }
 });
 
 /* ---------- Ajustos: subscripció al calendari ---------- */

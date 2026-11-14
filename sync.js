@@ -352,8 +352,29 @@ const Sync = (() => {
     return { https, webcal: https.replace(/^https:/, 'webcal:') };
   }
 
+  /* ---------- Persones convidades (només les gestiona l'administrador) ---------- */
+  async function esAdmin() {
+    if (!sb || !usuari) return false;
+    const { data, error } = await sb.rpc('es_admin');
+    if (error) return false;   // encara no hi ha la taula a Supabase
+    return data === true;
+  }
+  async function convidats() {
+    const { data, error } = await sb.from('convidats').select('email,nom,afegit').order('afegit', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  }
+  async function convida(email, nom = '') {
+    const { error } = await sb.from('convidats').upsert({ email: email.trim().toLowerCase(), nom }, { onConflict: 'email' });
+    if (error) throw error;
+  }
+  async function desconvida(email) {
+    const { error } = await sb.from('convidats').delete().eq('email', email);
+    if (error) throw error;
+  }
+
   return {
-    enllacCalendari,
+    enllacCalendari, esAdmin, convidats, convida, desconvida,
     disponible,
     usuari: () => usuari,
     // Abans de saber si hi ha sessió: n'hi ha alguna de guardada en aquest dispositiu?
