@@ -701,6 +701,41 @@ function vistaPropers() {
 /* ---------- Vista: Calendari (dia, setmana o mes) ---------- */
 const MODES = [['dia', 'Dia'], ['setmana', 'Setmana'], ['mes', 'Mes'], ['any', 'Any']];
 const apostrof = (txt) => txt.replace(/de ([aeiou])/g, "d'$1");
+/* ---------- Festius de Catalunya i de Girona (es pinten en vermell al calendari) ---------- */
+// Calendaris oficials de la Generalitat (Ordre EMT/66/2025 per al 2026 i EMT/52/2026 per al 2027)
+const FESTIUS_OFICIALS = {
+  2026: { '01-01': "Cap d'Any", '01-06': 'Reis', '04-03': 'Divendres Sant', '04-06': 'Dilluns de Pasqua', '05-01': 'Festa del Treball',
+    '06-24': 'Sant Joan', '08-15': "L'Assumpció", '09-11': 'Diada Nacional', '10-12': 'Festa Nacional d\'Espanya', '12-08': 'La Immaculada',
+    '12-25': 'Nadal', '12-26': 'Sant Esteve' },
+  2027: { '01-01': "Cap d'Any", '01-06': 'Reis', '03-26': 'Divendres Sant', '03-29': 'Dilluns de Pasqua', '05-01': 'Festa del Treball',
+    '06-24': 'Sant Joan', '09-11': 'Diada Nacional', '10-12': 'Festa Nacional d\'Espanya', '11-01': 'Tots Sants', '12-06': 'La Constitució',
+    '12-08': 'La Immaculada', '12-25': 'Nadal' },
+};
+// Festius locals de Girona
+const FESTIUS_GIRONA = { '10-29': 'Sant Narcís (Girona)' };
+// Diumenge de Pasqua (càlcul de Gauss/Butcher)
+function pasqua(y) {
+  const a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451);
+  return new Date(y, Math.floor((h + l - 7 * m + 114) / 31) - 1, ((h + l - 7 * m + 114) % 31) + 1);
+}
+const _festius = new Map();
+function festiusAny(y) {
+  if (_festius.has(y)) return _festius.get(y);
+  let f = FESTIUS_OFICIALS[y];
+  if (!f) {   // anys sense calendari oficial: els festius habituals de Catalunya
+    const p = pasqua(y), md = (d) => ymd(d).slice(5);
+    f = { '01-01': "Cap d'Any", '01-06': 'Reis', [md(addDays(p, -2))]: 'Divendres Sant', [md(addDays(p, 1))]: 'Dilluns de Pasqua',
+      '05-01': 'Festa del Treball', '06-24': 'Sant Joan', '08-15': "L'Assumpció", '09-11': 'Diada Nacional', '10-12': "Festa Nacional d'Espanya",
+      '11-01': 'Tots Sants', '12-06': 'La Constitució', '12-08': 'La Immaculada', '12-25': 'Nadal', '12-26': 'Sant Esteve' };
+  }
+  const tot = { ...f, ...FESTIUS_GIRONA };
+  _festius.set(y, tot);
+  return tot;
+}
+const festiu = (ds) => festiusAny(Number(ds.slice(0, 4)))[ds.slice(5)] || '';
+
 function vistaCalendari() {
   const mode = ui.calMode;
   const sel = parseYmd(ui.diaSel);
@@ -732,7 +767,7 @@ function vistaCalendari() {
       : `${dl.getDate()} ${MESOS[dl.getMonth()].slice(0, 3)}. – ${dg.getDate()} ${MESOS[dg.getMonth()].slice(0, 3)}.`;
     cos = '<div class="vista-setmana">' + Array.from({ length: 7 }, (_, i) => {
       const d = addDays(dl, i), ds = ymd(d), plans = delDia(ds);
-      return `<section class="setm-dia${ds === avui() ? ' avui' : ''}">
+      return `<section class="setm-dia${festiu(ds) ? ' festiu' : ''}${ds === avui() ? ' avui' : ''}">
           <button class="setm-cap" data-anadia="${ds}" aria-label="Veure el dia"><b>${DIES[i]}</b><span>${d.getDate()}</span></button>
           <div class="setm-plans">${plans.map((p) => targeta(p)).join('') || `<button class="setm-buit" data-nou="${ds}">+ Afegeix</button>`}</div>
         </section>`;
@@ -749,7 +784,7 @@ function vistaCalendari() {
         if (d.getMonth() !== m) { dies += '<span></span>'; continue; }
         const ds = ymd(d), plans = delDia(ds).filter((p) => p.estat !== 'cancellat');
         const c = plans.length ? tipDe(plans[0]).color : '';
-        dies += `<button class="any-dia${plans.length ? ' te' : ''}${ds === avui() ? ' avui' : ''}" data-anadia="${ds}" ${c ? `style="--c:${esc(c)}"` : ''}>${d.getDate()}</button>`;
+        dies += `<button class="any-dia${plans.length ? ' te' : ''}${festiu(ds) ? ' festiu' : ''}${ds === avui() ? ' avui' : ''}" data-anadia="${ds}" ${c ? `style="--c:${esc(c)}"` : ''}>${d.getDate()}</button>`;
       }
       return `<section class="any-mes">
           <button class="any-nom" data-anames="${m}">${cap(nomMes)}</button>
@@ -767,13 +802,13 @@ function vistaCalendari() {
       const ds = ymd(d), plans = delDia(ds), fora = d.getMonth() !== c.getMonth();
       const marques = plans.slice(0, 3).map((p) => `<i class="${p.estat === 'cancellat' ? 'canc' : ''}" style="--c:${esc(tipDe(p).color)}">${ico(tipDe(p))}</i>`).join('')
         + (plans.length > 3 ? `<em>+${plans.length - 3}</em>` : '');
-      cel += `<button class="cel${fora ? ' fora' : ''}${ds === avui() ? ' avui' : ''}${ds === ui.diaSel ? ' sel' : ''}" data-dia="${ds}">
+      cel += `<button class="cel${fora ? ' fora' : ''}${festiu(ds) ? ' festiu' : ''}${ds === avui() ? ' avui' : ''}${ds === ui.diaSel ? ' sel' : ''}" data-dia="${ds}">
         <span class="num">${d.getDate()}</span><span class="marques">${marques}</span></button>`;
     }
     const delSel = delDia(ui.diaSel);
     cos = `<div class="cal-grid">${DIES.map((d) => `<span class="cal-dia">${d}</span>`).join('')}${cel}</div>
       <section class="dia-sel">
-        <h3>${esc(etiquetaDia(ui.diaSel))}</h3>
+        <h3>${esc(etiquetaDia(ui.diaSel))}${festiu(ui.diaSel) ? ` <span class="festiu-nom">${esc(festiu(ui.diaSel))}</span>` : ''}</h3>
         ${delSel.map((p) => targeta(p)).join('') || '<p class="buit">Cap pla aquest dia.</p>'}
         <button class="btn" data-nou="${ui.diaSel}">+ Afegeix un pla aquest dia</button>
       </section>`;
