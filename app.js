@@ -994,7 +994,7 @@ function vistaAjustos() {
     </div>
     <div class="section">
       <h2>Guia d'ús</h2>
-      <p class="help">Una guia pràctica de dues pàgines per imprimir o enviar a qui comenci a fer servir l'app.</p>
+      <p class="help">Manual visual amb totes les funcions de l'app, pas a pas. També el pots enviar a qui comenci a fer-la servir: quequiquan.github.io/guia.html</p>
       <a class="btn" href="guia.html" target="_blank" rel="noopener">Obre la guia</a>
     </div>
     <p class="versio">Què · Qui · Quan${PROVES ? ' · versió de proves' : ''}</p>`;
