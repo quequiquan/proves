@@ -1105,7 +1105,7 @@ const SATEL = [
   { id: 'compres', nom: 'Compres', color: '#2F9E44' },
   { id: 'documents', nom: 'Documents', color: '#FFC300' },
 ];
-const VISTES_GALAXIA = ['inici', 'aniversaris', 'recordatoris', 'llista', 'compres', 'memoria', 'documents'];
+const VISTES_GALAXIA = ['inici', 'aniversaris', 'recordatoris', 'llista', 'compres', 'memoria', 'documents', 'pindoles'];
 const pendentsRec = () => state.recordatoris.filter((r) => !r.fet);
 // Propers aniversaris i sants dels contactes (els dels pròxims 12 mesos, el primer avui)
 function propersAniv() {
@@ -1146,7 +1146,7 @@ function vistaInici() {
         ${SATEL.map((s, i) => `<button class="gx-sat${s.aviat ? ' aviat' : ''}" data-sat="${s.id}" style="--c:${s.color};--a:${i * 60 - 90}deg">
             <span class="gx-bola"><span class="gx-ini" aria-hidden="true">${esc(s.nom[0])}</span>${comptes[s.id] ? `<i>${comptes[s.id]}</i>` : ''}</span><span class="gx-nom">${esc(s.nom)}</span>${s.aviat ? '<small>aviat</small>' : ''}</button>`).join('')}
       </div>
-      ${typeof pindolaDelDia === 'function' ? `<p class="gx-pindola">${esc(pindolaDelDia())}</p>` : ''}
+      ${typeof pindolaDelDia === 'function' ? `<button class="gx-pindola" data-pindoles>${esc(pindolaDelDia())}</button>` : ''}
       ${inv ? `<button class="enllac portada-veure" data-anar="propers">${inv === 1 ? 'Tens 1 invitació per respondre' : `Tens ${inv} invitacions per respondre`}</button>` : ''}
     </div>`;
 }
@@ -1236,6 +1236,32 @@ function vistaMemoria() {
 }
 // Documents: fotos i PDF al núvol privat de cada persona (a l'app només hi ha el nom i una miniatura)
 const dataDoc = (iso) => { const d = new Date(iso); return isNaN(d) ? '' : `${d.getDate()} ${MESOS[d.getMonth()].slice(0, 3)}. ${d.getFullYear()}`; };
+// Píndoles: la d'avui i les dels dies anteriors, i les preferides (guardades a Ajustos, es sincronitzen)
+const preferides = () => (Array.isArray(state.ajustos.pindoles) ? state.ajustos.pindoles : []);
+function filaPindola(text, data) {
+  const fav = preferides().includes(text);
+  return `<div class="pd-fila">${data ? `<small>${esc(data)}</small>` : ''}<p>${esc(text)}</p>
+    <button class="pd-fav${fav ? ' si' : ''}" data-pdfav="${esc(text)}" aria-pressed="${fav}">${fav ? 'Preferida' : 'Marca com a preferida'}</button></div>`;
+}
+function vistaPindoles() {
+  const tab = ui.pindTab === 'pref' ? 'pref' : 'dies';
+  const pestanyes = `<div class="seg pd-seg"><button aria-pressed="${tab === 'dies'}" data-pdtab="dies">Aquests dies</button><button aria-pressed="${tab === 'pref'}" data-pdtab="pref">Preferides${preferides().length ? ' (' + preferides().length + ')' : ''}</button></div>`;
+  if (tab === 'pref') {
+    const llista = preferides().slice().reverse();
+    return capSatel('Píndoles') + pestanyes + (llista.length ? `<div class="pd-llista">${llista.map((t) => filaPindola(t, '')).join('')}</div>`
+      : '<p class="help buit">Encara no tens cap preferida. Marca les frases que més t\'agradin i les trobaràs aquí.</p>');
+  }
+  const avuiD = parseYmd(avui()), inici = new Date(avuiD.getFullYear(), 0, 1);
+  const n = Math.min(ui.pindDies || 30, Math.round((avuiD - inici) / 86400000) + 1);
+  let html = '';
+  for (let i = 0; i < n; i++) {
+    const d = addDays(avuiD, -i);
+    html += filaPindola(pindolaDelDia(d), i === 0 ? 'Avui' : i === 1 ? 'Ahir' : cap(dataLlarga(ymd(d))));
+  }
+  const queden = Math.round((avuiD - inici) / 86400000) + 1 - n;
+  return capSatel('Píndoles') + pestanyes + `<div class="pd-llista">${html}</div>`
+    + (queden > 0 ? '<div class="grp centre"><button class="btn" data-pdmes>Mostra\'n més</button></div>' : '');
+}
 function vistaDocuments() {
   const docs = state.documents.slice().sort((a, b) => String(b.creat || '').localeCompare(String(a.creat || '')));
   const entrat = Boolean(usuari());
@@ -1249,7 +1275,7 @@ function vistaDocuments() {
       : entrat ? '<p class="help buit">Encara no tens cap document.</p>' : ''}
     ${entrat ? '<p class="help doc-consell">Per escanejar diverses pàgines en un sol PDF: a l\'app <b>Arxius</b> de l\'iPhone, toca <b>···</b> → <b>Escanejar documents</b>, desa\'l i després tria\'l aquí.</p>' : ''}`;
 }
-const VISTES = { inici: vistaInici, aniversaris: vistaAniversaris, recordatoris: vistaRecordatoris, llista: vistaLlista, compres: vistaCompres, memoria: vistaMemoria, documents: vistaDocuments, propers: vistaPropers, calendari: vistaCalendari, gent: vistaGent, ajustos: vistaAjustos, entrada: vistaEntrada };
+const VISTES = { inici: vistaInici, aniversaris: vistaAniversaris, recordatoris: vistaRecordatoris, llista: vistaLlista, compres: vistaCompres, memoria: vistaMemoria, documents: vistaDocuments, pindoles: vistaPindoles, propers: vistaPropers, calendari: vistaCalendari, gent: vistaGent, ajustos: vistaAjustos, entrada: vistaEntrada };
 function render() {
   if (!VISTES[ui.view]) ui.view = 'propers';
   if (ui.view === 'entrada' && !sync()?.disponible) ui.view = 'propers';
@@ -1799,6 +1825,22 @@ $('#main').addEventListener('submit', (e) => {
   else state.memoria.push({ id: nouId('m'), titol, text, creat: ara });
   ui.memEdita = ''; save(); render();
   toast(/contrasenya|password|\bpw\b|\bpin\b/i.test(titol + ' ' + text) ? "Desat. Recorda: les contrasenyes, millor a l'app Contrasenyes de l'iPhone." : 'Desat', 4500);
+});
+
+/* ---------- Píndoles ---------- */
+$('#main').addEventListener('click', (e) => {
+  const t = e.target;
+  if (t.closest('[data-pindoles]')) { ui.view = 'pindoles'; ui.pindTab = 'dies'; ui.pindDies = 30; render(); window.scrollTo(0, 0); return; }
+  const tb = t.closest('[data-pdtab]');
+  if (tb) { ui.pindTab = tb.dataset.pdtab; render(); return; }
+  if (t.closest('[data-pdmes]')) { ui.pindDies = (ui.pindDies || 30) + 30; render(); return; }
+  const fv = t.closest('[data-pdfav]');
+  if (fv) {
+    const text = fv.dataset.pdfav, llista = preferides().filter((x) => x !== text);
+    if (llista.length === preferides().length) llista.push(text);
+    state.ajustos.pindoles = llista; save();
+    const y = window.scrollY; render(); window.scrollTo(0, y);
+  }
 });
 
 /* ---------- Documents ---------- */
