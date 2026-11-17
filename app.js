@@ -143,7 +143,7 @@ const llistaNoms = (n) => (n.length < 2 ? n.join('') : n.slice(0, -1).join(', ')
 
 /* ---------- Dades ---------- */
 function seed() {
-  return { tipus: ambPrincipals(TIPUS_INICIALS), persones: [], plans: [], recordatoris: [], llistes: [], compres: [], ajustos: { nom: '', categories: VERSIO_CATEGORIES, principals: VERSIO_PRINCIPALS } };
+  return { tipus: ambPrincipals(TIPUS_INICIALS), persones: [], plans: [], recordatoris: [], llistes: [], compres: [], memoria: [], ajustos: { nom: '', categories: VERSIO_CATEGORIES, principals: VERSIO_PRINCIPALS } };
 }
 function normalize(d) {
   const arr = (x) => (Array.isArray(x) ? x : []);
@@ -154,6 +154,7 @@ function normalize(d) {
     recordatoris: arr(d.recordatoris).filter((r) => r && r.id),
     llistes: arr(d.llistes).filter((l) => l && l.id).map((l) => ({ nom: '', ...l, items: arr(l.items).filter((i) => i && i.id) })),
     compres: arr(d.compres).filter((r) => r && r.id),
+    memoria: arr(d.memoria).filter((r) => r && r.id),
     ajustos: d.ajustos && typeof d.ajustos === 'object' ? { nom: '', ...d.ajustos } : { nom: '' },
   };
 }
@@ -1097,13 +1098,13 @@ addEventListener('resize', () => { if (ui.view === 'inici') ajustaPortada(); });
 /* ---------- Galàxia: l'Agenda al mig i les micro-apps al voltant ---------- */
 const SATEL = [
   { id: 'recordatoris', nom: 'Recordatoris', color: '#E8590C' },
-  { id: 'memoria', nom: 'Memòria', color: '#7048E8', aviat: true },
+  { id: 'memoria', nom: 'Memòria', color: '#7048E8' },
   { id: 'aniversaris', nom: 'Aniversaris', color: '#E64980' },
   { id: 'llista', nom: 'Llista', color: '#1C7ED6' },
   { id: 'compres', nom: 'Compres', color: '#2F9E44' },
   { id: 'documents', nom: 'Documents', color: '#5C677D', aviat: true },
 ];
-const VISTES_GALAXIA = ['inici', 'aniversaris', 'recordatoris', 'llista', 'compres'];
+const VISTES_GALAXIA = ['inici', 'aniversaris', 'recordatoris', 'llista', 'compres', 'memoria'];
 const pendentsRec = () => state.recordatoris.filter((r) => !r.fet);
 // Propers aniversaris i sants dels contactes (els dels pròxims 12 mesos, el primer avui)
 function propersAniv() {
@@ -1215,6 +1216,24 @@ function vistaCompres() {
     + (habituals.length ? `<h2 class="ll-titol">Habituals</h2><p class="help">Toca'n un per tornar-lo a posar a la llista.</p>
       <div class="ll-chips">${habituals.map((r) => `<button class="ll-chip" data-torna="${esc(r.id)}">${esc(r.text)}</button>`).join('')}</div>` : '');
 }
+// Memòria: fitxes amb informació per consultar (no contrasenyes)
+function vistaMemoria() {
+  const ed = ui.memEdita, f = ed && ed !== 'nova' ? state.memoria.find((x) => x.id === ed) : null;
+  if (ed) return capSatel('Memòria') + `<form id="formMem" class="mem-form" autocomplete="off">
+      <label>Títol<input name="titol" value="${esc(f?.titol || '')}" placeholder="Pòlissa de la casa" maxlength="80" required></label>
+      <label>Què has de recordar<textarea name="text" rows="6" maxlength="3000" placeholder="Companyia, número, telèfon…">${esc(f?.text || '')}</textarea></label>
+      <div class="grp"><button class="btn primary">Desa</button><button type="button" class="btn" data-memcancela>Cancel·la</button>
+        ${f ? `<button type="button" class="enllac perill" data-memesborra="${esc(f.id)}">Esborra</button>` : ''}</div>
+    </form>`;
+  const fitxes = state.memoria.slice().sort((a, b) => a.titol.localeCompare(b.titol, 'ca'));
+  return capSatel('Memòria') + `<p class="help">Coses importants per consultar: pòlisses, telèfons, la Wi-Fi… Les contrasenyes, millor a l'app Contrasenyes de l'iPhone.</p>
+    <div class="mem-barra">${fitxes.length > 3 ? '<input id="cercaMem" type="search" placeholder="Cerca…" autocomplete="off">' : ''}<button class="btn primary" data-memnova>Nova fitxa</button></div>
+    ${fitxes.length ? `<div class="mem-llista">${fitxes.map((x) => `<div class="mem-fitxa" data-memcerca="${esc(normal(x.titol + ' ' + x.text))}">
+        <b>${esc(x.titol)}</b>${x.text ? `<p>${esc(x.text)}</p>` : ''}
+        <div class="mem-accions">${x.text ? `<button class="enllac" data-memcopia="${esc(x.id)}">Copia</button>` : ''}<button class="enllac" data-memedita="${esc(x.id)}">Edita</button></div>
+      </div>`).join('')}</div><p class="help buit" id="memRes" hidden>No hi ha cap fitxa que hi coincideixi.</p>`
+      : '<p class="help buit">Encara no tens cap fitxa.</p>'}`;
+}
 function vistaIniciAntiga() {
   const h = new Date().getHours();
   const salut = h < 6 ? 'Bona nit' : h < 13 ? 'Bon dia' : h < 20 ? 'Bona tarda' : 'Bona nit';
@@ -1236,7 +1255,7 @@ function vistaIniciAntiga() {
     </div>`;
 }
 
-const VISTES = { inici: vistaInici, aniversaris: vistaAniversaris, recordatoris: vistaRecordatoris, llista: vistaLlista, compres: vistaCompres, propers: vistaPropers, calendari: vistaCalendari, gent: vistaGent, ajustos: vistaAjustos, entrada: vistaEntrada };
+const VISTES = { inici: vistaInici, aniversaris: vistaAniversaris, recordatoris: vistaRecordatoris, llista: vistaLlista, compres: vistaCompres, memoria: vistaMemoria, propers: vistaPropers, calendari: vistaCalendari, gent: vistaGent, ajustos: vistaAjustos, entrada: vistaEntrada };
 function render() {
   if (!VISTES[ui.view]) ui.view = 'propers';
   if (ui.view === 'entrada' && !sync()?.disponible) ui.view = 'propers';
@@ -1632,7 +1651,7 @@ $('#main').addEventListener('click', (e) => {
   if (s) {
     const sat = SATEL.find((x) => x.id === s.dataset.sat);
     if (sat?.aviat) { toast(`${sat.nom}: aviat`); return; }
-    ui.view = s.dataset.sat; ui.llista = ''; render(); window.scrollTo(0, 0); return;
+    ui.view = s.dataset.sat; ui.llista = ''; ui.memEdita = ''; render(); window.scrollTo(0, 0); return;
   }
   const f = e.target.closest('[data-fitxa]');
   if (f) { ui.view = 'gent'; ui.persona = f.dataset.fitxa; render(); window.scrollTo(0, 0); return; }
@@ -1744,6 +1763,49 @@ $('#main').addEventListener('submit', (e) => {
   else llista.push(col === 'compres' ? { id: nouId('c'), text, fet: false, creat: new Date().toISOString() } : { id: nouId('i'), text, fet: false });
   save(); render();
   document.querySelector(`[data-formitem="${f.dataset.formitem}"] input`)?.focus();
+});
+
+/* ---------- Memòria ---------- */
+$('#main').addEventListener('click', async (e) => {
+  const t = e.target;
+  if (t.closest('[data-memnova]')) { ui.memEdita = 'nova'; render(); window.scrollTo(0, 0); $('#formMem input')?.focus(); return; }
+  const ed = t.closest('[data-memedita]');
+  if (ed) { ui.memEdita = ed.dataset.memedita; render(); window.scrollTo(0, 0); return; }
+  if (t.closest('[data-memcancela]')) { ui.memEdita = ''; render(); return; }
+  const es = t.closest('[data-memesborra]');
+  if (es) {
+    const f = state.memoria.find((x) => x.id === es.dataset.memesborra);
+    if (!f) return;
+    const lloc = state.memoria.indexOf(f), copia = { ...f };
+    state.memoria.splice(lloc, 1); ui.memEdita = ''; save(); render();
+    toastDesfes(`Esborrada: ${f.titol}`, () => { state.memoria.splice(lloc, 0, copia); save(); render(); });
+    return;
+  }
+  const cp = t.closest('[data-memcopia]');
+  if (cp) {
+    const f = state.memoria.find((x) => x.id === cp.dataset.memcopia);
+    if (!f) return;
+    try { await navigator.clipboard.writeText(f.text); toast('Copiat'); } catch (x) { prompt('Copia-ho:', f.text); }
+  }
+});
+$('#main').addEventListener('input', (e) => {
+  if (e.target.id !== 'cercaMem') return;
+  const q = normal(e.target.value.trim());
+  let n = 0;
+  document.querySelectorAll('[data-memcerca]').forEach((el) => { const si = !q || el.dataset.memcerca.includes(q); el.hidden = !si; if (si) n++; });
+  const r = document.getElementById('memRes'); if (r) r.hidden = n > 0;
+});
+$('#main').addEventListener('submit', (e) => {
+  if (e.target.id !== 'formMem') return;
+  e.preventDefault();
+  const titol = e.target.elements.titol.value.trim().slice(0, 80), text = e.target.elements.text.value.trim().slice(0, 3000);
+  if (!titol) { e.target.elements.titol.focus(); return; }
+  const ara = new Date().toISOString();
+  const f = state.memoria.find((x) => x.id === ui.memEdita);
+  if (f) Object.assign(f, { titol, text, modificat: ara });
+  else state.memoria.push({ id: nouId('m'), titol, text, creat: ara });
+  ui.memEdita = ''; save(); render();
+  toast(/contrasenya|password|\bpw\b|\bpin\b/i.test(titol + ' ' + text) ? "Desat. Recorda: les contrasenyes, millor a l'app Contrasenyes de l'iPhone." : 'Desat', 4500);
 });
 
 /* ---------- Lliscar un pla cap a l'esquerra: Confirma / Esborra ---------- */

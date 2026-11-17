@@ -11,7 +11,7 @@ const Sync = (() => {
   const AUTH = 'qqq-auth';
   const MKEY = KEY + '-sync';
   const CKEY = KEY + '-comp';
-  const COLS = ['tipus', 'persones', 'plans', 'recordatoris', 'llistes', 'compres'];
+  const COLS = ['tipus', 'persones', 'plans', 'recordatoris', 'llistes', 'compres', 'memoria'];
   const META0 = { snap: {}, ultima: null, usuari: null, compSnap: {}, compUltima: null };
   const COMP0 = { enviats: {}, rebuts: {} };
 

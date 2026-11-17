@@ -883,3 +883,18 @@ body.mode-galaxia main { padding-bottom: calc(40px + var(--safe-b)); }
   padding: 7px 13px; border-radius: 99px; cursor: pointer; }
 .ll-chip:active { background: color-mix(in srgb, var(--c) 15%, var(--surface)); }
 .vista-llista .rec-nou .btn.primary, .vista-compres .rec-nou .btn.primary, .vista-recordatoris .rec-nou .btn.primary { background: var(--c); border-color: var(--c); color: #fff; box-shadow: none; }
+/* Memòria */
+.vista-memoria { --c: #7048E8; }
+.vista-memoria .btn.primary { background: var(--c); border-color: var(--c); color: #fff; box-shadow: none; }
+.mem-barra { display: flex; gap: 8px; margin: 10px 0 14px; }
+.mem-barra input { flex: 1; min-width: 0; }
+.mem-barra .btn { margin-left: auto; }
+.mem-llista { display: grid; gap: 10px; }
+.mem-fitxa { background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--c); border-radius: 14px; padding: 12px 14px; }
+.mem-fitxa[hidden] { display: none; }
+.mem-fitxa b { font-size: 16px; }
+.mem-fitxa p { margin: 6px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; -webkit-user-select: text; user-select: text; }
+.mem-accions { display: flex; gap: 16px; margin-top: 8px; }
+.mem-form { display: grid; gap: 12px; }
+.mem-form label { display: grid; gap: 6px; font-weight: 700; }
+.mem-form textarea { font: inherit; resize: vertical; }
