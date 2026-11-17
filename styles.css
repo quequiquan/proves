@@ -928,3 +928,5 @@ body.mode-galaxia main { padding-bottom: calc(40px + var(--safe-b)); }
 .doc-visor-cos img { transform-origin: center center; will-change: transform; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .doc-zoom { margin: -4px 0 6px; font-size: 12.5px; text-align: center; }
 .gx-sat[data-sat="documents"] .gx-ini { color: #221C18; }
+.gx-centre .gx-centre-n { font-weight: 800; font-size: 15px; line-height: 1; margin-top: 6px; min-width: 26px; padding: 4px 7px; box-sizing: border-box;
+  border-radius: 99px; background: rgba(255, 255, 255, .25); }

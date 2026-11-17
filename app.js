@@ -1133,18 +1133,16 @@ function vistaInici() {
   const nPlans = delDia(avui()).filter((p) => p.estat !== 'cancelat').length, nRec = pendentsRec().length;
   const aviatAniv = propersAniv().filter((x) => x.falten === 0).length;
   const inv = rebuts().filter((p) => p.rebut.resposta === 'pendent' && p.data >= avui()).length;
-  const resum = [nPlans === 1 ? '1 pla avui' : nPlans ? nPlans + ' plans avui' : 'Cap pla avui',
-    nRec === 1 ? '1 recordatori' : nRec ? nRec + ' recordatoris' : ''].filter(Boolean).join(' · ');
   const comptes = { recordatoris: nRec, aniversaris: aviatAniv, compres: state.compres.filter((r) => !r.fet).length,
     llista: state.llistes.reduce((n, l) => n + l.items.filter((i) => !i.fet).length, 0) };
   return `<div class="galaxia">
       <div class="gx-salut"><h1>${esc(salut)}${nom ? ', ' + esc(nom) : ''}</h1>
         <p class="portada-data">${esc(cap(dataLlarga(avui())))}</p>
-        <p class="gx-resum">${esc(resum)}</p></div>
+</div>
       <div class="gx-cercle">
         <div class="gx-orbita" aria-hidden="true"></div>
         <button class="gx-centre" id="gxAgenda" aria-label="Agenda (mantén premut per a un pla nou)">
-          <span class="gx-centre-nom">Agenda</span></button>
+          <span class="gx-centre-nom">Agenda</span>${nPlans ? `<small class="gx-centre-n" aria-label="${nPlans} plans avui">${nPlans}</small>` : ''}</button>
         ${SATEL.map((s, i) => `<button class="gx-sat${s.aviat ? ' aviat' : ''}" data-sat="${s.id}" style="--c:${s.color};--a:${i * 60 - 90}deg">
             <span class="gx-bola"><span class="gx-ini" aria-hidden="true">${esc(s.nom[0])}</span>${comptes[s.id] ? `<i>${comptes[s.id]}</i>` : ''}</span><span class="gx-nom">${esc(s.nom)}</span>${s.aviat ? '<small>aviat</small>' : ''}</button>`).join('')}
       </div>
