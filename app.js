@@ -871,7 +871,7 @@ function vistaGent() {
         ${camp('tel2', 'Un altre telèfon', 'type="tel" inputmode="tel"')}
         <label class="camp">Correu
           <input data-pcamp="email" type="email" value="${esc(pe.email || '')}" placeholder="nom@exemple.com" autocomplete="off" inputmode="email"></label>
-        <label class="check te-app"><input type="checkbox" data-papp ${pe.teApp ? 'checked' : ''}> <span>Té l'app <b>Què · Qui · Quan</b>: els plans on surti li arribaran sols a la seva app <small>(amb aquest mateix correu)</small></span></label>
+        <label class="check te-app"><input type="checkbox" data-papp ${pe.teApp ? 'checked' : ''}> <span>Té l'app <b>Galàxia</b>: els plans on surti li arribaran sols a la seva app <small>(amb aquest mateix correu)</small></span></label>
         ${camp('adreca', 'Adreça')}
         ${campDiaMes('aniversari', 'Aniversari', true)}
         ${campDiaMes('sant', 'Sant', false)}
@@ -1047,7 +1047,7 @@ function vistaAjustos() {
       <p class="help">Manual visual amb totes les funcions de l'app, pas a pas. També el pots enviar a qui comenci a fer-la servir: quequiquan.github.io/guia.html</p>
       <a class="btn" href="guia.html" target="_blank" rel="noopener">Obre la guia</a>
     </div>
-    <p class="versio">Què · Qui · Quan${PROVES ? ' · versió de proves' : ''}</p>`;
+    <p class="versio">Galàxia${PROVES ? ' · versió de proves' : ''}</p>`;
 }
 
 /* ---------- Vista: Entrada (correu + codi, sense contrasenya) ---------- */
@@ -1131,7 +1131,7 @@ function vistaInici() {
   const salut = h < 6 ? 'Bona nit' : h < 13 ? 'Bon dia' : h < 20 ? 'Bona tarda' : 'Bona nit';
   const nom = (state.ajustos.nom || '').trim().split(' ')[0];
   const nPlans = delDia(avui()).filter((p) => p.estat !== 'cancelat').length, nRec = pendentsRec().length;
-  const aviatAniv = propersAniv().filter((x) => x.falten <= 7).length;
+  const aviatAniv = propersAniv().filter((x) => x.falten === 0).length;
   const inv = rebuts().filter((p) => p.rebut.resposta === 'pendent' && p.data >= avui()).length;
   const resum = [nPlans === 1 ? '1 pla avui' : nPlans ? nPlans + ' plans avui' : 'Cap pla avui',
     nRec === 1 ? '1 recordatori' : nRec ? nRec + ' recordatoris' : ''].filter(Boolean).join(' · ');
@@ -1250,27 +1250,6 @@ function vistaDocuments() {
       : entrat ? '<p class="help buit">Encara no tens cap document.</p>' : ''}
     ${entrat ? '<p class="help doc-consell">Per escanejar diverses pàgines en un sol PDF: a l\'app <b>Arxius</b> de l\'iPhone, toca <b>···</b> → <b>Escanejar documents</b>, desa\'l i després tria\'l aquí.</p>' : ''}`;
 }
-function vistaIniciAntiga() {
-  const h = new Date().getHours();
-  const salut = h < 6 ? 'Bona nit' : h < 13 ? 'Bon dia' : h < 20 ? 'Bona tarda' : 'Bona nit';
-  const nom = (state.ajustos.nom || '').trim().split(' ')[0];
-  const inv = rebuts().filter((p) => p.rebut.resposta === 'pendent' && p.data >= avui()).length;
-  // Portada minimalista: logotip, nom de l'app, salutació, data i un botó rodó per crear un pla
-  return `<div class="portada">
-      <svg class="portada-logo" viewBox="160 160 704 680" aria-hidden="true">
-        <circle cx="512" cy="392" r="200" fill="#FF5A47" opacity=".92"/>
-        <circle cx="392" cy="600" r="200" fill="#FFC23D" opacity=".88"/>
-        <circle cx="632" cy="600" r="200" fill="#1FB39C" opacity=".88"/>
-        <circle cx="512" cy="528" r="34" style="fill: var(--bg)"/>
-      </svg>
-      <p class="portada-nom"><span class="w-que">Què</span> · <span class="w-qui">Qui</span> · <span class="w-quan">Quan</span></p>
-      <h1>${esc(salut)}${nom ? ', ' + esc(nom) : ''}</h1>
-      <p class="portada-data">${esc(cap(dataLlarga(avui())))}</p>
-      <button class="portada-mes" data-nou="${avui()}" aria-label="Nou pla"><span>+</span></button>
-      ${inv ? `<button class="enllac portada-veure" data-anar="propers">${inv === 1 ? 'Tens 1 invitació per respondre' : `Tens ${inv} invitacions per respondre`}</button>` : ''}
-    </div>`;
-}
-
 const VISTES = { inici: vistaInici, aniversaris: vistaAniversaris, recordatoris: vistaRecordatoris, llista: vistaLlista, compres: vistaCompres, memoria: vistaMemoria, documents: vistaDocuments, propers: vistaPropers, calendari: vistaCalendari, gent: vistaGent, ajustos: vistaAjustos, entrada: vistaEntrada };
 function render() {
   if (!VISTES[ui.view]) ui.view = 'propers';
@@ -1279,8 +1258,7 @@ function render() {
   document.body.classList.toggle('mode-inici', ui.view === 'inici');
   document.body.classList.toggle('mode-galaxia', VISTES_GALAXIA.includes(ui.view));
   const marca = document.querySelector('.brand-nom b');
-  if (marca) marca.innerHTML = VISTES_GALAXIA.includes(ui.view) ? '<span class="w-galaxia">Galàxia</span>'
-    : '<span class="w-que">Què</span> · <span class="w-qui">Qui</span> · <span class="w-quan">Quan</span>';
+  if (marca && !marca.querySelector('.w-galaxia')) marca.innerHTML = '<span class="w-galaxia">Galàxia</span>';
   if (ui.view === 'inici') requestAnimationFrame(ajustaPortada);
   if ($('#syncBtn') && sync()?.disponible) $('#syncBtn').hidden = ui.view === 'entrada';
   $$('#tabs button').forEach((b) => b.setAttribute('aria-current', b.dataset.view === ui.view ? 'page' : 'false'));
@@ -2179,7 +2157,7 @@ function obreLlista(quin) {
     if (e.target.closest('#llImprimeix')) {
       // Es prepara un full a part (fora de la finestra) i s'imprimeix només aquest
       const full = $('#impressio');
-      full.innerHTML = `<div class="llista-full imprès"><p class="ll-app">Què · Qui · Quan</p>${htmlLlista(dies)}</div>`;
+      full.innerHTML = `<div class="llista-full imprès"><p class="ll-app">Galàxia</p>${htmlLlista(dies)}</div>`;
       tancaDlg();
       document.body.classList.add('imprimint');
       setTimeout(() => { window.print(); setTimeout(() => document.body.classList.remove('imprimint'), 500); }, 100);
@@ -2425,7 +2403,7 @@ function obreComparteix(p) {
       <input type="email" data-email="${i}" value="${esc(f.email)}" placeholder="Correu de ${esc(f.nom)}" autocomplete="off" inputmode="email">
     </div>`;
   const app = usuari()
-    ? `<p class="help">Les persones que marquis veuran el pla a la seva app <b>Què · Qui · Quan</b> i et podran dir si hi van. Si encara no la tenen, els sortirà quan hi entrin amb aquest correu.</p>
+    ? `<p class="help">Les persones que marquis veuran el pla a la seva app <b>Galàxia</b> i et podran dir si hi van. Si encara no la tenen, els sortirà quan hi entrin amb aquest correu.</p>
        <div id="dests">${files.map(fila).join('') || '<p class="help">Afegeix el correu de qui vulguis:</p>'}</div>
        <div class="afegeix"><input type="email" id="altreCorreu" placeholder="Un altre correu" autocomplete="off" inputmode="email"><button type="button" class="btn" id="afegeixCorreu">Afegeix</button></div>
        <button type="button" class="btn primary ample" id="envia">Desa i envia</button>`
@@ -2816,7 +2794,7 @@ function afegeixPlans(fitxer) {
     let d;
     try { d = JSON.parse(r.result); } catch (e) { d = null; }
     const llista = d && d.app === 'que-qui-quan-plans' && Array.isArray(d.plans) ? d.plans.filter((p) => p && p.id && /^\d{4}-\d{2}-\d{2}$/.test(p.data || '')) : null;
-    if (!llista) { toast('Aquest fitxer no és una llista de plans de Què · Qui · Quan.'); return; }
+    if (!llista) { toast('Aquest fitxer no és una llista de plans de Galàxia.'); return; }
     const nous = llista.filter((p) => !state.plans.some((x) => x.id === p.id));
     if (!nous.length) { toast('Tots aquests plans ja els tens'); return; }
     if (!confirm(`Vols afegir ${nous.length === 1 ? '1 pla' : nous.length + ' plans'} a la teva agenda?${d.nom ? ' (' + d.nom + ')' : ''}`)) return;
@@ -2847,7 +2825,7 @@ function importa(fitxer) {
       if (!d || !Array.isArray(d.plans)) throw new Error('format');
       if (!confirm(`Aquesta còpia té ${d.plans.length} plans. Vols substituir les dades actuals per les de la còpia?`)) return;
       state = normalize(d); save(); render(); toast('Còpia recuperada');
-    } catch (e) { toast('Aquest fitxer no és una còpia de Què · Qui · Quan.'); }
+    } catch (e) { toast('Aquest fitxer no és una còpia de Galàxia.'); }
   };
   r.readAsText(fitxer);
 }
