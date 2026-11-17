@@ -640,11 +640,18 @@ function targeta(p, ambData = false) {
   const de = p.rebut ? `<small class="pla-de">De part de ${esc(p.rebut.de_nom || p.rebut.de_email)}</small>` : '';
   const env = '';
   const estat = p.estat !== 'confirmat' ? `<span class="badge ${p.estat}">${esc((ESTATS.find((e) => e[0] === p.estat) || [, p.estat])[1])}</span>` : '';
-  return `<button class="pla ${esc(p.estat)}${diesPla(p) < avui() ? ' passat' : ''}${p.rebut ? ' rebut' : ''}" data-pla="${esc(p.id)}" style="--c:${esc(t.color)}">
+  const boto = `<button class="pla ${esc(p.estat)}${diesPla(p) < avui() ? ' passat' : ''}${p.rebut ? ' rebut' : ''}" data-pla="${esc(p.id)}" style="--c:${esc(t.color)}">
     <span class="pla-emoji">${ico(t)}</span>
     <span class="pla-cos"><b>${esc(titolPla(p))}</b><small>${esc(info.join(' · '))}</small>${gent}${de}</span>
     ${env}${estat}
   </button>`;
+  // Els plans propis es poden lliscar cap a l'esquerra: Confirma (si està per confirmar) i Esborra
+  if (p.rebut || p.aniversari || p.extern) return boto;
+  const base = p.base || p;
+  return `<div class="pla-mur" data-mur="${esc(p.id)}">
+    <div class="pla-accions">${base.estat === 'pendent' ? `<button type="button" class="acc-confirma" data-acc="confirma" data-accpla="${esc(p.id)}">Confirma</button>` : ''}<button type="button" class="acc-esborra" data-acc="esborra" data-accpla="${esc(p.id)}">Esborra</button></div>
+    ${boto}
+  </div>`;
 }
 function llistaPerDies(plans, ordreInvers = false) {
   const grups = new Map();
@@ -1476,6 +1483,69 @@ $('#main').addEventListener('click', (e) => {
   if (ignoraClic && e.target.closest('[data-pla]')) { e.stopImmediatePropagation(); e.preventDefault(); }
 }, true);
 
+/* ---------- Lliscar un pla cap a l'esquerra: Confirma / Esborra ---------- */
+let llisc = null, murObert = null;
+const ampleAccions = (m) => m.querySelector('.pla-accions').offsetWidth;
+function tancaMur(m = murObert) { if (!m) return; m.querySelector('.pla').style.transform = ''; m.classList.remove('obert'); if (murObert === m) murObert = null; }
+function obreMur(m) { if (murObert && murObert !== m) tancaMur(); m.classList.add('obert'); m.querySelector('.pla').style.transform = `translateX(-${ampleAccions(m)}px)`; murObert = m; }
+$('#main').addEventListener('touchstart', (e) => {
+  const m = e.target.closest('.pla-mur');
+  if (murObert && murObert !== m) tancaMur();
+  if (!m || e.target.closest('.pla-accions') || e.touches.length !== 1) { llisc = null; return; }
+  llisc = { m, x: e.touches[0].clientX, y: e.touches[0].clientY, ini: m.classList.contains('obert') ? -ampleAccions(m) : 0, mou: false };
+}, { passive: true });
+$('#main').addEventListener('touchmove', (e) => {
+  if (!llisc) return;
+  const dx = e.touches[0].clientX - llisc.x, dy = e.touches[0].clientY - llisc.y;
+  if (!llisc.mou) {
+    if (Math.abs(dx) < 10 || Math.abs(dx) < Math.abs(dy) * 1.2) { if (Math.abs(dy) > 10) llisc = null; return; }
+    llisc.mou = true; cancelaPremut(); llisc.m.classList.add('mou');
+  }
+  const x = Math.max(-ampleAccions(llisc.m) - 30, Math.min(0, llisc.ini + dx));
+  llisc.m.querySelector('.pla').style.transform = `translateX(${x}px)`;
+}, { passive: true });
+$('#main').addEventListener('touchend', (e) => {
+  if (!llisc) return;
+  const { m, mou, ini, x: x0 } = llisc;
+  llisc = null;
+  if (!mou) return;
+  m.classList.remove('mou');
+  ignoraClic = true; setTimeout(() => { ignoraClic = false; }, 350);   // que no s'obri el pla en deixar anar
+  const dx = e.changedTouches[0].clientX - x0;
+  if (ini + dx < -ampleAccions(m) / 2) obreMur(m); else tancaMur(m);
+}, { passive: true });
+$('#main').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-acc]');
+  if (b) {
+    e.preventDefault(); e.stopPropagation();
+    const p0 = trobaPla(b.dataset.accpla), p = p0?.base || p0;
+    if (!p) return;
+    if (b.dataset.acc === 'confirma') {
+      Object.assign(p, { estat: 'confirmat', versio: (p.versio || 1) + 1, modificat: new Date().toISOString() });
+      save(); render(); toast('Pla confirmat');
+      return;
+    }
+    if (p.repeteix) { tancaMur(); eliminaPla(p); return; }   // es repeteix: es demana confirmació
+    const copia = JSON.parse(JSON.stringify(p)), lloc = state.plans.findIndex((x) => x.id === p.id);
+    state.plans = state.plans.filter((x) => x.id !== p.id);
+    save(); render();
+    toastDesfes(`Esborrat: ${titolPla(p)}`, () => { state.plans.splice(Math.max(0, lloc), 0, copia); save(); render(); });
+    return;
+  }
+  // Tocar un pla obert el tanca (no l'obre)
+  if (murObert && e.target.closest('.pla-mur') === murObert) { e.preventDefault(); e.stopImmediatePropagation(); tancaMur(); }
+}, true);
+// Avís amb botó «Desfés» durant uns segons
+function toastDesfes(text, desfes) {
+  document.querySelector('.toast-desfes')?.remove();
+  const t = document.createElement('div');
+  t.className = 'toast-desfes';
+  t.innerHTML = `<span>${esc(text)}</span><button type="button">Desfés</button>`;
+  t.querySelector('button').onclick = () => { desfes(); t.remove(); toast('Recuperat'); };
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 5000);
+}
+
 /* ---------- Ajustos: altres calendaris (nom, color, treure, actualitzar) ---------- */
 $('#main').addEventListener('change', (e) => {
   const camp = e.target.dataset.extcamp, fila = e.target.closest('[data-ext]');
@@ -1651,7 +1721,7 @@ function navegaCalendari(n) {
 }
 let toc = null;
 $('#main').addEventListener('touchstart', (e) => {
-  if (ui.view !== 'calendari' || e.touches.length !== 1) { toc = null; return; }
+  if (ui.view !== 'calendari' || e.touches.length !== 1 || e.target.closest('.pla-mur')) { toc = null; return; }
   toc = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
 }, { passive: true });
 $('#main').addEventListener('touchend', (e) => {

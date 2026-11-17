@@ -779,3 +779,23 @@ body.mode-inici main { padding-top: 0; padding-bottom: 0; }
 
 /* Ajustos: plans per veu */
 .passos-veu { margin: 8px 0; padding-left: 20px; display: grid; gap: 6px; }
+
+/* Lliscar un pla cap a l'esquerra: Confirma / Esborra */
+.pla-mur { position: relative; margin-bottom: 8px; border-radius: 14px; overflow: hidden; }
+.pla-mur > .pla { position: relative; z-index: 1; margin-bottom: 0; touch-action: pan-y; transition: transform .2s ease; }
+.pla-mur.mou > .pla { transition: none; }
+.pla-accions { position: absolute; inset: 0 0 0 auto; display: flex; }
+.pla-accions button { border: 0; color: #fff; font: inherit; font-weight: 800; font-size: 14px; padding: 0 18px; min-width: 84px; cursor: pointer; }
+.acc-esborra { background: #E03131; }
+.acc-confirma { background: #2B8A3E; }
+.pla-mur:not(.obert):not(.mou) .pla-accions { visibility: hidden; }
+.toast-desfes {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(86px + var(--safe-b)); z-index: 60;
+  display: flex; align-items: center; gap: 14px; max-width: calc(100% - 32px);
+  background: var(--text); color: var(--bg); padding: 10px 12px 10px 16px; border-radius: 14px; box-shadow: var(--shadow); font-weight: 700;
+}
+.toast-desfes span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.toast-desfes button { border: 0; background: none; color: var(--accent); font: inherit; font-weight: 800; cursor: pointer; padding: 4px 6px; }
+.vista-dia .franja .pla-mur { flex: 1; min-width: 0; margin-bottom: 0; }
+.setm-plans .pla-mur { margin-bottom: 6px; }
+.pla-mur { min-width: 0; max-width: 100%; }
