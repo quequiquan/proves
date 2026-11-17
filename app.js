@@ -2265,6 +2265,15 @@ $('#main').addEventListener('click', (e) => {
   b.closest('.dm').querySelectorAll('input').forEach((x) => { x.value = ''; });
   b.remove();
 });
+// Caselles de data: en tocar-ne una, se selecciona el que hi ha i el que escriguis ho substitueix
+$('#main').addEventListener('focusin', (e) => {
+  const t = e.target;
+  if (!t.dataset?.dm) return;
+  const tria = () => { try { t.setSelectionRange(0, t.value.length); } catch (x) { t.select?.(); } };
+  tria(); setTimeout(tria, 30);
+});
+// Si ja estava seleccionat i s'hi torna a tocar, l'iPhone treu la selecció: es torna a seleccionar
+$('#main').addEventListener('mouseup', (e) => { if (e.target.dataset?.dm && document.activeElement === e.target) { e.preventDefault(); } });
 // Botó per buidar la cerca de contactes d'un toc
 $('#main').addEventListener('click', (e) => {
   if (!e.target.closest('#cercaGentX')) return;
