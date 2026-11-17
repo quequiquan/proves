@@ -1132,7 +1132,6 @@ function vistaInici() {
   const resum = [nPlans === 1 ? '1 pla avui' : nPlans ? nPlans + ' plans avui' : 'Cap pla avui',
     nRec === 1 ? '1 recordatori' : nRec ? nRec + ' recordatoris' : ''].filter(Boolean).join(' · ');
   const comptes = { recordatoris: nRec, aniversaris: aviatAniv };
-  const d = parseYmd(avui());
   return `<div class="galaxia">
       <div class="gx-salut"><h1>${esc(salut)}${nom ? ', ' + esc(nom) : ''}</h1>
         <p class="portada-data">${esc(cap(dataLlarga(avui())))}</p>
@@ -1140,7 +1139,7 @@ function vistaInici() {
       <div class="gx-cercle">
         <div class="gx-orbita" aria-hidden="true"></div>
         <button class="gx-centre" id="gxAgenda" aria-label="Agenda (mantén premut per a un pla nou)">
-          <b>${d.getDate()} <small>${esc(MESOS[d.getMonth()].slice(0, 3))}.</small></b><span>Agenda</span></button>
+          <span class="gx-centre-nom">Agenda</span></button>
         ${SATEL.map((s, i) => `<button class="gx-sat${s.aviat ? ' aviat' : ''}" data-sat="${s.id}" style="--c:${s.color};--a:${i * 60 - 90}deg">
             <span class="gx-bola">${comptes[s.id] ? `<i>${comptes[s.id]}</i>` : ''}</span><span class="gx-nom">${esc(s.nom)}</span>${s.aviat ? '<small>aviat</small>' : ''}</button>`).join('')}
       </div>

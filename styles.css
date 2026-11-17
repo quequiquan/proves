@@ -862,3 +862,4 @@ body.mode-galaxia main { padding-bottom: calc(40px + var(--safe-b)); }
 .gx-centre b small { font-size: 22px; font-weight: 600; }
 .gx-centre b { font-size: 38px; }
 .entrada-galaxia { color: var(--text); }
+.gx-centre .gx-centre-nom { font-family: var(--font-title); font-weight: 600; font-size: 24px; letter-spacing: .4px; margin: 0; }
