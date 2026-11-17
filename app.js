@@ -1876,6 +1876,50 @@ $('#main').addEventListener('input', (e) => {
   document.querySelectorAll('[data-doccerca]').forEach((el) => { el.hidden = Boolean(q) && !el.dataset.doccerca.includes(q); });
 });
 // Visor a pantalla completa: imatge, o botó per obrir el PDF
+// Ampliar la imatge: pessigar amb dos dits, arrossegar amb un dit i doble toc per ampliar o tornar a la mida
+function ampliable(cos, img) {
+  let s = 1, x = 0, y = 0, ini = null, ultimToc = 0;
+  const limita = () => {
+    const mx = (img.offsetWidth * (s - 1)) / 2, my = (img.offsetHeight * (s - 1)) / 2;
+    x = Math.max(-mx, Math.min(mx, x)); y = Math.max(-my, Math.min(my, y));
+  };
+  const aplica = (anima) => { img.style.transition = anima ? 'transform .2s ease' : 'none'; img.style.transform = `translate(${x}px, ${y}px) scale(${s})`; };
+  const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  cos.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2) ini = { d: dist(e.touches), s, x, y, mx: (e.touches[0].clientX + e.touches[1].clientX) / 2, my: (e.touches[0].clientY + e.touches[1].clientY) / 2 };
+    else if (e.touches.length === 1) {
+      const ara = Date.now();
+      if (ara - ultimToc < 300) {   // doble toc
+        if (s > 1) { s = 1; x = 0; y = 0; }
+        else {
+          const r = cos.getBoundingClientRect();
+          s = 2.5; x = -(e.touches[0].clientX - (r.left + r.width / 2)) * 1.5; y = -(e.touches[0].clientY - (r.top + r.height / 2)) * 1.5; limita();
+        }
+        aplica(true); ultimToc = 0; ini = null; return;
+      }
+      ultimToc = ara;
+      ini = { px: e.touches[0].clientX, py: e.touches[0].clientY, x, y };
+    }
+  }, { passive: true });
+  cos.addEventListener('touchmove', (e) => {
+    if (!ini) return;
+    e.preventDefault();
+    if (e.touches.length === 2 && ini.d) {
+      s = Math.max(1, Math.min(6, ini.s * dist(e.touches) / ini.d));
+      const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2, my = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      x = ini.x + (mx - ini.mx); y = ini.y + (my - ini.my);
+    } else if (e.touches.length === 1 && ini.px !== undefined && s > 1) {
+      x = ini.x + e.touches[0].clientX - ini.px; y = ini.y + e.touches[0].clientY - ini.py;
+    } else return;
+    limita(); aplica(false);
+  }, { passive: false });
+  cos.addEventListener('touchend', (e) => {
+    if (e.touches.length === 1) ini = { px: e.touches[0].clientX, py: e.touches[0].clientY, x, y };
+    else if (!e.touches.length) { ini = null; if (s < 1.05) { s = 1; x = 0; y = 0; aplica(true); } }
+  });
+  // A l'ordinador: roda del ratolí
+  cos.addEventListener('wheel', (e) => { e.preventDefault(); s = Math.max(1, Math.min(6, s * (e.deltaY < 0 ? 1.15 : 0.87))); if (s === 1) { x = 0; y = 0; } limita(); aplica(false); }, { passive: false });
+}
 function tancaVisor() { document.querySelector('.doc-visor')?.remove(); }
 async function obreVisor(doc) {
   tancaVisor();
@@ -1912,7 +1956,9 @@ async function obreVisor(doc) {
     obre.href = url; obre.hidden = false;
     cos.innerHTML = doc.tipus === 'application/pdf'
       ? `<div class="doc-pdf"><b>PDF</b><p class="help">Toca «Obre / Comparteix» per veure'l sencer.</p></div>`
-      : `<img src="${esc(url)}" alt="${esc(doc.titol)}">`;
+      : `<img src="${esc(url)}" alt="${esc(doc.titol)}" draggable="false">`;
+    const img = cos.querySelector('img');
+    if (img) { ampliable(cos, img); v.querySelector('.doc-visor-cap').insertAdjacentHTML('afterend', '<p class="help doc-zoom">Pessiga amb dos dits o toca dues vegades per ampliar</p>'); }
   } catch (err) {
     v.querySelector('.doc-visor-cos').innerHTML = `<p class="help">${navigator.onLine ? "No s'ha pogut obrir el document." : 'Cal connexió a internet per veure el document.'}</p>`;
   }

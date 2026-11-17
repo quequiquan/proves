@@ -924,3 +924,6 @@ body.mode-galaxia main { padding-bottom: calc(40px + var(--safe-b)); }
   font-family: var(--font-title); font-size: 30px; color: var(--c); }
 .doc-visor-peu { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; padding-top: 12px; }
 .doc-visor-peu .btn.primary { background: var(--c); border-color: var(--c); color: #fff; text-decoration: none; }
+.doc-visor-cos { touch-action: none; overflow: hidden; }
+.doc-visor-cos img { transform-origin: center center; will-change: transform; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.doc-zoom { margin: -4px 0 6px; font-size: 12.5px; text-align: center; }
