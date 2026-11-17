@@ -1241,7 +1241,7 @@ const preferides = () => (Array.isArray(state.ajustos.pindoles) ? state.ajustos.
 function filaPindola(text, data) {
   const fav = preferides().includes(text);
   return `<div class="pd-fila">${data ? `<small>${esc(data)}</small>` : ''}<p>${esc(text)}</p>
-    <button class="pd-fav${fav ? ' si' : ''}" data-pdfav="${esc(text)}" aria-pressed="${fav}">${fav ? 'Preferida' : 'Marca com a preferida'}</button></div>`;
+    <button class="pd-fav${fav ? ' si' : ''}" data-pdfav="${esc(text)}" aria-pressed="${fav}" aria-label="${fav ? 'Treu de preferides' : 'Marca com a preferida'}"><svg viewBox="0 0 24 24"><path d="M12 20.5s-7.5-4.6-9.3-9.2C1.5 8 3.6 4.5 7.2 4.5c2 0 3.6 1.1 4.8 2.8 1.2-1.7 2.8-2.8 4.8-2.8 3.6 0 5.7 3.5 4.5 6.8-1.8 4.6-9.3 9.2-9.3 9.2z"/></svg></button></div>`;
 }
 function vistaPindoles() {
   const tab = ui.pindTab === 'pref' ? 'pref' : 'dies';

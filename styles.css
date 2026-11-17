@@ -941,3 +941,11 @@ button.gx-pindola { display: block; border: 0; background: none; padding: 4px 8p
 .pd-fila p { margin: 4px 0 8px; font-style: italic; font-size: 16px; line-height: 1.45; }
 .pd-fav { border: 1.5px solid var(--border); background: none; color: var(--muted); font: inherit; font-weight: 700; font-size: 13px; padding: 4px 11px; border-radius: 99px; cursor: pointer; }
 .pd-fav.si { background: var(--c); border-color: var(--c); color: #fff; }
+.pd-fila { position: relative; padding-right: 54px; }
+.pd-fila p { margin-bottom: 0; }
+.pd-fav { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%;
+  background: none; display: flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent; }
+.pd-fav.si { background: none; }
+.pd-fav svg { width: 26px; height: 26px; fill: none; stroke: var(--muted); stroke-width: 1.8; stroke-linejoin: round; transition: transform .15s; }
+.pd-fav.si svg { fill: #FF3B5C; stroke: #FF3B5C; }
+.pd-fav:active svg { transform: scale(1.25); }
