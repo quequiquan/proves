@@ -866,3 +866,20 @@ body.mode-galaxia main { padding-bottom: calc(40px + var(--safe-b)); }
 .gx-bola { display: flex; align-items: center; justify-content: center; }
 .gx-ini { font-family: var(--font-title); font-weight: 600; font-size: 28px; line-height: 1; color: #fff; }
 .gx-sat.aviat .gx-ini { opacity: .9; }
+/* Llista i Compres */
+.vista-llista { --c: #1C7ED6; } .vista-compres { --c: #2F9E44; } .vista-recordatoris { --c: #E8590C; }
+.rec-check { border-color: var(--c, #E8590C); }
+.rec-llista li.fet .rec-check { background: var(--c, #E8590C); }
+.ll-index { display: grid; gap: 8px; }
+.ll-fila { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; text-align: left; border: 1px solid var(--border);
+  background: var(--surface); border-radius: 14px; padding: 14px 14px; cursor: pointer; color: var(--text); font: inherit; }
+.ll-fila b { font-size: 16px; overflow-wrap: anywhere; }
+.ll-fila small { color: var(--muted); font-weight: 700; white-space: nowrap; }
+.ll-peu { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-top: 22px; }
+.enllac.perill { color: var(--danger); }
+.ll-titol { font-size: 15px; color: var(--muted); margin: 26px 0 2px; }
+.ll-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.ll-chip { border: 1.5px solid color-mix(in srgb, var(--c) 45%, var(--border)); background: var(--surface); color: var(--text); font: inherit; font-weight: 700;
+  padding: 7px 13px; border-radius: 99px; cursor: pointer; }
+.ll-chip:active { background: color-mix(in srgb, var(--c) 15%, var(--surface)); }
+.vista-llista .rec-nou .btn.primary, .vista-compres .rec-nou .btn.primary, .vista-recordatoris .rec-nou .btn.primary { background: var(--c); border-color: var(--c); color: #fff; box-shadow: none; }

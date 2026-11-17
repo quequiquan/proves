@@ -143,7 +143,7 @@ const llistaNoms = (n) => (n.length < 2 ? n.join('') : n.slice(0, -1).join(', ')
 
 /* ---------- Dades ---------- */
 function seed() {
-  return { tipus: ambPrincipals(TIPUS_INICIALS), persones: [], plans: [], recordatoris: [], ajustos: { nom: '', categories: VERSIO_CATEGORIES, principals: VERSIO_PRINCIPALS } };
+  return { tipus: ambPrincipals(TIPUS_INICIALS), persones: [], plans: [], recordatoris: [], llistes: [], compres: [], ajustos: { nom: '', categories: VERSIO_CATEGORIES, principals: VERSIO_PRINCIPALS } };
 }
 function normalize(d) {
   const arr = (x) => (Array.isArray(x) ? x : []);
@@ -152,6 +152,8 @@ function normalize(d) {
     persones: arr(d.persones),
     plans: arr(d.plans).map((p) => ({ qui: [], estat: 'confirmat', ...p })),
     recordatoris: arr(d.recordatoris).filter((r) => r && r.id),
+    llistes: arr(d.llistes).filter((l) => l && l.id).map((l) => ({ nom: '', ...l, items: arr(l.items).filter((i) => i && i.id) })),
+    compres: arr(d.compres).filter((r) => r && r.id),
     ajustos: d.ajustos && typeof d.ajustos === 'object' ? { nom: '', ...d.ajustos } : { nom: '' },
   };
 }
@@ -1097,11 +1099,11 @@ const SATEL = [
   { id: 'recordatoris', nom: 'Recordatoris', color: '#E8590C' },
   { id: 'memoria', nom: 'Memòria', color: '#7048E8', aviat: true },
   { id: 'aniversaris', nom: 'Aniversaris', color: '#E64980' },
-  { id: 'llista', nom: 'Llista', color: '#1C7ED6', aviat: true },
-  { id: 'compres', nom: 'Compres', color: '#2F9E44', aviat: true },
+  { id: 'llista', nom: 'Llista', color: '#1C7ED6' },
+  { id: 'compres', nom: 'Compres', color: '#2F9E44' },
   { id: 'documents', nom: 'Documents', color: '#5C677D', aviat: true },
 ];
-const VISTES_GALAXIA = ['inici', 'aniversaris', 'recordatoris'];
+const VISTES_GALAXIA = ['inici', 'aniversaris', 'recordatoris', 'llista', 'compres'];
 const pendentsRec = () => state.recordatoris.filter((r) => !r.fet);
 // Propers aniversaris i sants dels contactes (els dels pròxims 12 mesos, el primer avui)
 function propersAniv() {
@@ -1131,7 +1133,8 @@ function vistaInici() {
   const inv = rebuts().filter((p) => p.rebut.resposta === 'pendent' && p.data >= avui()).length;
   const resum = [nPlans === 1 ? '1 pla avui' : nPlans ? nPlans + ' plans avui' : 'Cap pla avui',
     nRec === 1 ? '1 recordatori' : nRec ? nRec + ' recordatoris' : ''].filter(Boolean).join(' · ');
-  const comptes = { recordatoris: nRec, aniversaris: aviatAniv };
+  const comptes = { recordatoris: nRec, aniversaris: aviatAniv, compres: state.compres.filter((r) => !r.fet).length,
+    llista: state.llistes.reduce((n, l) => n + l.items.filter((i) => !i.fet).length, 0) };
   return `<div class="galaxia">
       <div class="gx-salut"><h1>${esc(salut)}${nom ? ', ' + esc(nom) : ''}</h1>
         <p class="portada-data">${esc(cap(dataLlarga(avui())))}</p>
@@ -1175,6 +1178,43 @@ function vistaRecordatoris() {
         <button class="rec-text" data-recedita="${esc(r.id)}"><span>${esc(r.text)}</span><small>${esc(fa(r.creat))}</small></button></li>`).join('')}</ul>`
       : '<p class="help buit">No tens res pendent.</p>'}`;
 }
+// Elements d'una llista (Llista i Compres): casella per marcar i text per corregir
+const nouId = (p) => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+function filesItems(items, col, lid) {
+  return `<ul class="rec-llista">${items.map((it) => `<li>
+      <button class="rec-check" data-chk="${col}|${esc(lid)}|${esc(it.id)}" aria-label="Fet"></button>
+      <button class="rec-text" data-itedita="${col}|${esc(lid)}|${esc(it.id)}"><span>${esc(it.text)}</span></button></li>`).join('')}</ul>`;
+}
+const formItem = (col, lid, ph) => `<form class="rec-nou" data-formitem="${col}|${esc(lid)}" autocomplete="off"><input name="text" placeholder="${esc(ph)}" maxlength="200" enterkeyhint="done"><button class="btn primary">Afegeix</button></form>`;
+function vistaLlista() {
+  const l = state.llistes.find((x) => x.id === ui.llista);
+  if (!l) {
+    const llistes = state.llistes.slice().sort((a, b) => String(b.creat || '').localeCompare(String(a.creat || '')));
+    return capSatel('Llista') + `<p class="help">Llistes per a un moment concret: el que t'has d'endur de viatge, els encàrrecs d'avui…</p>
+      <form id="formLlistaNova" class="rec-nou" autocomplete="off"><input id="llistaNom" placeholder="Nom de la llista nova" maxlength="60" enterkeyhint="done"><button class="btn primary">Crea</button></form>
+      ${llistes.length ? `<div class="ll-index">${llistes.map((x) => {
+        const n = x.items.filter((i) => !i.fet).length;
+        return `<button class="ll-fila" data-obrellista="${esc(x.id)}"><b>${esc(x.nom)}</b><small>${n ? (n === 1 ? '1 pendent' : n + ' pendents') : x.items.length ? 'Feta' : 'Buida'}</small></button>`;
+      }).join('')}</div>` : '<p class="help buit">Encara no tens cap llista.</p>'}`;
+  }
+  const pend = l.items.filter((i) => !i.fet), fets = l.items.length - pend.length;
+  return `<div class="sat-cap"><button class="sat-torna" data-llistes aria-label="Torna a les llistes">‹ Llistes</button><h1>${esc(l.nom)}</h1></div>
+    ${formItem('llista', l.id, 'Afegeix a la llista')}
+    ${pend.length ? filesItems(pend, 'llista', l.id) : `<p class="help buit">${fets ? 'Llista feta.' : 'La llista és buida.'}</p>`}
+    <div class="ll-peu">
+      ${fets ? `<button class="btn" data-omple="${esc(l.id)}">Torna-la a omplir (${fets})</button>` : ''}
+      <button class="enllac" data-llistanom="${esc(l.id)}">Canvia el nom</button>
+      <button class="enllac perill" data-llistaesborra="${esc(l.id)}">Esborra la llista</button>
+    </div>`;
+}
+function vistaCompres() {
+  const pend = state.compres.filter((r) => !r.fet);
+  const habituals = state.compres.filter((r) => r.fet).sort((a, b) => a.text.localeCompare(b.text, 'ca'));
+  return capSatel('Compres') + formItem('compres', '', 'Què falta?')
+    + (pend.length ? filesItems(pend, 'compres', '') : '<p class="help buit">No falta res.</p>')
+    + (habituals.length ? `<h2 class="ll-titol">Habituals</h2><p class="help">Toca'n un per tornar-lo a posar a la llista.</p>
+      <div class="ll-chips">${habituals.map((r) => `<button class="ll-chip" data-torna="${esc(r.id)}">${esc(r.text)}</button>`).join('')}</div>` : '');
+}
 function vistaIniciAntiga() {
   const h = new Date().getHours();
   const salut = h < 6 ? 'Bona nit' : h < 13 ? 'Bon dia' : h < 20 ? 'Bona tarda' : 'Bona nit';
@@ -1196,7 +1236,7 @@ function vistaIniciAntiga() {
     </div>`;
 }
 
-const VISTES = { inici: vistaInici, aniversaris: vistaAniversaris, recordatoris: vistaRecordatoris, propers: vistaPropers, calendari: vistaCalendari, gent: vistaGent, ajustos: vistaAjustos, entrada: vistaEntrada };
+const VISTES = { inici: vistaInici, aniversaris: vistaAniversaris, recordatoris: vistaRecordatoris, llista: vistaLlista, compres: vistaCompres, propers: vistaPropers, calendari: vistaCalendari, gent: vistaGent, ajustos: vistaAjustos, entrada: vistaEntrada };
 function render() {
   if (!VISTES[ui.view]) ui.view = 'propers';
   if (ui.view === 'entrada' && !sync()?.disponible) ui.view = 'propers';
@@ -1592,7 +1632,7 @@ $('#main').addEventListener('click', (e) => {
   if (s) {
     const sat = SATEL.find((x) => x.id === s.dataset.sat);
     if (sat?.aviat) { toast(`${sat.nom}: aviat`); return; }
-    ui.view = s.dataset.sat; render(); window.scrollTo(0, 0); return;
+    ui.view = s.dataset.sat; ui.llista = ''; render(); window.scrollTo(0, 0); return;
   }
   const f = e.target.closest('[data-fitxa]');
   if (f) { ui.view = 'gent'; ui.persona = f.dataset.fitxa; render(); window.scrollTo(0, 0); return; }
@@ -1626,6 +1666,84 @@ $('#main').addEventListener('submit', (e) => {
   state.recordatoris.push({ id: 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), text: text.slice(0, 300), creat: new Date().toISOString() });
   save(); render();
   $('#recText')?.focus();
+});
+
+/* ---------- Llista i Compres ---------- */
+function itemsDe(col, lid) { return col === 'compres' ? state.compres : state.llistes.find((l) => l.id === lid)?.items || null; }
+$('#main').addEventListener('click', (e) => {
+  const t = e.target;
+  if (t.closest('[data-llistes]')) { ui.llista = ''; render(); window.scrollTo(0, 0); return; }
+  const ob = t.closest('[data-obrellista]');
+  if (ob) { ui.llista = ob.dataset.obrellista; render(); window.scrollTo(0, 0); return; }
+  const chk = t.closest('[data-chk]');
+  if (chk) {
+    const [col, lid, iid] = chk.dataset.chk.split('|');
+    const it = itemsDe(col, lid)?.find((x) => x.id === iid);
+    if (!it) return;
+    chk.closest('li').classList.add('fet');
+    setTimeout(() => {
+      it.fet = true; save(); render();
+      toastDesfes(`Fet: ${it.text}`, () => { const x = itemsDe(col, lid)?.find((y) => y.id === iid); if (x) x.fet = false; save(); render(); });
+    }, 380);
+    return;
+  }
+  const ed = t.closest('[data-itedita]');
+  if (ed) {
+    const [col, lid, iid] = ed.dataset.itedita.split('|');
+    const llista = itemsDe(col, lid), it = llista?.find((x) => x.id === iid);
+    if (!it) return;
+    const nou = prompt('Corregeix-ho (deixa-ho buit per treure-ho):', it.text);
+    if (nou === null || nou.trim() === it.text) return;
+    if (!nou.trim()) {
+      const lloc = llista.indexOf(it), copia = { ...it };
+      llista.splice(lloc, 1); save(); render();
+      toastDesfes(`Tret: ${it.text}`, () => { itemsDe(col, lid)?.splice(lloc, 0, copia); save(); render(); });
+      return;
+    }
+    it.text = nou.trim().slice(0, 200); save(); render(); return;
+  }
+  const tr = t.closest('[data-torna]');
+  if (tr) { const r = state.compres.find((x) => x.id === tr.dataset.torna); if (r) { r.fet = false; save(); render(); } return; }
+  const om = t.closest('[data-omple]');
+  if (om) { const l = state.llistes.find((x) => x.id === om.dataset.omple); if (l) { l.items.forEach((i) => { i.fet = false; }); save(); render(); toast('Llista a punt'); } return; }
+  const nm = t.closest('[data-llistanom]');
+  if (nm) {
+    const l = state.llistes.find((x) => x.id === nm.dataset.llistanom);
+    const nou = l && prompt('Nom de la llista:', l.nom);
+    if (nou && nou.trim()) { l.nom = nou.trim().slice(0, 60); save(); render(); }
+    return;
+  }
+  const es = t.closest('[data-llistaesborra]');
+  if (es) {
+    const l = state.llistes.find((x) => x.id === es.dataset.llistaesborra);
+    if (!l) return;
+    const lloc = state.llistes.indexOf(l), copia = JSON.parse(JSON.stringify(l));
+    state.llistes.splice(lloc, 1); ui.llista = ''; save(); render();
+    toastDesfes(`Esborrada: ${l.nom}`, () => { state.llistes.splice(lloc, 0, copia); ui.llista = copia.id; save(); render(); });
+  }
+});
+$('#main').addEventListener('submit', (e) => {
+  const f = e.target;
+  if (f.id === 'formLlistaNova') {
+    e.preventDefault();
+    const nom = $('#llistaNom').value.trim();
+    if (!nom) { $('#llistaNom').focus(); return; }
+    const l = { id: nouId('l'), nom: nom.slice(0, 60), creat: new Date().toISOString(), items: [] };
+    state.llistes.push(l); ui.llista = l.id; save(); render();
+    document.querySelector('[data-formitem] input')?.focus();
+    return;
+  }
+  if (!f.dataset.formitem) return;
+  e.preventDefault();
+  const [col, lid] = f.dataset.formitem.split('|');
+  const text = f.elements.text.value.trim().slice(0, 200), llista = itemsDe(col, lid);
+  if (!text || !llista) { f.elements.text.focus(); return; }
+  const igual = llista.find((x) => normal(x.text) === normal(text));
+  if (igual && !igual.fet) toast('Ja hi és');
+  else if (igual) igual.fet = false;
+  else llista.push(col === 'compres' ? { id: nouId('c'), text, fet: false, creat: new Date().toISOString() } : { id: nouId('i'), text, fet: false });
+  save(); render();
+  document.querySelector(`[data-formitem="${f.dataset.formitem}"] input`)?.focus();
 });
 
 /* ---------- Lliscar un pla cap a l'esquerra: Confirma / Esborra ---------- */
