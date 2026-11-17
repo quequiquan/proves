@@ -1146,6 +1146,7 @@ function vistaInici() {
         ${SATEL.map((s, i) => `<button class="gx-sat${s.aviat ? ' aviat' : ''}" data-sat="${s.id}" style="--c:${s.color};--a:${i * 60 - 90}deg">
             <span class="gx-bola"><span class="gx-ini" aria-hidden="true">${esc(s.nom[0])}</span>${comptes[s.id] ? `<i>${comptes[s.id]}</i>` : ''}</span><span class="gx-nom">${esc(s.nom)}</span>${s.aviat ? '<small>aviat</small>' : ''}</button>`).join('')}
       </div>
+      ${typeof pindolaDelDia === 'function' ? `<p class="gx-pindola">${esc(pindolaDelDia())}</p>` : ''}
       ${inv ? `<button class="enllac portada-veure" data-anar="propers">${inv === 1 ? 'Tens 1 invitació per respondre' : `Tens ${inv} invitacions per respondre`}</button>` : ''}
     </div>`;
 }
