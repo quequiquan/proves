@@ -974,6 +974,27 @@ function vistaAjustos() {
           </details>`
         : '<p class="help">Primer has d\'entrar amb el teu correu (a dalt, a «Compte»).</p>'}
     </div>` : ''}
+    ${sync()?.disponible ? `<div class="section" id="seccioVeu">
+      <h2>Plans per veu (Siri)</h2>
+      <p class="help">Per apuntar plans parlant, per exemple mentre condueixes: <b>«Ei Siri, nou pla»</b> i després dius el pla,
+        com <i>«Sopar amb la Mamen dijous a les nou del vespre a Cal Ton»</i>. Es desa com a <b>Per confirmar</b> perquè el revisis després.</p>
+      ${usuari()
+        ? `<div class="grp"><button class="btn primary" id="veuCopia">Copia el meu enllaç de veu</button></div>
+          <details class="ajuda"><summary>Com es prepara la Drecera (un sol cop)</summary>
+            <ol class="passos-veu">
+              <li>Prem <b>Copia el meu enllaç de veu</b>.</li>
+              <li>Obre l'app <b>Dreceres</b> i prem <b>+</b>. Posa-li de nom <b>Nou pla</b>.</li>
+              <li>Afegeix l'acció <b>Dictar text</b>. A «Idioma», tria <b>Català</b>.</li>
+              <li>Afegeix l'acció <b>Obtenir el contingut de l'URL</b>. Enganxa-hi l'enllaç. Toca la fletxa: Mètode <b>POST</b>,
+                Cos <b>Formulari</b>, afegeix un camp de text amb clau <b>text</b> i com a valor la variable <b>Text dictat</b>.</li>
+              <li>Afegeix l'acció <b>Parlar text</b> (o «Mostrar resultat») amb <b>Contingut de l'URL</b>.</li>
+              <li>Prova-ho: <b>«Ei Siri, nou pla»</b>.</li>
+            </ol>
+            <p>L'enllaç és privat: qui el tingui pot afegir plans a la teva agenda. Si l'has compartit sense voler,
+              <button class="enllac" id="veuNou">fes-ne un de nou</button> i torna'l a posar a la Drecera.</p>
+          </details>`
+        : '<p class="help">Primer has d\'entrar amb el teu correu (a dalt, a «Compte»).</p>'}
+    </div>` : ''}
     ${sync()?.disponible && rebuts().length ? `<div class="section" id="seccioAuto">
       <h2>Plans que t'envien</h2>
       <label class="check"><input type="checkbox" id="acceptaTot" ${state.ajustos.acceptaTot ? 'checked' : ''}> Accepta sols tots els plans que m'enviïn</label>
@@ -1514,6 +1535,20 @@ $('#main').addEventListener('click', async (e) => {
   if (b.dataset.segur !== '1') { b.dataset.segur = '1'; b.textContent = 'Segur? Toca per treure'; return; }
   try { await sync().desconvida(email); admin.llista = await sync().convidats(); toast('Tret de la llista'); render(); }
   catch (err) { toast("No s'ha pogut treure. Torna-ho a provar."); }
+});
+
+/* ---------- Ajustos: enllaç de veu ---------- */
+$('#main').addEventListener('click', async (e) => {
+  const b = e.target.closest('#veuCopia, #veuNou');
+  if (!b) return;
+  if (b.id === 'veuNou' && b.dataset.segur !== '1') { b.dataset.segur = '1'; b.textContent = "segur? toca'l un altre cop"; return; }
+  try {
+    const url = await sync().enllacVeu(b.id === 'veuNou');
+    try { await navigator.clipboard.writeText(url); toast(b.id === 'veuNou' ? 'Enllaç nou copiat: posa\'l a la Drecera' : 'Enllaç copiat'); }
+    catch (x) { prompt('Copia aquest enllaç:', url); }
+  } catch (err) {
+    toast(navigator.onLine ? "No s'ha pogut preparar l'enllaç. Comprova que a Supabase hi ha la funció «veu»." : 'Cal connexió a internet.');
+  }
 });
 
 /* ---------- Ajustos: subscripció al calendari ---------- */

@@ -352,6 +352,22 @@ const Sync = (() => {
     return { https, webcal: https.replace(/^https:/, 'webcal:') };
   }
 
+  /* ---------- Enllaç per apuntar plans per veu (Siri) ---------- */
+  const tokenNou = () => { const b = crypto.getRandomValues(new Uint8Array(24)); return btoa(String.fromCharCode(...b)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
+  async function enllacVeu(nou = false) {
+    if (!sb || !usuari) throw new Error('Cal haver entrat amb el correu');
+    const { data, error } = await sb.from('calendaris').select('token,token_veu').eq('propietari', usuari.id).maybeSingle();
+    if (error) throw error;
+    let tv = nou ? '' : data?.token_veu || '';
+    if (!tv) {
+      tv = tokenNou();
+      const fila = data ? { propietari: usuari.id, token: data.token, token_veu: tv } : { propietari: usuari.id, token: tokenNou(), token_veu: tv };
+      const { error: e2 } = await sb.from('calendaris').upsert(fila, { onConflict: 'propietari' });
+      if (e2) throw e2;
+    }
+    return `${cfg.supabaseUrl.replace(/\/$/, '')}/functions/v1/veu?t=${tv}${PROVES ? '&e=proves' : ''}`;
+  }
+
   /* ---------- Persones convidades (només les gestiona l'administrador) ---------- */
   async function esAdmin() {
     if (!sb || !usuari) return false;
@@ -374,7 +390,7 @@ const Sync = (() => {
   }
 
   return {
-    enllacCalendari, esAdmin, convidats, convida, desconvida,
+    enllacCalendari, enllacVeu, esAdmin, convidats, convida, desconvida,
     disponible,
     usuari: () => usuari,
     // Abans de saber si hi ha sessió: n'hi ha alguna de guardada en aquest dispositiu?
