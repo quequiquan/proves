@@ -1076,8 +1076,8 @@ function vistaEntrada() {
   }
   return `<div class="entrada">
       <img src="img/icona.svg" alt="" class="entrada-logo">
-      <h1><span class="w-que">Què</span> · <span class="w-qui">Qui</span> · <span class="w-quan">Quan</span></h1>
-      <p class="entrada-sub">Els teus sopars, concerts, trobades i sortides, en un sol lloc.</p>
+      <h1 class="entrada-galaxia">Galàxia</h1>
+      <p class="entrada-sub">La teva agenda i tot el que has de recordar, en un sol lloc.</p>
       ${cos}
     </div>`;
 }
@@ -1140,7 +1140,7 @@ function vistaInici() {
       <div class="gx-cercle">
         <div class="gx-orbita" aria-hidden="true"></div>
         <button class="gx-centre" id="gxAgenda" aria-label="Agenda (mantén premut per a un pla nou)">
-          <b>${d.getDate()}</b><span>Agenda</span></button>
+          <b>${d.getDate()} <small>${esc(MESOS[d.getMonth()].slice(0, 3))}.</small></b><span>Agenda</span></button>
         ${SATEL.map((s, i) => `<button class="gx-sat${s.aviat ? ' aviat' : ''}" data-sat="${s.id}" style="--c:${s.color};--a:${i * 60 - 90}deg">
             <span class="gx-bola">${comptes[s.id] ? `<i>${comptes[s.id]}</i>` : ''}</span><span class="gx-nom">${esc(s.nom)}</span>${s.aviat ? '<small>aviat</small>' : ''}</button>`).join('')}
       </div>

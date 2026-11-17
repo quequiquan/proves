@@ -859,3 +859,6 @@ body.mode-galaxia main { padding-bottom: calc(40px + var(--safe-b)); }
   display: flex; flex-direction: column; }
 .rec-text span { font-weight: 700; overflow-wrap: anywhere; }
 .rec-text small { color: var(--muted); font-weight: 600; font-size: 12px; }
+.gx-centre b small { font-size: 22px; font-weight: 600; }
+.gx-centre b { font-size: 38px; }
+.entrada-galaxia { color: var(--text); }
