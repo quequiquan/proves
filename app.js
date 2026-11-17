@@ -1105,6 +1105,7 @@ const SATEL = [
   { id: 'compres', nom: 'Compres', color: '#2F9E44' },
   { id: 'documents', nom: 'Documents', color: '#FFC300' },
 ];
+let gxAnimat = false;   // l'animació d'entrada només es fa el primer cop que s'obre l'app
 const VISTES_GALAXIA = ['inici', 'aniversaris', 'recordatoris', 'llista', 'compres', 'memoria', 'documents', 'pindoles'];
 const pendentsRec = () => state.recordatoris.filter((r) => !r.fet);
 // Propers aniversaris i sants dels contactes (els dels pròxims 12 mesos, el primer avui)
@@ -1135,7 +1136,8 @@ function vistaInici() {
   const inv = rebuts().filter((p) => p.rebut.resposta === 'pendent' && p.data >= avui()).length;
   const comptes = { recordatoris: nRec, aniversaris: aviatAniv, compres: state.compres.filter((r) => !r.fet).length,
     llista: state.llistes.reduce((n, l) => n + l.items.filter((i) => !i.fet).length, 0) };
-  return `<div class="galaxia">
+  const entra = !gxAnimat; gxAnimat = true;
+  return `<div class="galaxia${entra ? ' entra' : ''}">
       <div class="gx-salut"><h1>${esc(salut)}${nom ? ', ' + esc(nom) : ''}</h1>
         <p class="portada-data">${esc(cap(dataLlarga(avui())))}</p>
 </div>
@@ -1143,7 +1145,7 @@ function vistaInici() {
         <div class="gx-orbita" aria-hidden="true"></div>
         <button class="gx-centre" id="gxAgenda" aria-label="Agenda (mantén premut per a un pla nou)">
           <span class="gx-centre-nom">Agenda</span>${nPlans ? `<small class="gx-centre-n" aria-label="${nPlans} plans avui">${nPlans}</small>` : ''}</button>
-        ${SATEL.map((s, i) => `<button class="gx-sat${s.aviat ? ' aviat' : ''}" data-sat="${s.id}" style="--c:${s.color};--a:${i * 60 - 90}deg">
+        ${SATEL.map((s, i) => `<button class="gx-sat${s.aviat ? ' aviat' : ''}" data-sat="${s.id}" style="--c:${s.color};--a:${i * 60 - 90}deg;--i:${i}">
             <span class="gx-bola"><span class="gx-ini" aria-hidden="true">${esc(s.nom[0])}</span>${comptes[s.id] ? `<i>${comptes[s.id]}</i>` : ''}</span><span class="gx-nom">${esc(s.nom)}</span>${s.aviat ? '<small>aviat</small>' : ''}</button>`).join('')}
       </div>
       ${typeof pindolaDelDia === 'function' ? `<button class="gx-pindola" data-pindoles>${esc(pindolaDelDia())}</button>` : ''}
