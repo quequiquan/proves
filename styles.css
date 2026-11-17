@@ -898,3 +898,29 @@ body.mode-galaxia main { padding-bottom: calc(40px + var(--safe-b)); }
 .mem-form { display: grid; gap: 12px; }
 .mem-form label { display: grid; gap: 6px; font-weight: 700; }
 .mem-form textarea { font: inherit; resize: vertical; }
+/* Documents */
+.vista-documents { --c: #5C677D; }
+.vista-documents .btn.primary { background: var(--c); border-color: var(--c); color: #fff; box-shadow: none; }
+.doc-afegeix { cursor: pointer; }
+.doc-afegeix.ocupat { opacity: .6; pointer-events: none; }
+.doc-graella { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+.doc-fitxa { display: flex; flex-direction: column; gap: 4px; text-align: left; border: 1px solid var(--border); background: var(--surface); border-radius: 14px;
+  padding: 8px; cursor: pointer; color: var(--text); font: inherit; min-width: 0; }
+.doc-fitxa[hidden] { display: none; }
+.doc-mini { display: flex; align-items: center; justify-content: center; aspect-ratio: 3 / 4; border-radius: 10px; overflow: hidden; background: var(--surface-2); }
+.doc-mini img { width: 100%; height: 100%; object-fit: cover; }
+.doc-mini b { font-family: var(--font-title); font-size: 24px; color: var(--c); }
+.doc-nom { font-weight: 800; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.doc-fitxa small { color: var(--muted); font-weight: 600; font-size: 12px; }
+.doc-consell { margin-top: 22px; }
+.doc-visor { position: fixed; inset: 0; z-index: 70; background: var(--bg); display: flex; flex-direction: column;
+  padding: calc(10px + var(--safe-t)) 16px calc(14px + var(--safe-b)); --c: #5C677D; }
+.doc-visor-cap { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; min-width: 0; }
+.doc-visor-cap b { font-size: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.doc-visor-cos { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; overflow: auto; }
+.doc-visor-cos img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; box-shadow: var(--shadow); background: #fff; }
+.doc-pdf { text-align: center; }
+.doc-pdf b { display: inline-flex; align-items: center; justify-content: center; width: 110px; height: 140px; border-radius: 14px; background: var(--surface-2);
+  font-family: var(--font-title); font-size: 30px; color: var(--c); }
+.doc-visor-peu { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; padding-top: 12px; }
+.doc-visor-peu .btn.primary { background: var(--c); border-color: var(--c); color: #fff; text-decoration: none; }

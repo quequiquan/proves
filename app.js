@@ -143,7 +143,7 @@ const llistaNoms = (n) => (n.length < 2 ? n.join('') : n.slice(0, -1).join(', ')
 
 /* ---------- Dades ---------- */
 function seed() {
-  return { tipus: ambPrincipals(TIPUS_INICIALS), persones: [], plans: [], recordatoris: [], llistes: [], compres: [], memoria: [], ajustos: { nom: '', categories: VERSIO_CATEGORIES, principals: VERSIO_PRINCIPALS } };
+  return { tipus: ambPrincipals(TIPUS_INICIALS), persones: [], plans: [], recordatoris: [], llistes: [], compres: [], memoria: [], documents: [], ajustos: { nom: '', categories: VERSIO_CATEGORIES, principals: VERSIO_PRINCIPALS } };
 }
 function normalize(d) {
   const arr = (x) => (Array.isArray(x) ? x : []);
@@ -155,6 +155,7 @@ function normalize(d) {
     llistes: arr(d.llistes).filter((l) => l && l.id).map((l) => ({ nom: '', ...l, items: arr(l.items).filter((i) => i && i.id) })),
     compres: arr(d.compres).filter((r) => r && r.id),
     memoria: arr(d.memoria).filter((r) => r && r.id),
+    documents: arr(d.documents).filter((r) => r && r.id && r.cami),
     ajustos: d.ajustos && typeof d.ajustos === 'object' ? { nom: '', ...d.ajustos } : { nom: '' },
   };
 }
@@ -1102,9 +1103,9 @@ const SATEL = [
   { id: 'aniversaris', nom: 'Aniversaris', color: '#E64980' },
   { id: 'llista', nom: 'Llista', color: '#1C7ED6' },
   { id: 'compres', nom: 'Compres', color: '#2F9E44' },
-  { id: 'documents', nom: 'Documents', color: '#5C677D', aviat: true },
+  { id: 'documents', nom: 'Documents', color: '#5C677D' },
 ];
-const VISTES_GALAXIA = ['inici', 'aniversaris', 'recordatoris', 'llista', 'compres', 'memoria'];
+const VISTES_GALAXIA = ['inici', 'aniversaris', 'recordatoris', 'llista', 'compres', 'memoria', 'documents'];
 const pendentsRec = () => state.recordatoris.filter((r) => !r.fet);
 // Propers aniversaris i sants dels contactes (els dels pròxims 12 mesos, el primer avui)
 function propersAniv() {
@@ -1234,6 +1235,21 @@ function vistaMemoria() {
       </div>`).join('')}</div><p class="help buit" id="memRes" hidden>No hi ha cap fitxa que hi coincideixi.</p>`
       : '<p class="help buit">Encara no tens cap fitxa.</p>'}`;
 }
+// Documents: fotos i PDF al núvol privat de cada persona (a l'app només hi ha el nom i una miniatura)
+const dataDoc = (iso) => { const d = new Date(iso); return isNaN(d) ? '' : `${d.getDate()} ${MESOS[d.getMonth()].slice(0, 3)}. ${d.getFullYear()}`; };
+function vistaDocuments() {
+  const docs = state.documents.slice().sort((a, b) => String(b.creat || '').localeCompare(String(a.creat || '')));
+  const entrat = Boolean(usuari());
+  return capSatel('Documents') + `<p class="help">Fes una foto d'un document o tria'n un de l'iPhone. Es guarden al teu núvol privat: només tu els pots veure.</p>
+    ${entrat ? `<div class="mem-barra">${docs.length > 6 ? '<input id="cercaDoc" type="search" placeholder="Cerca…" autocomplete="off">' : ''}
+        <label class="btn primary doc-afegeix${ui.docPujant ? ' ocupat' : ''}"><input type="file" id="docFitxer" accept="image/*,application/pdf" hidden ${ui.docPujant ? 'disabled' : ''}>${ui.docPujant ? 'Pujant…' : 'Afegeix'}</label></div>`
+      : '<p class="help avis-doc">Per guardar documents cal haver entrat amb el teu correu (Agenda → Ajustos → Compte).</p>'}
+    ${docs.length ? `<div class="doc-graella">${docs.map((x) => `<button class="doc-fitxa" data-docobre="${esc(x.id)}" data-doccerca="${esc(normal(x.titol))}">
+        <span class="doc-mini">${x.mini ? `<img src="${esc(x.mini)}" alt="">` : `<b>${x.tipus === 'application/pdf' ? 'PDF' : 'IMG'}</b>`}</span>
+        <span class="doc-nom">${esc(x.titol)}</span><small>${esc(dataDoc(x.creat))}</small></button>`).join('')}</div>`
+      : entrat ? '<p class="help buit">Encara no tens cap document.</p>' : ''}
+    ${entrat ? '<p class="help doc-consell">Per escanejar diverses pàgines en un sol PDF: a l\'app <b>Arxius</b> de l\'iPhone, toca <b>···</b> → <b>Escanejar documents</b>, desa\'l i després tria\'l aquí.</p>' : ''}`;
+}
 function vistaIniciAntiga() {
   const h = new Date().getHours();
   const salut = h < 6 ? 'Bona nit' : h < 13 ? 'Bon dia' : h < 20 ? 'Bona tarda' : 'Bona nit';
@@ -1255,7 +1271,7 @@ function vistaIniciAntiga() {
     </div>`;
 }
 
-const VISTES = { inici: vistaInici, aniversaris: vistaAniversaris, recordatoris: vistaRecordatoris, llista: vistaLlista, compres: vistaCompres, memoria: vistaMemoria, propers: vistaPropers, calendari: vistaCalendari, gent: vistaGent, ajustos: vistaAjustos, entrada: vistaEntrada };
+const VISTES = { inici: vistaInici, aniversaris: vistaAniversaris, recordatoris: vistaRecordatoris, llista: vistaLlista, compres: vistaCompres, memoria: vistaMemoria, documents: vistaDocuments, propers: vistaPropers, calendari: vistaCalendari, gent: vistaGent, ajustos: vistaAjustos, entrada: vistaEntrada };
 function render() {
   if (!VISTES[ui.view]) ui.view = 'propers';
   if (ui.view === 'entrada' && !sync()?.disponible) ui.view = 'propers';
@@ -1806,6 +1822,108 @@ $('#main').addEventListener('submit', (e) => {
   else state.memoria.push({ id: nouId('m'), titol, text, creat: ara });
   ui.memEdita = ''; save(); render();
   toast(/contrasenya|password|\bpw\b|\bpin\b/i.test(titol + ' ' + text) ? "Desat. Recorda: les contrasenyes, millor a l'app Contrasenyes de l'iPhone." : 'Desat', 4500);
+});
+
+/* ---------- Documents ---------- */
+function carregaImg(file) {
+  return new Promise((ok, ko) => {
+    const u = URL.createObjectURL(file), im = new Image();
+    im.onload = () => { URL.revokeObjectURL(u); ok(im); };
+    im.onerror = () => { URL.revokeObjectURL(u); ko(new Error('imatge')); };
+    im.src = u;
+  });
+}
+function redueix(im, max) {
+  const w = im.naturalWidth, h = im.naturalHeight, s = Math.min(1, max / Math.max(w, h));
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.round(w * s)); c.height = Math.max(1, Math.round(h * s));
+  const x = c.getContext('2d');
+  x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(im, 0, 0, c.width, c.height);
+  return c;
+}
+$('#main').addEventListener('change', async (e) => {
+  if (e.target.id !== 'docFitxer') return;
+  const file = e.target.files?.[0];
+  e.target.value = '';
+  if (!file) return;
+  const esPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+  if (!esPdf && !/^image\//.test(file.type)) { toast('Només es poden afegir fotos o PDF.'); return; }
+  if (esPdf && file.size > 10 * 1024 * 1024) { toast('El PDF és massa gran (màxim 10 MB).'); return; }
+  const perDefecte = esPdf ? file.name.replace(/\.pdf$/i, '') : 'Document ' + new Date().toLocaleDateString('ca-ES');
+  const titol = prompt('Nom del document:', perDefecte);
+  if (titol === null) return;
+  ui.docPujant = true; render();
+  try {
+    const id = nouId('d');
+    let blob = file, tipus = 'application/pdf', mini = '';
+    if (!esPdf) {
+      const im = await carregaImg(file);
+      blob = await new Promise((ok) => redueix(im, 2000).toBlob(ok, 'image/jpeg', 0.82));
+      tipus = 'image/jpeg';
+      mini = redueix(im, 240).toDataURL('image/jpeg', 0.6);
+    }
+    const cami = await sync().pujaDoc(id, blob, tipus);
+    state.documents.push({ id, titol: (titol.trim() || perDefecte).slice(0, 80), tipus, cami, mida: blob.size, mini, creat: new Date().toISOString() });
+    save(); toast('Document desat');
+  } catch (err) {
+    toast(navigator.onLine ? "No s'ha pogut pujar el document." : 'Cal connexió a internet per pujar documents.', 4500);
+  }
+  ui.docPujant = false; render();
+});
+$('#main').addEventListener('input', (e) => {
+  if (e.target.id !== 'cercaDoc') return;
+  const q = normal(e.target.value.trim());
+  document.querySelectorAll('[data-doccerca]').forEach((el) => { el.hidden = Boolean(q) && !el.dataset.doccerca.includes(q); });
+});
+// Visor a pantalla completa: imatge, o botó per obrir el PDF
+function tancaVisor() { document.querySelector('.doc-visor')?.remove(); }
+async function obreVisor(doc) {
+  tancaVisor();
+  const v = document.createElement('div');
+  v.className = 'doc-visor';
+  v.innerHTML = `<div class="doc-visor-cap"><button type="button" class="sat-torna" data-visor="tanca">‹ Tanca</button><b>${esc(doc.titol)}</b></div>
+    <div class="doc-visor-cos"><p class="help">Carregant…</p></div>
+    <div class="doc-visor-peu"><a class="btn primary" data-visor="obre" target="_blank" rel="noopener" hidden>Obre / Comparteix</a>
+      <button type="button" class="enllac" data-visor="nom">Canvia el nom</button><button type="button" class="enllac perill" data-visor="esborra">Esborra</button></div>`;
+  document.body.appendChild(v);
+  v.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-visor]');
+    if (!b) return;
+    const acc = b.dataset.visor;
+    if (acc === 'tanca') { tancaVisor(); return; }
+    if (acc === 'nom') {
+      const nou = prompt('Nom del document:', doc.titol);
+      if (nou && nou.trim()) { doc.titol = nou.trim().slice(0, 80); save(); render(); v.querySelector('.doc-visor-cap b').textContent = doc.titol; }
+      return;
+    }
+    if (acc === 'esborra') {
+      if (b.dataset.segur !== '1') { b.dataset.segur = '1'; b.textContent = "Segur? Toca'l un altre cop"; return; }
+      try {
+        await sync().esborraDoc(doc.cami);
+        state.documents = state.documents.filter((x) => x.id !== doc.id);
+        save(); tancaVisor(); render(); toast('Document esborrat');
+      } catch (err) { toast(navigator.onLine ? "No s'ha pogut esborrar." : 'Cal connexió a internet.'); }
+    }
+  });
+  try {
+    const url = await sync().urlDoc(doc.cami);
+    if (!document.body.contains(v)) return;
+    const cos = v.querySelector('.doc-visor-cos'), obre = v.querySelector('[data-visor="obre"]');
+    obre.href = url; obre.hidden = false;
+    cos.innerHTML = doc.tipus === 'application/pdf'
+      ? `<div class="doc-pdf"><b>PDF</b><p class="help">Toca «Obre / Comparteix» per veure'l sencer.</p></div>`
+      : `<img src="${esc(url)}" alt="${esc(doc.titol)}">`;
+  } catch (err) {
+    v.querySelector('.doc-visor-cos').innerHTML = `<p class="help">${navigator.onLine ? "No s'ha pogut obrir el document." : 'Cal connexió a internet per veure el document.'}</p>`;
+  }
+}
+$('#main').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-docobre]');
+  if (!b) return;
+  const doc = state.documents.find((x) => x.id === b.dataset.docobre);
+  if (!doc) return;
+  if (!usuari()) { toast('Per veure els documents cal haver entrat amb el correu.'); return; }
+  obreVisor(doc);
 });
 
 /* ---------- Lliscar un pla cap a l'esquerra: Confirma / Esborra ---------- */

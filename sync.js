@@ -11,7 +11,7 @@ const Sync = (() => {
   const AUTH = 'qqq-auth';
   const MKEY = KEY + '-sync';
   const CKEY = KEY + '-comp';
-  const COLS = ['tipus', 'persones', 'plans', 'recordatoris', 'llistes', 'compres', 'memoria'];
+  const COLS = ['tipus', 'persones', 'plans', 'recordatoris', 'llistes', 'compres', 'memoria', 'documents'];
   const META0 = { snap: {}, ultima: null, usuari: null, compSnap: {}, compUltima: null };
   const COMP0 = { enviats: {}, rebuts: {} };
 
@@ -354,6 +354,25 @@ const Sync = (() => {
 
   /* ---------- Enllaç per apuntar plans per veu (Siri) ---------- */
   const tokenNou = () => { const b = crypto.getRandomValues(new Uint8Array(24)); return btoa(String.fromCharCode(...b)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
+  /* ---------- Documents (magatzem privat de Supabase) ---------- */
+  async function pujaDoc(id, blob, tipus) {
+    if (!sb || !usuari) throw new Error('Cal haver entrat amb el correu');
+    const ext = tipus === 'application/pdf' ? 'pdf' : tipus === 'image/png' ? 'png' : 'jpg';
+    const cami = `${usuari.id}/${ENTORN}/${id}.${ext}`;
+    const { error } = await sb.storage.from('documents').upload(cami, blob, { contentType: tipus, upsert: true });
+    if (error) throw error;
+    return cami;
+  }
+  async function urlDoc(cami) {
+    const { data, error } = await sb.storage.from('documents').createSignedUrl(cami, 3600);
+    if (error) throw error;
+    return data.signedUrl;
+  }
+  async function esborraDoc(cami) {
+    const { error } = await sb.storage.from('documents').remove([cami]);
+    if (error) throw error;
+  }
+
   async function enllacVeu(nou = false) {
     if (!sb || !usuari) throw new Error('Cal haver entrat amb el correu');
     const { data, error } = await sb.from('calendaris').select('token,token_veu').eq('propietari', usuari.id).maybeSingle();
@@ -390,7 +409,7 @@ const Sync = (() => {
   }
 
   return {
-    enllacCalendari, enllacVeu, esAdmin, convidats, convida, desconvida,
+    enllacCalendari, enllacVeu, pujaDoc, urlDoc, esborraDoc, esAdmin, convidats, convida, desconvida,
     disponible,
     usuari: () => usuari,
     // Abans de saber si hi ha sessió: n'hi ha alguna de guardada en aquest dispositiu?
