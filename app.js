@@ -143,7 +143,7 @@ const llistaNoms = (n) => (n.length < 2 ? n.join('') : n.slice(0, -1).join(', ')
 
 /* ---------- Dades ---------- */
 function seed() {
-  return { tipus: ambPrincipals(TIPUS_INICIALS), persones: [], plans: [], ajustos: { nom: '', categories: VERSIO_CATEGORIES, principals: VERSIO_PRINCIPALS } };
+  return { tipus: ambPrincipals(TIPUS_INICIALS), persones: [], plans: [], recordatoris: [], ajustos: { nom: '', categories: VERSIO_CATEGORIES, principals: VERSIO_PRINCIPALS } };
 }
 function normalize(d) {
   const arr = (x) => (Array.isArray(x) ? x : []);
@@ -151,6 +151,7 @@ function normalize(d) {
     tipus: arr(d.tipus).length ? arr(d.tipus) : TIPUS_INICIALS.map((t) => ({ ...t })),
     persones: arr(d.persones),
     plans: arr(d.plans).map((p) => ({ qui: [], estat: 'confirmat', ...p })),
+    recordatoris: arr(d.recordatoris).filter((r) => r && r.id),
     ajustos: d.ajustos && typeof d.ajustos === 'object' ? { nom: '', ...d.ajustos } : { nom: '' },
   };
 }
@@ -1091,7 +1092,91 @@ function ajustaPortada() {
   document.documentElement.style.setProperty('--alt-portada', Math.max(alt, 360) + 'px');
 }
 addEventListener('resize', () => { if (ui.view === 'inici') ajustaPortada(); });
+/* ---------- Galàxia: l'Agenda al mig i les micro-apps al voltant ---------- */
+const SATEL = [
+  { id: 'recordatoris', nom: 'Recordatoris', color: '#E8590C' },
+  { id: 'memoria', nom: 'Memòria', color: '#7048E8', aviat: true },
+  { id: 'aniversaris', nom: 'Aniversaris', color: '#E64980' },
+  { id: 'llista', nom: 'Llista', color: '#1C7ED6', aviat: true },
+  { id: 'compres', nom: 'Compres', color: '#2F9E44', aviat: true },
+  { id: 'documents', nom: 'Documents', color: '#5C677D', aviat: true },
+];
+const VISTES_GALAXIA = ['inici', 'aniversaris', 'recordatoris'];
+const pendentsRec = () => state.recordatoris.filter((r) => !r.fet);
+// Propers aniversaris i sants dels contactes (els dels pròxims 12 mesos, el primer avui)
+function propersAniv() {
+  const avuiD = parseYmd(avui()), y = avuiD.getFullYear(), out = [];
+  state.persones.forEach((pe) => {
+    [['aniversari', pe.aniversari], ['sant', pe.sant]].forEach(([tipus, txt]) => {
+      const a = llegeixAniv(txt);
+      if (!a || a.m < 1 || a.m > 12 || a.d < 1 || a.d > 31) return;
+      let any = y;
+      const dia = (yy) => new Date(yy, a.m - 1, Math.min(a.d, new Date(yy, a.m, 0).getDate()));
+      if (dia(any) < avuiD) any++;
+      const d = dia(any);
+      out.push({ pe, tipus, ds: ymd(d), d, edat: tipus === 'aniversari' && a.y && a.y <= any ? any - a.y : null, falten: Math.round((d - avuiD) / 86400000) });
+    });
+  });
+  return out.sort((a, b) => a.d - b.d || a.pe.nom.localeCompare(b.pe.nom));
+}
+function capSatel(nom) {
+  return `<div class="sat-cap"><button class="sat-torna" data-anar="inici" aria-label="Torna a Galàxia">‹ Galàxia</button><h1>${esc(nom)}</h1></div>`;
+}
 function vistaInici() {
+  const h = new Date().getHours();
+  const salut = h < 6 ? 'Bona nit' : h < 13 ? 'Bon dia' : h < 20 ? 'Bona tarda' : 'Bona nit';
+  const nom = (state.ajustos.nom || '').trim().split(' ')[0];
+  const nPlans = delDia(avui()).filter((p) => p.estat !== 'cancelat').length, nRec = pendentsRec().length;
+  const aviatAniv = propersAniv().filter((x) => x.falten <= 7).length;
+  const inv = rebuts().filter((p) => p.rebut.resposta === 'pendent' && p.data >= avui()).length;
+  const resum = [nPlans === 1 ? '1 pla avui' : nPlans ? nPlans + ' plans avui' : 'Cap pla avui',
+    nRec === 1 ? '1 recordatori' : nRec ? nRec + ' recordatoris' : ''].filter(Boolean).join(' · ');
+  const comptes = { recordatoris: nRec, aniversaris: aviatAniv };
+  const d = parseYmd(avui());
+  return `<div class="galaxia">
+      <div class="gx-salut"><h1>${esc(salut)}${nom ? ', ' + esc(nom) : ''}</h1>
+        <p class="portada-data">${esc(cap(dataLlarga(avui())))}</p>
+        <p class="gx-resum">${esc(resum)}</p></div>
+      <div class="gx-cercle">
+        <div class="gx-orbita" aria-hidden="true"></div>
+        <button class="gx-centre" id="gxAgenda" aria-label="Agenda (mantén premut per a un pla nou)">
+          <b>${d.getDate()}</b><span>Agenda</span></button>
+        ${SATEL.map((s, i) => `<button class="gx-sat${s.aviat ? ' aviat' : ''}" data-sat="${s.id}" style="--c:${s.color};--a:${i * 60 - 90}deg">
+            <span class="gx-bola">${comptes[s.id] ? `<i>${comptes[s.id]}</i>` : ''}</span><span class="gx-nom">${esc(s.nom)}</span>${s.aviat ? '<small>aviat</small>' : ''}</button>`).join('')}
+      </div>
+      ${inv ? `<button class="enllac portada-veure" data-anar="propers">${inv === 1 ? 'Tens 1 invitació per respondre' : `Tens ${inv} invitacions per respondre`}</button>` : ''}
+    </div>`;
+}
+function vistaAniversaris() {
+  const llista = propersAniv();
+  if (!llista.length) return capSatel('Aniversaris') + `<p class="help buit">Encara no hi ha cap aniversari. Posa'ls a la fitxa de cada contacte (pestanya Contactes).</p>
+    <div class="grp"><button class="btn" data-anar="gent">Ves a Contactes</button></div>`;
+  let mes = -1, html = '';
+  llista.forEach((x) => {
+    const m = x.d.getMonth() + x.d.getFullYear() * 12;
+    if (m !== mes) { mes = m; html += `<h2 class="aniv-mes">${esc(cap(MESOS[x.d.getMonth()]))}${x.d.getFullYear() !== new Date().getFullYear() ? ' ' + x.d.getFullYear() : ''}</h2>`; }
+    const quan = x.falten === 0 ? 'Avui' : x.falten === 1 ? 'Demà' : x.falten <= 7 ? `D'aquí a ${x.falten} dies` : '';
+    const que = x.tipus === 'sant' ? 'Sant' : x.edat ? `Fa ${x.edat} anys` : 'Aniversari';
+    html += `<button class="aniv-fila${x.falten === 0 ? ' avui' : ''}${x.tipus === 'sant' ? ' sant' : ''}" data-fitxa="${esc(x.pe.id)}">
+        <span class="aniv-dia"><b>${x.d.getDate()}</b><small>${esc(DIES[(x.d.getDay() + 6) % 7].slice(0, 3))}</small></span>
+        <span class="aniv-cos"><b>${esc(x.pe.nom)}</b><small>${esc([que, quan].filter(Boolean).join(' · '))}</small></span></button>`;
+  });
+  return capSatel('Aniversaris') + `<div class="aniv-llista">${html}</div>`;
+}
+const fa = (iso) => {
+  const dies = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+  return !iso || isNaN(dies) ? '' : dies < 1 ? 'Avui' : dies === 1 ? 'Ahir' : dies < 30 ? `Fa ${dies} dies` : dies < 60 ? 'Fa un mes' : `Fa ${Math.floor(dies / 30)} mesos`;
+};
+function vistaRecordatoris() {
+  const llista = pendentsRec().slice().sort((a, b) => String(b.creat || '').localeCompare(String(a.creat || '')));
+  return capSatel('Recordatoris') + `<p class="help">Coses pendents sense data que no vols oblidar. Quan en facis una, toca el cercle i desapareix.</p>
+    <form id="formRec" class="rec-nou" autocomplete="off"><input id="recText" placeholder="Què has de recordar?" maxlength="300" enterkeyhint="done"><button class="btn primary">Afegeix</button></form>
+    ${llista.length ? `<ul class="rec-llista">${llista.map((r) => `<li data-rec="${esc(r.id)}">
+        <button class="rec-check" data-recfet="${esc(r.id)}" aria-label="Fet"></button>
+        <button class="rec-text" data-recedita="${esc(r.id)}"><span>${esc(r.text)}</span><small>${esc(fa(r.creat))}</small></button></li>`).join('')}</ul>`
+      : '<p class="help buit">No tens res pendent.</p>'}`;
+}
+function vistaIniciAntiga() {
   const h = new Date().getHours();
   const salut = h < 6 ? 'Bona nit' : h < 13 ? 'Bon dia' : h < 20 ? 'Bona tarda' : 'Bona nit';
   const nom = (state.ajustos.nom || '').trim().split(' ')[0];
@@ -1112,12 +1197,16 @@ function vistaInici() {
     </div>`;
 }
 
-const VISTES = { inici: vistaInici, propers: vistaPropers, calendari: vistaCalendari, gent: vistaGent, ajustos: vistaAjustos, entrada: vistaEntrada };
+const VISTES = { inici: vistaInici, aniversaris: vistaAniversaris, recordatoris: vistaRecordatoris, propers: vistaPropers, calendari: vistaCalendari, gent: vistaGent, ajustos: vistaAjustos, entrada: vistaEntrada };
 function render() {
   if (!VISTES[ui.view]) ui.view = 'propers';
   if (ui.view === 'entrada' && !sync()?.disponible) ui.view = 'propers';
   document.body.classList.toggle('mode-entrada', ui.view === 'entrada');
   document.body.classList.toggle('mode-inici', ui.view === 'inici');
+  document.body.classList.toggle('mode-galaxia', VISTES_GALAXIA.includes(ui.view));
+  const marca = document.querySelector('.brand-nom b');
+  if (marca) marca.innerHTML = VISTES_GALAXIA.includes(ui.view) ? '<span class="w-galaxia">Galàxia</span>'
+    : '<span class="w-que">Què</span> · <span class="w-qui">Qui</span> · <span class="w-quan">Quan</span>';
   if (ui.view === 'inici') requestAnimationFrame(ajustaPortada);
   if ($('#syncBtn') && sync()?.disponible) $('#syncBtn').hidden = ui.view === 'entrada';
   $$('#tabs button').forEach((b) => b.setAttribute('aria-current', b.dataset.view === ui.view ? 'page' : 'false'));
@@ -1135,6 +1224,7 @@ $('#tabs').addEventListener('click', (e) => {
   if (!b) return;
   ui.view = b.dataset.view; ui.persona = ''; ui.cercaGent = '';
   desaPref('view', ui.view);
+  if (VISTES_AGENDA.includes(ui.view)) desaPref('vistaAgenda', ui.view);
   render(); window.scrollTo(0, 0);
 });
 $('#btnNou').addEventListener('click', () => obreForm(null, { data: ui.view === 'calendari' ? ui.diaSel : avui() }));
@@ -1482,6 +1572,62 @@ $('#main').addEventListener('contextmenu', (e) => {
 $('#main').addEventListener('click', (e) => {
   if (ignoraClic && e.target.closest('[data-pla]')) { e.stopImmediatePropagation(); e.preventDefault(); }
 }, true);
+
+/* ---------- Galàxia: botons del cercle, aniversaris i recordatoris ---------- */
+let gxPrem = null, gxLlarg = false;
+const VISTES_AGENDA = ['propers', 'calendari', 'gent', 'ajustos'];
+$('#main').addEventListener('pointerdown', (e) => {
+  if (!e.target.closest('#gxAgenda')) return;
+  gxLlarg = false; clearTimeout(gxPrem);
+  gxPrem = setTimeout(() => { gxLlarg = true; navigator.vibrate?.(15); obreForm(null, { data: avui() }); }, 550);
+});
+['pointerup', 'pointercancel', 'pointerleave'].forEach((ev) => $('#main').addEventListener(ev, () => clearTimeout(gxPrem), true));
+$('#main').addEventListener('contextmenu', (e) => { if (e.target.closest('#gxAgenda')) e.preventDefault(); });
+$('#main').addEventListener('click', (e) => {
+  if (e.target.closest('#gxAgenda')) {
+    if (gxLlarg) { gxLlarg = false; return; }
+    const v = llegeixPref('vistaAgenda', 'propers');
+    ui.view = VISTES_AGENDA.includes(v) ? v : 'propers'; render(); window.scrollTo(0, 0); return;
+  }
+  const s = e.target.closest('[data-sat]');
+  if (s) {
+    const sat = SATEL.find((x) => x.id === s.dataset.sat);
+    if (sat?.aviat) { toast(`${sat.nom}: aviat`); return; }
+    ui.view = s.dataset.sat; render(); window.scrollTo(0, 0); return;
+  }
+  const f = e.target.closest('[data-fitxa]');
+  if (f) { ui.view = 'gent'; ui.persona = f.dataset.fitxa; render(); window.scrollTo(0, 0); return; }
+  const fet = e.target.closest('[data-recfet]');
+  if (fet) {
+    const r = state.recordatoris.find((x) => x.id === fet.dataset.recfet);
+    if (!r) return;
+    fet.closest('li').classList.add('fet');
+    setTimeout(() => {
+      const copia = { ...r }, lloc = state.recordatoris.indexOf(r);
+      state.recordatoris = state.recordatoris.filter((x) => x.id !== r.id);
+      save(); render();
+      toastDesfes(`Fet: ${r.text}`, () => { state.recordatoris.splice(Math.max(0, lloc), 0, copia); save(); render(); });
+    }, 380);
+    return;
+  }
+  const ed = e.target.closest('[data-recedita]');
+  if (ed) {
+    const r = state.recordatoris.find((x) => x.id === ed.dataset.recedita);
+    if (!r) return;
+    const nou = prompt('Edita el recordatori:', r.text);
+    if (nou === null || !nou.trim() || nou.trim() === r.text) return;
+    r.text = nou.trim().slice(0, 300); save(); render();
+  }
+});
+$('#main').addEventListener('submit', (e) => {
+  if (e.target.id !== 'formRec') return;
+  e.preventDefault();
+  const text = $('#recText').value.trim();
+  if (!text) { $('#recText').focus(); return; }
+  state.recordatoris.push({ id: 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), text: text.slice(0, 300), creat: new Date().toISOString() });
+  save(); render();
+  $('#recText')?.focus();
+});
 
 /* ---------- Lliscar un pla cap a l'esquerra: Confirma / Esborra ---------- */
 let llisc = null, murObert = null;

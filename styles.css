@@ -799,3 +799,63 @@ body.mode-inici main { padding-top: 0; padding-bottom: 0; }
 .vista-dia .franja .pla-mur { flex: 1; min-width: 0; margin-bottom: 0; }
 .setm-plans .pla-mur { margin-bottom: 6px; }
 .pla-mur { min-width: 0; max-width: 100%; }
+
+/* =========  GALÀXIA: l'Agenda al mig i les micro-apps al voltant  ========= */
+.brand-nom .w-galaxia { color: var(--head-text); letter-spacing: .5px; }
+body.mode-galaxia .tabs, body.mode-galaxia .top .nou { display: none; }
+body.mode-galaxia main { padding-bottom: calc(40px + var(--safe-b)); }
+.galaxia { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 10px 0 20px; min-height: calc(100dvh - 130px - var(--safe-t)); box-sizing: border-box; }
+.gx-salut h1 { font-weight: 700; font-size: 21px; margin: 6px 0 2px; }
+.gx-salut .portada-data { margin: 0 0 4px; }
+.gx-resum { margin: 0; color: var(--text); font-weight: 700; font-size: 14px; }
+.gx-cercle { --r: min(32vw, 150px); position: relative; width: calc(var(--r) * 2 + 96px); height: calc(var(--r) * 2 + 110px); margin: 14px auto 0; }
+.gx-orbita { position: absolute; left: 50%; top: 50%; width: calc(var(--r) * 2); height: calc(var(--r) * 2); transform: translate(-50%, -50%);
+  border-radius: 50%; border: 1.5px dashed var(--border); }
+.gx-centre { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 124px; height: 124px; border-radius: 50%;
+  border: 0; cursor: pointer; background: var(--accent); color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--accent) 40%, transparent); -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; transition: transform .15s; }
+.gx-centre:active { transform: translate(-50%, -50%) scale(.95); }
+.gx-centre b { font-family: var(--font-title); font-size: 44px; font-weight: 600; line-height: 1; }
+.gx-centre span { font-weight: 800; font-size: 15px; margin-top: 2px; }
+.gx-sat { position: absolute; left: 50%; top: 50%; width: 96px; border: 0; background: none; padding: 0; cursor: pointer; color: var(--text);
+  transform: translate(calc(-50% + cos(var(--a)) * var(--r)), calc(-34px + sin(var(--a)) * var(--r)));
+  display: flex; flex-direction: column; align-items: center; gap: 5px; -webkit-tap-highlight-color: transparent; }
+.gx-bola { position: relative; width: 62px; height: 62px; border-radius: 50%; background: var(--c); box-shadow: 0 6px 18px color-mix(in srgb, var(--c) 35%, transparent); transition: transform .15s; }
+.gx-sat:active .gx-bola { transform: scale(.92); }
+.gx-bola i { position: absolute; right: -4px; top: -4px; min-width: 24px; height: 24px; padding: 0 6px; box-sizing: border-box; border-radius: 99px;
+  background: var(--surface); color: var(--text); font-style: normal; font-weight: 800; font-size: 13px; line-height: 24px; box-shadow: var(--shadow); }
+.gx-nom { font-weight: 800; font-size: 13.5px; background: var(--surface); padding: 2px 9px; border-radius: 99px; box-shadow: var(--shadow); white-space: nowrap; }
+.gx-sat small { color: var(--muted); font-size: 11px; font-weight: 700; margin-top: -3px; }
+.gx-sat.aviat .gx-bola { opacity: .4; box-shadow: none; }
+.gx-sat.aviat .gx-nom { color: var(--muted); }
+@media (max-width: 360px) { .gx-cercle { --r: 108px; } .gx-centre { width: 104px; height: 104px; } .gx-bola { width: 54px; height: 54px; } }
+/* Capçalera de les micro-apps */
+.sat-cap { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; }
+.sat-cap h1 { margin: 0; font-size: 24px; }
+.sat-torna { border: 0; background: var(--surface-2); color: var(--text); font: inherit; font-weight: 800; padding: 7px 12px; border-radius: 99px; cursor: pointer; }
+.buit { text-align: center; padding: 30px 0 10px; }
+/* Aniversaris */
+.aniv-mes { font-size: 15px; color: var(--muted); margin: 18px 0 8px; text-transform: none; }
+.aniv-llista { display: grid; gap: 8px; }
+.aniv-fila { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; border: 1px solid var(--border); background: var(--surface);
+  border-radius: 14px; padding: 10px 12px; cursor: pointer; color: var(--text); font: inherit; }
+.aniv-dia { width: 44px; height: 44px; flex: none; border-radius: 50%; background: color-mix(in srgb, #E64980 14%, var(--surface)); color: #C2255C;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; }
+.aniv-fila.sant .aniv-dia { background: color-mix(in srgb, #E8590C 14%, var(--surface)); color: #D9480F; }
+.aniv-dia b { font-size: 18px; } .aniv-dia small { font-size: 10.5px; font-weight: 700; }
+.aniv-cos { display: flex; flex-direction: column; min-width: 0; }
+.aniv-cos small { color: var(--muted); font-weight: 600; }
+.aniv-fila.avui { border-color: #E64980; box-shadow: 0 0 0 2px color-mix(in srgb, #E64980 25%, transparent); }
+/* Recordatoris */
+.rec-nou { display: flex; gap: 8px; margin: 10px 0 14px; }
+.rec-nou input { flex: 1; min-width: 0; }
+.rec-llista { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.rec-llista li { display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 8px 12px;
+  transition: opacity .35s, transform .35s; }
+.rec-llista li.fet { opacity: 0; transform: translateX(30px); }
+.rec-check { width: 26px; height: 26px; flex: none; border-radius: 50%; border: 2.5px solid #E8590C; background: none; cursor: pointer; padding: 0; }
+.rec-llista li.fet .rec-check { background: #E8590C; }
+.rec-text { flex: 1; min-width: 0; border: 0; background: none; text-align: left; padding: 4px 0; cursor: pointer; color: var(--text); font: inherit;
+  display: flex; flex-direction: column; }
+.rec-text span { font-weight: 700; overflow-wrap: anywhere; }
+.rec-text small { color: var(--muted); font-weight: 600; font-size: 12px; }
