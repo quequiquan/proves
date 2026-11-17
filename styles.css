@@ -863,3 +863,6 @@ body.mode-galaxia main { padding-bottom: calc(40px + var(--safe-b)); }
 .gx-centre b { font-size: 38px; }
 .entrada-galaxia { color: var(--text); }
 .gx-centre .gx-centre-nom { font-family: var(--font-title); font-weight: 600; font-size: 24px; letter-spacing: .4px; margin: 0; }
+.gx-bola { display: flex; align-items: center; justify-content: center; }
+.gx-ini { font-family: var(--font-title); font-weight: 600; font-size: 28px; line-height: 1; color: #fff; }
+.gx-sat.aviat .gx-ini { opacity: .9; }
