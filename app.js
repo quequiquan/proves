@@ -1103,7 +1103,7 @@ const SATEL = [
   { id: 'aniversaris', nom: 'Aniversaris', color: '#E64980' },
   { id: 'llista', nom: 'Llista', color: '#1C7ED6' },
   { id: 'compres', nom: 'Compres', color: '#2F9E44' },
-  { id: 'documents', nom: 'Documents', color: '#5C677D' },
+  { id: 'documents', nom: 'Documents', color: '#FFC300' },
 ];
 const VISTES_GALAXIA = ['inici', 'aniversaris', 'recordatoris', 'llista', 'compres', 'memoria', 'documents'];
 const pendentsRec = () => state.recordatoris.filter((r) => !r.fet);
