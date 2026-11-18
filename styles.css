@@ -953,10 +953,10 @@ button.gx-pindola { display: block; border: 0; background: none; padding: 4px 8p
 @keyframes gxSurt { from { transform: translate(-50%, -34px) scale(.2); opacity: 0; } }
 @keyframes gxCentre { from { transform: translate(-50%, -50%) scale(.75); opacity: 0; } }
 @keyframes gxApareix { from { opacity: 0; transform: translateY(6px); } }
-.galaxia.entra .gx-centre { animation: gxCentre .45s cubic-bezier(.2, .9, .3, 1.15) backwards; }
-.galaxia.entra .gx-sat { animation: gxSurt .65s cubic-bezier(.2, .9, .3, 1.12) backwards; animation-delay: calc(.15s + var(--i) * .07s); }
-.galaxia.entra .gx-orbita { animation: gxApareix .6s ease .1s backwards; }
-.galaxia.entra .gx-pindola { animation: gxApareix .6s ease 1s backwards; }
+.galaxia.entra .gx-centre { animation: gxCentre .7s cubic-bezier(.2, .9, .3, 1.15) backwards; }
+.galaxia.entra .gx-sat { animation: gxSurt 1.2s cubic-bezier(.25, .8, .3, 1.08) backwards; animation-delay: calc(.35s + var(--i) * .18s); }
+.galaxia.entra .gx-orbita { animation: gxApareix 1s ease .2s backwards; }
+.galaxia.entra .gx-pindola { animation: gxApareix .9s ease 2.3s backwards; }
 @media (prefers-reduced-motion: reduce) { .galaxia.entra * { animation: none !important; } }
 /* Compres: famílies */
 .fam-titol { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); margin: 18px 0 8px; }
