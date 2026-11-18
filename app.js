@@ -1206,17 +1206,56 @@ function vistaLlista() {
     ${pend.length ? filesItems(pend, 'llista', l.id) : `<p class="help buit">${fets ? 'Llista feta.' : 'La llista és buida.'}</p>`}
     <div class="ll-peu">
       ${fets ? `<button class="btn" data-omple="${esc(l.id)}">Torna-la a omplir (${fets})</button>` : ''}
+      ${l.items.length ? `<button class="btn" data-llistaimprimeix="${esc(l.id)}">Imprimeix</button>` : ''}
       <button class="enllac" data-llistanom="${esc(l.id)}">Canvia el nom</button>
       <button class="enllac perill" data-llistaesborra="${esc(l.id)}">Esborra la llista</button>
     </div>`;
+}
+// Famílies de la compra: cada producte es classifica sol per paraules clau (i es pot canviar a mà)
+const FAMILIES = [
+  { id: 'verdura', nom: 'Verdura', c: '#2F9E44', p: 'verdura,enciam,lletuga,tomaquet,tomate,ceba,ceba tendra,all,pebrot,carbasso,carbassa,albergina,pastanaga,patata,broquil,coliflor,espinac,mongeta tendra,mongeta,cogombre,porro,api,carxofa,bolet,xampinyo,col,julivert,rucula,canonges,remolatxa,nap,amanida' },
+  { id: 'fruita', nom: 'Fruita', c: '#F08C00', p: 'fruita,poma,pera,platan,banana,taronja,mandarina,maduixa,raim,pressec,melo,sindria,kiwi,llimona,cirera,pinya,alvocat,figa,nespra,albercoc,pruna,mango,nabius,gerds' },
+  { id: 'neteja', nom: 'Neteja i higiene', c: '#1C7ED6', p: 'detergent,lleixiu,sabo,xampu,gel,gel de dutxa,paper higienic,paper de vater,paper wc,paper de cuina,rotllo de cuina,esponja,fregall,suavitzant,raspall de dents,pasta de dents,dentifric,desodorant,bosses d escombraries,bosses de brossa,bosses,escombraries,rentavaixelles,netejavidres,netejador,amoniac,tovalloletes,compreses,tampons,maquineta,fulles d afaitar,colonia,coto,bastonets,mocadors de paper,mocadors,crema' },
+  { id: 'olis', nom: 'Olis, vinagres i salses', c: '#C2A100', p: 'oli,oli d oliva,vinagre,maionesa,quetxup,ketchup,mostassa,salsa,tomaquet fregit,tomaquet triturat,sal,pebre,especies,orenga,comi,allioli,salsa de soja' },
+  { id: 'pa', nom: 'Pans, rebosteria i cereals', c: '#B07D48', p: 'pa,barra de pa,llesques,pa de motlle,pa torrat,torrades,biscotes,galeta,magdalena,croissant,cereals,muesli,civada,bescuit,coca,ensaimada,pastes,brioix,farina' },
+  { id: 'cafe', nom: 'Cafè, te i infusions', c: '#8B5E3C', p: 'cafe,descafeinat,capsules de cafe,capsules,te,te verd,infusio,camamilla,poliol,tila,menta,poleo,cacau,colacao,xocolata a la tassa' },
+  { id: 'carn', nom: 'Carns', c: '#E03131', p: 'carn,carn picada,pollastre,pit de pollastre,cuixes de pollastre,vedella,porc,xai,conill,botifarra,salsitxa,hamburguesa,pernil,pernil dolc,pernil salat,embotit,fuet,llonganissa,llom,costella,bacon,gall dindi,mandonguilles,filet,xorico,chorizo' },
+  { id: 'peix', nom: 'Peixos', c: '#0B7285', p: 'peix,lluc,bacalla,salmo,tonyina,sardina,gamba,musclo,calamar,sipia,rap,llobarro,orada,anxova,seito,cloissa,marisc,surimi,navalla' },
+  { id: 'altres', nom: 'Altres', c: '#868E96', p: '' },
+];
+// Formes en plural de l'última paraula: poma → pomes, pastanaga → pastanagues, vaca → vaques, platja → platges
+function formesPlural(x) {
+  const out = [x, x + 's', x + 'es', x + 'ns'];
+  if (/a$/.test(x)) { const b = x.slice(0, -1); out.push(b + 'es'); if (/ga$/.test(x)) out.push(x.slice(0, -2) + 'gues'); if (/ca$/.test(x)) out.push(x.slice(0, -2) + 'ques'); if (/ja$/.test(x)) out.push(x.slice(0, -2) + 'ges'); if (/qua$/.test(x)) out.push(x.slice(0, -3) + 'qües'); }
+  return out;
+}
+// Cada paraula o expressió (també en plural); les expressions llargues es miren primer («tomàquet fregit» abans que «tomàquet»)
+const PARAULES_FAM = FAMILIES.flatMap((f) => f.p.split(',').map((x) => x.trim()).filter(Boolean)
+  .map((x) => [new RegExp(' (' + formesPlural(x).join('|') + ') '), f.id, x.length]))
+  .sort((a, b) => b[2] - a[2]);
+function endevinaFamilia(text) {
+  const t = ' ' + normal(text).replace(/[^a-z0-9]+/g, ' ').trim() + ' ';
+  for (const [re, id] of PARAULES_FAM) if (re.test(t)) return id;
+  return 'altres';
+}
+const familiaDe = (r) => (FAMILIES.some((f) => f.id === r.familia) ? r.familia : endevinaFamilia(r.text));
+function filesCompres(items) {
+  return FAMILIES.map((f) => {
+    const seus = items.filter((r) => familiaDe(r) === f.id);
+    if (!seus.length) return '';
+    return `<h3 class="fam-titol" style="--fc:${f.c}">${esc(f.nom)}</h3><ul class="rec-llista">${seus.map((it) => `<li>
+      <button class="rec-check" data-chk="compres||${esc(it.id)}" aria-label="Fet"></button>
+      <button class="rec-text" data-itedita="compres||${esc(it.id)}"><span>${esc(it.text)}</span></button>
+      <select class="fam-tria" data-fam="${esc(it.id)}" aria-label="Família">${FAMILIES.map((x) => `<option value="${x.id}"${x.id === f.id ? ' selected' : ''}>${esc(x.nom)}</option>`).join('')}</select></li>`).join('')}</ul>`;
+  }).join('');
 }
 function vistaCompres() {
   const pend = state.compres.filter((r) => !r.fet);
   const habituals = state.compres.filter((r) => r.fet).sort((a, b) => a.text.localeCompare(b.text, 'ca'));
   return capSatel('Compres') + formItem('compres', '', 'Què falta?')
-    + (pend.length ? filesItems(pend, 'compres', '') : '<p class="help buit">No falta res.</p>')
+    + (pend.length ? filesCompres(pend) : '<p class="help buit">No falta res.</p>')
     + (habituals.length ? `<h2 class="ll-titol">Habituals</h2><p class="help">Toca'n un per tornar-lo a posar a la llista.</p>
-      <div class="ll-chips">${habituals.map((r) => `<button class="ll-chip" data-torna="${esc(r.id)}">${esc(r.text)}</button>`).join('')}</div>` : '');
+      ${FAMILIES.map((f) => { const seus = habituals.filter((r) => familiaDe(r) === f.id); return seus.length ? `<div class="ll-chips fam-chips" style="--fc:${f.c}">${seus.map((r) => `<button class="ll-chip" data-torna="${esc(r.id)}">${esc(r.text)}</button>`).join('')}</div>` : ''; }).join('')}` : '');
 }
 // Memòria: fitxes amb informació per consultar (no contrasenyes)
 function vistaMemoria() {
@@ -1232,7 +1271,7 @@ function vistaMemoria() {
     <div class="mem-barra">${fitxes.length > 3 ? '<input id="cercaMem" type="search" placeholder="Cerca…" autocomplete="off">' : ''}<button class="btn primary" data-memnova>Nova fitxa</button></div>
     ${fitxes.length ? `<div class="mem-llista">${fitxes.map((x) => `<div class="mem-fitxa" data-memcerca="${esc(normal(x.titol + ' ' + x.text))}">
         <b>${esc(x.titol)}</b>${x.text ? `<p>${esc(x.text)}</p>` : ''}
-        <div class="mem-accions">${x.text ? `<button class="enllac" data-memcopia="${esc(x.id)}">Copia</button>` : ''}<button class="enllac" data-memedita="${esc(x.id)}">Edita</button></div>
+        <div class="mem-accions"><button class="enllac" data-memcomparteix="${esc(x.id)}">Comparteix</button>${x.text ? `<button class="enllac" data-memcopia="${esc(x.id)}">Copia</button>` : ''}<button class="enllac" data-memedita="${esc(x.id)}">Edita</button></div>
       </div>`).join('')}</div><p class="help buit" id="memRes" hidden>No hi ha cap fitxa que hi coincideixi.</p>`
       : '<p class="help buit">Encara no tens cap fitxa.</p>'}`;
 }
@@ -1746,6 +1785,17 @@ $('#main').addEventListener('click', (e) => {
   if (tr) { const r = state.compres.find((x) => x.id === tr.dataset.torna); if (r) { r.fet = false; save(); render(); } return; }
   const om = t.closest('[data-omple]');
   if (om) { const l = state.llistes.find((x) => x.id === om.dataset.omple); if (l) { l.items.forEach((i) => { i.fet = false; }); save(); render(); toast('Llista a punt'); } return; }
+  const im = t.closest('[data-llistaimprimeix]');
+  if (im) {
+    const l = state.llistes.find((x) => x.id === im.dataset.llistaimprimeix);
+    if (!l) return;
+    const pend = l.items.filter((i) => !i.fet), items = pend.length ? pend : l.items;
+    $('#impressio').innerHTML = `<div class="llista-full imprès full-llista"><p class="ll-app">Galàxia</p><h1>${esc(l.nom)}</h1>
+      <ul>${items.map((i) => `<li><span class="quadret"></span>${esc(i.text)}</li>`).join('')}</ul></div>`;
+    document.body.classList.add('imprimint');
+    setTimeout(() => { window.print(); setTimeout(() => document.body.classList.remove('imprimint'), 500); }, 100);
+    return;
+  }
   const nm = t.closest('[data-llistanom]');
   if (nm) {
     const l = state.llistes.find((x) => x.id === nm.dataset.llistanom);
@@ -1761,6 +1811,13 @@ $('#main').addEventListener('click', (e) => {
     state.llistes.splice(lloc, 1); ui.llista = ''; save(); render();
     toastDesfes(`Esborrada: ${l.nom}`, () => { state.llistes.splice(lloc, 0, copia); ui.llista = copia.id; save(); render(); });
   }
+});
+$('#main').addEventListener('change', (e) => {
+  if (!e.target.dataset?.fam) return;
+  const r = state.compres.find((x) => x.id === e.target.dataset.fam);
+  if (!r) return;
+  r.familia = e.target.value; save(); render();
+  toast(`Ara és a ${FAMILIES.find((f) => f.id === r.familia)?.nom || 'Altres'}`);
 });
 $('#main').addEventListener('submit', (e) => {
   const f = e.target;
@@ -1800,6 +1857,15 @@ $('#main').addEventListener('click', async (e) => {
     const lloc = state.memoria.indexOf(f), copia = { ...f };
     state.memoria.splice(lloc, 1); ui.memEdita = ''; save(); render();
     toastDesfes(`Esborrada: ${f.titol}`, () => { state.memoria.splice(lloc, 0, copia); save(); render(); });
+    return;
+  }
+  const sh = t.closest('[data-memcomparteix]');
+  if (sh) {
+    const f = state.memoria.find((x) => x.id === sh.dataset.memcomparteix);
+    if (!f) return;
+    const text = f.titol + (f.text ? '\n' + f.text : '');
+    if (navigator.share) { try { await navigator.share({ title: f.titol, text }); return; } catch (x) { if (x.name === 'AbortError') return; } }
+    try { await navigator.clipboard.writeText(text); toast("Copiat: enganxa'l a WhatsApp, a un correu…"); } catch (x) { prompt('Copia-ho:', text); }
     return;
   }
   const cp = t.closest('[data-memcopia]');

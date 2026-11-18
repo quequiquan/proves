@@ -958,3 +958,18 @@ button.gx-pindola { display: block; border: 0; background: none; padding: 4px 8p
 .galaxia.entra .gx-orbita { animation: gxApareix .6s ease .1s backwards; }
 .galaxia.entra .gx-pindola { animation: gxApareix .6s ease 1s backwards; }
 @media (prefers-reduced-motion: reduce) { .galaxia.entra * { animation: none !important; } }
+/* Compres: famílies */
+.fam-titol { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); margin: 18px 0 8px; }
+.fam-titol::before { content: ''; width: 10px; height: 10px; border-radius: 50%; background: var(--fc); }
+.fam-tria { flex: none; max-width: 30px; width: 30px; height: 30px; padding: 0; border: 1.5px solid var(--border); border-radius: 50%;
+  background: var(--surface-2); color: transparent; font-size: 16px; cursor: pointer; -webkit-appearance: none; appearance: none;
+  background-image: radial-gradient(circle, var(--muted) 1.6px, transparent 2px), radial-gradient(circle, var(--muted) 1.6px, transparent 2px), radial-gradient(circle, var(--muted) 1.6px, transparent 2px);
+  background-size: 6px 6px; background-repeat: no-repeat; background-position: 6px center, center center, 18px center; }
+.fam-tria option { color: initial; }
+.fam-chips { margin-top: 8px; }
+.fam-chips .ll-chip { border-color: color-mix(in srgb, var(--fc) 50%, var(--border)); }
+/* Llista impresa */
+#impressio .full-llista h1 { font-size: 20pt; margin: 0 0 12pt; }
+#impressio .full-llista ul { list-style: none; margin: 0; padding: 0; }
+#impressio .full-llista li { display: flex; align-items: center; gap: 10pt; padding: 7pt 0; border-bottom: 1px solid #ddd; font-size: 14pt; }
+#impressio .full-llista .quadret { width: 13pt; height: 13pt; border: 1.5px solid #000; border-radius: 3pt; flex: none; }
