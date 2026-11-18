@@ -1023,3 +1023,7 @@ button.gx-pindola { display: block; border: 0; background: none; padding: 4px 8p
 .pd-meva .mem-accions { margin-top: 6px; }
 .pd-seg { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; flex-wrap: nowrap; }
 .pd-seg button { font-size: 13px; padding-left: 4px; padding-right: 4px; }
+/* Capçalera de les micro-apps: el títol ben centrat */
+.sat-cap { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; }
+.sat-cap .sat-torna { justify-self: start; }
+.sat-cap h1 { grid-column: 2; text-align: center; min-width: 0; max-width: calc(100vw - 210px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
