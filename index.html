@@ -15,11 +15,11 @@
   <meta name="apple-mobile-web-app-title" content="Galàxia">
   <link rel="apple-touch-icon" href="img/icona-180.png" id="iconaApple">
   <script>
-    // Icona negra, gris perla o blau nit: l'iPhone l'agafa en afegir l'app a la pantalla d'inici
+    // Icona negra, gris perla o groc pàl·lid: l'iPhone l'agafa en afegir l'app a la pantalla d'inici
     (function () {
       try {
         var q = new URLSearchParams(location.search).get('icona');
-        var tipus = ['fosca', 'perla', 'nit', 'crua'];
+        var tipus = ['fosca', 'perla', 'groc', 'nit', 'crua'];
         if (tipus.indexOf(q) >= 0) localStorage.setItem('qqq-pref-icona', JSON.stringify(q));
         var t = JSON.parse(localStorage.getItem('qqq-pref-icona') || '"fosca"');
         if (t !== 'fosca' && tipus.indexOf(t) >= 0) {

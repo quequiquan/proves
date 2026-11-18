@@ -2,13 +2,14 @@
 // Quan canviïs fitxers de l'app, puja el número de VERSIO perquè els dispositius s'actualitzin.
 // La versió de proves i la definitiva tenen còpies separades
 const PREFIX = 'qqq-' + (/proves/i.test(self.location.pathname) ? 'proves-' : 'def-');
-const VERSIO = PREFIX + 'v101';
+const VERSIO = PREFIX + 'v102';
 const FITXERS = [
   './', 'index.html', 'styles.css', 'app.js', 'frases.js', 'sync.js', 'calendari.js', 'config.js', 'manifest.webmanifest',
   'afegir.html', 'guia.html', 'img/icona.svg', 'img/icona-180.png', 'img/icona-192.png', 'img/icona-512.png', 'img/favicon-32.png',
   'img/icona-crua.svg', 'img/icona-crua-180.png', 'img/icona-crua-192.png', 'img/icona-crua-512.png', 'manifest-crua.webmanifest',
   'img/icona-perla.svg', 'img/icona-perla-180.png', 'img/icona-perla-192.png', 'img/icona-perla-512.png', 'manifest-perla.webmanifest',
   'img/icona-nit.svg', 'img/icona-nit-180.png', 'img/icona-nit-192.png', 'img/icona-nit-512.png', 'manifest-nit.webmanifest',
+  'img/icona-groc.svg', 'img/icona-groc-180.png', 'img/icona-groc-192.png', 'img/icona-groc-512.png', 'manifest-groc.webmanifest',
 ];
 // Fitxers externs que també es guarden per funcionar sense connexió
 const EXTERNS = ['fonts.googleapis.com', 'fonts.gstatic.com', 'cdn.jsdelivr.net'];
