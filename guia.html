@@ -246,16 +246,17 @@ section.final h2 { font-size: clamp(24px, 4vw, 30px); }
       <h2>La galàxia</h2>
       <p>Quan obres l'app, et rep amb la salutació («Bon dia», «Bona tarda» o «Bona nit», segons l'hora) i la data d'avui. A sota hi ha el cercle: l'<b>Agenda</b> al mig i sis micro-apps al voltant, com els especialistes al voltant del metge de capçalera.</p>
       <ul class="punts">
-        <li style="--c:#FF4430"><b>Agenda</b> (al mig): toca-la per entrar als plans i al calendari. Si la <b>mantens premuda</b>, obre directament un pla nou. El número petit de sota són els plans d'avui.</li>
+        <li style="--c:#FF4430"><b>Agenda</b> (al mig): toca-la per entrar a l'agenda; s'obre sempre al <b>calendari</b>, en el dia d'avui. Si la <b>mantens premuda</b>, obre directament un pla nou. El número petit de sota són els plans d'avui.</li>
         <li style="--c:#E8590C"><b>R · Recordatoris</b>: coses pendents sense data.</li>
         <li style="--c:#7048E8"><b>M · Memòria</b>: informació per consultar (pòlisses, telèfons…).</li>
         <li style="--c:#E64980"><b>A · Aniversaris</b>: els aniversaris i sants dels contactes.</li>
         <li style="--c:#1C7ED6"><b>L · Llista</b>: llistes puntuals (un viatge, uns encàrrecs).</li>
         <li style="--c:#2F9E44"><b>C · Compres</b>: la llista de la compra.</li>
-        <li style="--c:#E0A800"><b>D · Documents</b>: fotos i PDF dels teus papers.</li>
+        <li style="--c:#E0A800"><b>D · Documents</b>: qualsevol document (fotos, PDF, Word, Excel…) i enllaços a pàgines web.</li>
       </ul>
       <p class="consell"><b>Els numerets</b> de cada bombolla diuen què hi tens pendent: recordatoris, coses per comprar, coses de les llistes i, a Aniversaris, les persones que has de felicitar <b>avui</b>.</p>
-      <p class="consell"><b>La píndola del dia.</b> Sota el cercle surt cada dia una frase positiva diferent. Si la toques, veus les dels dies anteriors i, amb el <b>cor</b>, guardes les que més t'agradin a <b>Preferides</b>.</p>
+      <p class="consell"><b>La píndola del dia.</b> Sota el cercle surt cada dia una frase positiva diferent. Si la toques, veus les dels dies anteriors i, amb el <b>cor</b>, guardes les que més t'agradin a <b>Preferides</b>. A <b>Les meves</b> pots escriure les teves pròpies frases: sortiran barrejades amb les altres.</p>
+      <p class="consell"><b>El logotip de dalt</b> obre un menú petit: tornar a l'inici, veure amb quin correu has entrat i <b>tancar la sessió</b> en aquest aparell o en tots els altres.</p>
     </div>
     <div class="mobil" aria-hidden="true">
       <div class="m-barra"><i style="background:#FF4430"></i>&nbsp;Galàxia</div>
@@ -287,8 +288,9 @@ section.final h2 { font-size: clamp(24px, 4vw, 30px); }
       <ol class="passos">
         <li><span>Escriu-lo a dalt i prem <b>Afegeix</b>.</span></li>
         <li><span>Quan l'hagis fet, toca el <b>cercle</b> de l'esquerra: desapareix. Durant uns segons surt <b>Desfés</b>.</span></li>
-        <li><span>Toca el text per corregir-lo.</span></li>
+        <li><span>Toca el text per corregir-lo: surt seleccionat i el que escrius el substitueix.</span></li>
       </ol>
+      <p style="margin-top:10px">Si n'escrius un que ja tens, l'app t'avisa i no el repeteix. Quan en tens més de tres, a dalt surt un <b>cercador</b>.</p>
       <p style="margin-top:18px"><b style="color:#1C7ED6">Llista</b> és el paper que t'emportes a la butxaca: «Viatge a Menorca», «Encàrrecs de dissabte»…</p>
       <ul class="punts">
         <li style="--c:#1C7ED6">Crea una llista amb un nom i hi apuntes les coses una darrere l'altra.</li>
@@ -323,7 +325,7 @@ section.final h2 { font-size: clamp(24px, 4vw, 30px); }
         <li style="--c:#2F9E44">Si una cosa ha anat a una família equivocada, toca el <b>botó dels tres punts</b> i tria la bona. A partir de llavors la recorda.</li>
         <li style="--c:#2F9E44">Les coses comprades queden a baix com a <b>Habituals</b>. Toca'n una i torna a la llista sense escriure-la.</li>
         <li style="--c:#2F9E44">Els que compres més sovint surten primer i <b>ressaltats</b>. Per treure'n un, <b>mantén-lo premut</b>.</li>
-        <li style="--c:#2F9E44"><b>Comparteix la llista</b> l'envia ordenada per famílies, per exemple a qui vagi a comprar.</li>
+        <li style="--c:#2F9E44"><b>Comparteix la llista</b> l'envia ordenada per famílies, per exemple a qui vagi a comprar, i <b>Imprimeix</b> en fa un full amb quadrets.</li>
       </ul>
     </div>
     <div class="mobil" aria-hidden="true">
@@ -352,11 +354,12 @@ section.final h2 { font-size: clamp(24px, 4vw, 30px); }
         <li style="--c:#7048E8">Cada fitxa té <b>Comparteix</b>, <b>Copia</b>, <b>Imprimeix</b> i <b>Edita</b>. També pots imprimir-les totes juntes.</li>
         <li style="--c:#7048E8">Quan en tens moltes, surt un <b>cercador</b> a dalt.</li>
       </ul>
-      <p style="margin-top:18px"><b style="color:#B88700">Documents</b> guarda fotos i PDF dels teus papers, al teu núvol privat: només tu els pots veure.</p>
+      <p style="margin-top:18px"><b style="color:#B88700">Documents</b> guarda qualsevol document al teu núvol privat (només tu els pots veure): fotos, PDF, contractes en Word, pressupostos en Excel… i també enllaços a pàgines web.</p>
       <ul class="punts">
-        <li style="--c:#E0A800"><b>Afegeix</b>: fes una foto, tria'n una de la fototeca o un fitxer, i posa-li nom.</li>
+        <li style="--c:#E0A800"><b>Afegeix un fitxer</b>: fes una foto, tria'n una de la fototeca o un fitxer de l'iPhone (fins a 50 MB), i posa-li nom. <b>Afegeix un enllaç</b>: enganxa l'adreça d'una web.</li>
+        <li style="--c:#E0A800">A dalt hi ha un <b>cercador</b> i uns <b>filtres per tipus</b> (Fotos, PDF, Textos, Fulls de càlcul, Enllaços…).</li>
         <li style="--c:#E0A800">Toca un document per veure'l en gran. <b>Pessiga amb dos dits</b> o fes <b>doble toc</b> per ampliar-lo i llegir la lletra petita.</li>
-        <li style="--c:#E0A800">A baix: <b>Obre / Comparteix</b>, <b>Imprimeix</b>, <b>Canvia el nom</b> i <b>Esborra</b>.</li>
+        <li style="--c:#E0A800">A baix: <b>Obre / Comparteix</b> (Word, Excel i la resta s'obren amb el visor de l'iPhone), <b>Imprimeix</b>, <b>Canvia el nom</b> i <b>Esborra</b>.</li>
       </ul>
       <p class="consell"><b>Les contrasenyes</b>, millor a l'app <b>Contrasenyes</b> de l'iPhone, que és més segura. Per escanejar diversos fulls en un sol PDF, fes-ho amb l'app <b>Arxius</b> (··· → Escanejar documents) i després tria'l des de Documents.</p>
     </div>
@@ -367,7 +370,7 @@ section.final h2 { font-size: clamp(24px, 4vw, 30px); }
         <div class="m-card mem"><span><b>Lampista</b><small style="color:var(--text);font-size:12px">Joan · 666 11 22 33</small><small class="acc">Comparteix · Copia · Imprimeix · Edita</small></span></div>
         <div class="m-card mem"><span><b>Pòlissa de la casa</b><small style="color:var(--text);font-size:12px">Companyia i número de pòlissa</small><small class="acc">Comparteix · Copia · Imprimeix · Edita</small></span></div>
         <div class="m-lbl" style="margin-top:6px">Documents</div>
-        <div class="docs"><span><i></i>Rebut IBI</span><span><i class="pdf">PDF</i>Contracte</span></div>
+        <div class="docs"><span><i></i>Rebut IBI</span><span><i class="pdf">DOCX</i>Contracte</span></div>
       </div>
     </div>
   </section>
@@ -379,7 +382,7 @@ section.final h2 { font-size: clamp(24px, 4vw, 30px); }
       <h2>Aniversaris</h2>
       <p>Recull els aniversaris i els sants de tots els contactes, ordenats per mesos a partir d'avui, amb l'edat que fan i un avís quan és <b>Avui</b>, <b>Demà</b> o d'aquí a pocs dies.</p>
       <ul class="punts">
-        <li style="--c:#E64980">Si toques una persona, s'obre la seva fitxa per felicitar-la o canviar la data.</li>
+        <li style="--c:#E64980">Si toques una persona, s'obre la seva fitxa per felicitar-la o canviar la data. El botó <b>‹ Aniversaris</b> de dalt et torna a la llista.</li>
         <li style="--c:#E64980">Les dates es posen a la fitxa de cada contacte (mira l'apartat <b>Contactes</b>).</li>
         <li style="--c:#E64980">El numeret del cercle de Galàxia diu quantes persones has de felicitar avui.</li>
       </ul>
@@ -599,6 +602,7 @@ section.final h2 { font-size: clamp(24px, 4vw, 30px); }
         <li style="--c:#D6336C"><b>Aniversari</b>: escriu el dia, el mes i l'any en tres caselles. Salta sola a la següent. Per corregir-la, toca una casella: se selecciona i el que escrius substitueix el que hi havia. Surt cada any a <b>Aniversaris</b>, amb l'edat que fa.</li>
         <li style="--c:#5C940D"><b>Sant</b>: només dia i mes. Surt cada any a <b>Recordatoris</b>.</li>
         <li>Tots dos avisen a les 9 del matí a l'iPhone. <b>Treu</b> esborra la data.</li>
+        <li><b>Contacte nou</b>: escriu el nom i prem <b>Afegeix</b>; s'obre la seva fitxa amb el cursor al mòbil per omplir-ne les dades.</li>
         <li><b>Importa contactes</b> porta els contactes de l'iPhone d'un sol cop, amb els seus aniversaris.</li>
       </ul>
     </div>
@@ -685,7 +689,10 @@ section.final h2 { font-size: clamp(24px, 4vw, 30px); }
       <span class="etiq">Agenda · Ajustos</span>
       <h2>Ajustos</h2>
       <ul class="punts">
+        <li><b>Aspecte</b>: <b>Clar</b>, <b>Fosc</b> o <b>Automàtic</b> (com l'iPhone).</li>
+        <li><b>Com vols l'app</b>: <b>Galàxia</b> (el cercle amb totes les micro-apps) o <b>Agenda</b> (només l'agenda, amb la mateixa pantalla d'inici però sense satèl·lits). Es pot canviar quan vulguis.</li>
         <li><b>Compte</b>: entra amb el teu correu i un codi que t'arriba per correu, sense contrasenya. Així els plans es guarden al núvol i es poden compartir.</li>
+        <li><b>Qui pot fer servir l'app</b> (només l'administrador): la llista de persones convidades i, per a cadascuna, si comença amb Galàxia o amb Agenda.</li>
         <li><b>Altres calendaris</b>: hi afegeixes el calendari de l'app de gravacions, amb el color que vulguis.</li>
         <li><b>Calendari de l'iPhone</b>: les subscripcions per etiqueta.</li>
         <li><b>Plans que t'envien</b>: tries de qui s'accepten sols els plans.</li>
@@ -698,6 +705,8 @@ section.final h2 { font-size: clamp(24px, 4vw, 30px); }
     <div class="mobil" aria-hidden="true">
       <div class="m-barra">Ajustos</div>
       <div class="m-cos">
+        <div class="m-card"><span><b>Aspecte</b><small>Clar · Fosc · Automàtic</small></span></div>
+        <div class="m-card"><span><b>Com vols l'app</b><small>Galàxia · Agenda</small></span></div>
         <div class="m-card"><span><b>Compte</b><small>Entra amb el teu correu</small></span></div>
         <div class="m-card"><span><b>Altres calendaris</b><small>Gravacions · color negre</small></span></div>
         <div class="m-card"><span><b>Calendari de l'iPhone</b><small>Un calendari per etiqueta</small></span></div>
@@ -716,6 +725,8 @@ section.final h2 { font-size: clamp(24px, 4vw, 30px); }
     <div class="dubtes">
       <details open><summary>Els calendaris de l'iPhone es diuen «QQQ»</summary>
         <p>És el nom que tenien quan l'app es deia Què · Qui · Quan. Funcionen igual; si vols, els pots reanomenar a l'app Calendari (Calendaris → ⓘ).</p></details>
+      <details open><summary>Com tanco la sessió en un ordinador que no és meu?</summary>
+        <p>Toca el logotip de Galàxia, a dalt a l'esquerra, i tria «Tanca la sessió en aquest dispositiu». Si te n'has oblidat, des del teu mòbil tria «Tanca la sessió als altres dispositius».</p></details>
       <details open><summary>No em surt un canvi nou de l'app</summary>
         <p>Tanca l'app del tot (llisca-la cap amunt al selector d'apps) i torna-la a obrir. A vegades cal fer-ho dues vegades.</p></details>
       <details open><summary>Un pla no surt a l'agenda de l'iPhone</summary>
