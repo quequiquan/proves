@@ -155,7 +155,7 @@ function normalize(d) {
     llistes: arr(d.llistes).filter((l) => l && l.id).map((l) => ({ nom: '', ...l, items: arr(l.items).filter((i) => i && i.id) })),
     compres: arr(d.compres).filter((r) => r && r.id),
     memoria: arr(d.memoria).filter((r) => r && r.id),
-    documents: arr(d.documents).filter((r) => r && r.id && r.cami),
+    documents: arr(d.documents).filter((r) => r && r.id && (r.cami || r.url)),
     ajustos: d.ajustos && typeof d.ajustos === 'object' ? { nom: '', ...d.ajustos } : { nom: '' },
   };
 }
@@ -1282,8 +1282,54 @@ function vistaMemoria() {
       ${fitxes.length > 1 ? '<div class="grp centre"><button class="btn" data-memimprimeix="totes">Imprimeix totes les fitxes</button></div>' : ''}`
       : '<p class="help buit">Encara no tens cap fitxa.</p>'}`;
 }
-// Documents: fotos i PDF al núvol privat de cada persona (a l'app només hi ha el nom i una miniatura)
+// Documents: qualsevol fitxer (fotos, PDF, Word, Excel…) al núvol privat de cada persona, i enllaços a pàgines web.
+// A l'app només hi ha el nom, el tipus i, a les fotos, una miniatura.
 const dataDoc = (iso) => { const d = new Date(iso); return isNaN(d) ? '' : `${d.getDate()} ${MESOS[d.getMonth()].slice(0, 3)}. ${d.getFullYear()}`; };
+const extDoc = (d) => (d.tipus === 'enllac' ? '' : ((d.nomFitxer || d.cami || '').match(/\.([a-z0-9]{1,8})$/i) || [])[1]?.toLowerCase() || '');
+const CATS_DOC = [
+  { id: 'foto', nom: 'Fotos', c: '#2F9E44' },
+  { id: 'pdf', nom: 'PDF', c: '#E03131' },
+  { id: 'text', nom: 'Textos', c: '#1C7ED6', ext: 'doc docx odt rtf txt pages md' },
+  { id: 'full', nom: 'Fulls de càlcul', c: '#2B8A3E', ext: 'xls xlsx ods csv numbers' },
+  { id: 'presentacio', nom: 'Presentacions', c: '#E8590C', ext: 'ppt pptx odp key' },
+  { id: 'enllac', nom: 'Enllaços', c: '#7048E8' },
+  { id: 'altres', nom: 'Altres', c: '#868E96' },
+];
+function catDoc(d) {
+  if (d.tipus === 'enllac') return 'enllac';
+  if (/^image\//.test(d.tipus || '')) return 'foto';
+  const e = extDoc(d);
+  if (d.tipus === 'application/pdf' || e === 'pdf') return 'pdf';
+  const c = CATS_DOC.find((x) => x.ext && x.ext.split(' ').includes(e));
+  return c ? c.id : 'altres';
+}
+const midaText = (b) => (!b ? '' : b < 1024 * 1024 ? Math.max(1, Math.round(b / 1024)) + ' kB' : (b / 1024 / 1024).toFixed(1).replace('.', ',') + ' MB');
+const etiquetaDoc = (d) => (d.tipus === 'enllac' ? 'WEB' : extDoc(d).toUpperCase().slice(0, 4) || 'DOC');
+const domini = (u) => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return u; } };
+function vistaDocuments() {
+  const entrat = Boolean(usuari());
+  const tots = state.documents.slice().sort((a, b) => String(b.creat || '').localeCompare(String(a.creat || '')));
+  const presents = CATS_DOC.filter((c) => tots.some((d) => catDoc(d) === c.id));
+  const filtre = presents.some((c) => c.id === ui.docFiltre) ? ui.docFiltre : '';
+  const docs = filtre ? tots.filter((d) => catDoc(d) === filtre) : tots;
+  const q = normal((ui.docCerca || '').trim());
+  return capSatel('Documents') + `<p class="help">Guarda qualsevol document: fotos, PDF, contractes en Word, pressupostos en Excel, enllaços a pàgines web… Es guarden al teu núvol privat: només tu els pots veure.</p>
+    ${entrat ? `<div class="doc-botons">
+        <label class="btn primary doc-afegeix${ui.docPujant ? ' ocupat' : ''}"><input type="file" id="docFitxer" hidden ${ui.docPujant ? 'disabled' : ''}>${ui.docPujant ? 'Pujant…' : 'Afegeix un fitxer'}</label>
+        <button class="btn" data-docenllac ${ui.docPujant ? 'disabled' : ''}>Afegeix un enllaç</button></div>
+      ${tots.length > 1 ? `<input id="cercaDoc" type="search" class="doc-cerca" placeholder="Cerca un document…" autocomplete="off" value="${esc(ui.docCerca || '')}">` : ''}
+      ${presents.length > 1 ? `<div class="doc-filtres"><button class="${!filtre ? 'on' : ''}" data-docfiltre="">Tots</button>${presents.map((c) => `<button class="${filtre === c.id ? 'on' : ''}" data-docfiltre="${c.id}" style="--fc:${c.c}">${esc(c.nom)}</button>`).join('')}</div>` : ''}`
+      : '<p class="help avis-doc">Per guardar documents cal haver entrat amb el teu correu (toca el logo de Galàxia, a dalt).</p>'}
+    ${docs.length ? `<div class="doc-graella">${docs.map((x) => {
+        const cat = CATS_DOC.find((c) => c.id === catDoc(x)), cerca = normal([x.titol, x.nomFitxer, x.url, cat.nom, etiquetaDoc(x)].filter(Boolean).join(' '));
+        return `<button class="doc-fitxa" data-docobre="${esc(x.id)}" data-doccerca="${esc(cerca)}"${q && !cerca.includes(q) ? ' hidden' : ''}>
+        <span class="doc-mini" style="--fc:${cat.c}">${x.mini ? `<img src="${esc(x.mini)}" alt="">` : `<b>${esc(etiquetaDoc(x))}</b>`}</span>
+        <span class="doc-nom">${esc(x.titol)}</span><small>${esc(x.tipus === 'enllac' ? domini(x.url) : [dataDoc(x.creat), midaText(x.mida)].filter(Boolean).join(' · '))}</small></button>`;
+      }).join('')}</div><p class="help buit" id="docRes" hidden>No hi ha cap document que hi coincideixi.</p>`
+      : entrat ? '<p class="help buit">Encara no tens cap document.</p>' : ''}
+    ${entrat ? '<p class="help doc-consell">Mida màxima de cada fitxer: 50 MB. Per escanejar diverses pàgines en un sol PDF: a l\'app <b>Arxius</b> de l\'iPhone, toca <b>···</b> → <b>Escanejar documents</b>, desa\'l i després tria\'l aquí.</p>' : ''}`;
+}
+
 // Píndoles: la d'avui i les dels dies anteriors, i les preferides (guardades a Ajustos, es sincronitzen)
 const preferides = () => (Array.isArray(state.ajustos.pindoles) ? state.ajustos.pindoles : []);
 function filaPindola(text, data) {
@@ -1309,19 +1355,6 @@ function vistaPindoles() {
   const queden = Math.round((avuiD - inici) / 86400000) + 1 - n;
   return capSatel('Píndoles') + pestanyes + `<div class="pd-llista">${html}</div>`
     + (queden > 0 ? '<div class="grp centre"><button class="btn" data-pdmes>Mostra\'n més</button></div>' : '');
-}
-function vistaDocuments() {
-  const docs = state.documents.slice().sort((a, b) => String(b.creat || '').localeCompare(String(a.creat || '')));
-  const entrat = Boolean(usuari());
-  return capSatel('Documents') + `<p class="help">Fes una foto d'un document o tria'n un de l'iPhone. Es guarden al teu núvol privat: només tu els pots veure.</p>
-    ${entrat ? `<div class="mem-barra">${docs.length > 6 ? '<input id="cercaDoc" type="search" placeholder="Cerca…" autocomplete="off">' : ''}
-        <label class="btn primary doc-afegeix${ui.docPujant ? ' ocupat' : ''}"><input type="file" id="docFitxer" accept="image/*,application/pdf" hidden ${ui.docPujant ? 'disabled' : ''}>${ui.docPujant ? 'Pujant…' : 'Afegeix'}</label></div>`
-      : '<p class="help avis-doc">Per guardar documents cal haver entrat amb el teu correu (Agenda → Ajustos → Compte).</p>'}
-    ${docs.length ? `<div class="doc-graella">${docs.map((x) => `<button class="doc-fitxa" data-docobre="${esc(x.id)}" data-doccerca="${esc(normal(x.titol))}">
-        <span class="doc-mini">${x.mini ? `<img src="${esc(x.mini)}" alt="">` : `<b>${x.tipus === 'application/pdf' ? 'PDF' : 'IMG'}</b>`}</span>
-        <span class="doc-nom">${esc(x.titol)}</span><small>${esc(dataDoc(x.creat))}</small></button>`).join('')}</div>`
-      : entrat ? '<p class="help buit">Encara no tens cap document.</p>' : ''}
-    ${entrat ? '<p class="help doc-consell">Per escanejar diverses pàgines en un sol PDF: a l\'app <b>Arxius</b> de l\'iPhone, toca <b>···</b> → <b>Escanejar documents</b>, desa\'l i després tria\'l aquí.</p>' : ''}`;
 }
 const VISTES = { inici: vistaInici, aniversaris: vistaAniversaris, recordatoris: vistaRecordatoris, llista: vistaLlista, compres: vistaCompres, memoria: vistaMemoria, documents: vistaDocuments, pindoles: vistaPindoles, propers: vistaPropers, calendari: vistaCalendari, gent: vistaGent, ajustos: vistaAjustos, entrada: vistaEntrada };
 function render() {
@@ -2027,39 +2060,65 @@ function redueix(im, max) {
   x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(im, 0, 0, c.width, c.height);
   return c;
 }
+const MAX_DOC = 50 * 1024 * 1024;
 $('#main').addEventListener('change', async (e) => {
   if (e.target.id !== 'docFitxer') return;
   const file = e.target.files?.[0];
   e.target.value = '';
   if (!file) return;
-  const esPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
-  if (!esPdf && !/^image\//.test(file.type)) { toast('Només es poden afegir fotos o PDF.'); return; }
-  if (esPdf && file.size > 10 * 1024 * 1024) { toast('El PDF és massa gran (màxim 10 MB).'); return; }
-  const perDefecte = esPdf ? file.name.replace(/\.pdf$/i, '') : 'Document ' + new Date().toLocaleDateString('ca-ES');
+  if (file.size > MAX_DOC) { toast(`El fitxer fa ${midaText(file.size)} i el màxim són 50 MB.`, 5000); return; }
+  const ext = ((file.name.match(/\.([a-z0-9]{1,8})$/i) || [])[1] || '').toLowerCase();
+  const esFoto = /^image\/(jpeg|png|webp|heic|heif|gif)$/.test(file.type) || /^(jpe?g|png|webp|heic|heif)$/.test(ext);
+  const nomNet = file.name.replace(/\.[a-z0-9]{1,8}$/i, '');
+  const perDefecte = esFoto && /^(image|img|photo|foto|dsc|pxl)[\s_-]?\d*/i.test(nomNet) ? 'Document ' + new Date().toLocaleDateString('ca-ES') : nomNet || 'Document';
   const titol = prompt('Nom del document:', perDefecte);
   if (titol === null) return;
   ui.docPujant = true; render();
   try {
     const id = nouId('d');
-    let blob = file, tipus = 'application/pdf', mini = '';
-    if (!esPdf) {
-      const im = await carregaImg(file);
-      blob = await new Promise((ok) => redueix(im, 2000).toBlob(ok, 'image/jpeg', 0.82));
-      tipus = 'image/jpeg';
-      mini = redueix(im, 240).toDataURL('image/jpeg', 0.6);
+    let blob = file, tipus = file.type || 'application/octet-stream', mini = '', extFinal = ext || 'bin';
+    if (esFoto) {
+      // Les fotos es redueixen perquè no ocupin tant; si el navegador no la pot llegir, es puja tal com és
+      try {
+        const im = await carregaImg(file);
+        blob = await new Promise((ok) => redueix(im, 2000).toBlob(ok, 'image/jpeg', 0.82));
+        tipus = 'image/jpeg'; extFinal = 'jpg';
+        mini = redueix(im, 240).toDataURL('image/jpeg', 0.6);
+      } catch (x) { blob = file; }
     }
-    const cami = await sync().pujaDoc(id, blob, tipus);
-    state.documents.push({ id, titol: (titol.trim() || perDefecte).slice(0, 80), tipus, cami, mida: blob.size, mini, creat: new Date().toISOString() });
+    const cami = await sync().pujaDoc(id, blob, tipus, extFinal);
+    state.documents.push({ id, titol: (titol.trim() || perDefecte).slice(0, 80), tipus, cami, nomFitxer: file.name.slice(0, 120), mida: blob.size, mini, creat: new Date().toISOString() });
     save(); toast('Document desat');
   } catch (err) {
-    toast(navigator.onLine ? "No s'ha pogut pujar el document." : 'Cal connexió a internet per pujar documents.', 4500);
+    const gran = /size|large|exceed|413/i.test(String(err?.message || err?.error || err?.statusCode || ''));
+    toast(!navigator.onLine ? 'Cal connexió a internet per pujar documents.' : gran ? 'El fitxer és massa gran per al núvol.' : "No s'ha pogut pujar el document.", 4500);
   }
   ui.docPujant = false; render();
 });
+// Enllaç a una pàgina web: no es puja cap fitxer, només es guarda l'adreça
+$('#main').addEventListener('click', (e) => {
+  if (!e.target.closest('[data-docenllac]')) return;
+  let url = (prompt('Enganxa l\'adreça de la pàgina web:') || '').trim();
+  if (!url) return;
+  if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+  if (!/^https?:\/\/[^\s.]+\.[^\s]+$/i.test(url)) { toast('Aquesta adreça no sembla correcta.'); return; }
+  const titol = prompt('Nom del document:', domini(url));
+  if (titol === null) return;
+  state.documents.push({ id: nouId('d'), titol: (titol.trim() || domini(url)).slice(0, 80), tipus: 'enllac', url: url.slice(0, 2000), creat: new Date().toISOString() });
+  save(); render(); toast('Enllaç desat');
+});
+$('#main').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-docfiltre]');
+  if (!b) return;
+  ui.docFiltre = b.dataset.docfiltre; render();
+});
 $('#main').addEventListener('input', (e) => {
   if (e.target.id !== 'cercaDoc') return;
+  ui.docCerca = e.target.value;
   const q = normal(e.target.value.trim());
-  document.querySelectorAll('[data-doccerca]').forEach((el) => { el.hidden = Boolean(q) && !el.dataset.doccerca.includes(q); });
+  let n = 0;
+  document.querySelectorAll('[data-doccerca]').forEach((el) => { el.hidden = Boolean(q) && !el.dataset.doccerca.includes(q); if (!el.hidden) n++; });
+  const r = document.getElementById('docRes'); if (r) r.hidden = n > 0;
 });
 // Visor a pantalla completa: imatge, o botó per obrir el PDF
 // Ampliar la imatge: pessigar amb dos dits, arrossegar amb un dit i doble toc per ampliar o tornar a la mida
@@ -2107,14 +2166,16 @@ function ampliable(cos, img) {
   cos.addEventListener('wheel', (e) => { e.preventDefault(); s = Math.max(1, Math.min(6, s * (e.deltaY < 0 ? 1.15 : 0.87))); if (s === 1) { x = 0; y = 0; } limita(); aplica(false); }, { passive: false });
 }
 function tancaVisor() { document.querySelector('.doc-visor')?.remove(); }
+// Visor a pantalla completa: la foto (amb zoom), o una fitxa amb el tipus i el botó per obrir-lo
 async function obreVisor(doc) {
   tancaVisor();
+  const cat = catDoc(doc), esEnllac = cat === 'enllac', esFoto = cat === 'foto' && doc.tipus === 'image/jpeg';
   const v = document.createElement('div');
   v.className = 'doc-visor';
   v.innerHTML = `<div class="doc-visor-cap"><button type="button" class="sat-torna" data-visor="tanca">‹ Tanca</button><b>${esc(doc.titol)}</b></div>
     <div class="doc-visor-cos"><p class="help">Carregant…</p></div>
-    <div class="doc-visor-peu"><a class="btn primary" data-visor="obre" target="_blank" rel="noopener" hidden>Obre / Comparteix</a>
-      <button type="button" class="btn" data-visor="imprimeix" hidden>Imprimeix</button>
+    <div class="doc-visor-peu"><a class="btn primary" data-visor="obre" target="_blank" rel="noopener" hidden>${esEnllac ? 'Obre la pàgina' : 'Obre / Comparteix'}</a>
+      ${esEnllac ? '<button type="button" class="btn" data-visor="comparteix">Comparteix</button>' : '<button type="button" class="btn" data-visor="imprimeix" hidden>Imprimeix</button>'}
       <button type="button" class="enllac" data-visor="nom">Canvia el nom</button><button type="button" class="enllac perill" data-visor="esborra">Esborra</button></div>`;
   document.body.appendChild(v);
   v.addEventListener('click', async (e) => {
@@ -2122,12 +2183,17 @@ async function obreVisor(doc) {
     if (!b) return;
     const acc = b.dataset.visor;
     if (acc === 'tanca') { tancaVisor(); return; }
+    if (acc === 'comparteix') {
+      if (navigator.share) { try { await navigator.share({ title: doc.titol, url: doc.url }); return; } catch (x) { if (x.name === 'AbortError') return; } }
+      try { await navigator.clipboard.writeText(doc.url); toast('Enllaç copiat'); } catch (x) { prompt("Copia l'enllaç:", doc.url); }
+      return;
+    }
     if (acc === 'imprimeix') {
       const url = v.querySelector('[data-visor="obre"]').href;
       if (!url) return;
-      if (doc.tipus === 'application/pdf') {   // un PDF s'imprimeix des del visor de l'iPhone
+      if (!esFoto) {   // els altres documents s'imprimeixen des del visor de l'iPhone
         window.open(url, '_blank', 'noopener');
-        toast("Al PDF, toca Compartir i després Imprimir", 5000);
+        toast('Al document, toca Compartir i després Imprimir', 5000);
         return;
       }
       imprimeixFull(`<div class="doc-imp"><img src="${esc(url)}" alt=""></div>`);
@@ -2141,24 +2207,33 @@ async function obreVisor(doc) {
     if (acc === 'esborra') {
       if (b.dataset.segur !== '1') { b.dataset.segur = '1'; b.textContent = "Segur? Toca'l un altre cop"; return; }
       try {
-        await sync().esborraDoc(doc.cami);
+        if (doc.cami) await sync().esborraDoc(doc.cami);
         state.documents = state.documents.filter((x) => x.id !== doc.id);
         save(); tancaVisor(); render(); toast('Document esborrat');
       } catch (err) { toast(navigator.onLine ? "No s'ha pogut esborrar." : 'Cal connexió a internet.'); }
     }
   });
+  const cos = v.querySelector('.doc-visor-cos'), obre = v.querySelector('[data-visor="obre"]');
+  const fitxa = (detall) => `<div class="doc-pdf" style="--fc:${CATS_DOC.find((c) => c.id === cat).c}"><b>${esc(etiquetaDoc(doc))}</b><p class="doc-detall">${detall}</p></div>`;
+  if (esEnllac) {
+    obre.href = doc.url; obre.hidden = false;
+    cos.innerHTML = fitxa(`<span class="doc-url">${esc(doc.url)}</span>`);
+    return;
+  }
   try {
-    const url = await sync().urlDoc(doc.cami);
+    // Les fotos i els PDF s'obren dins del navegador; la resta es descarreguen amb el seu nom
+    const url = await sync().urlDoc(doc.cami, esFoto || cat === 'pdf' ? '' : doc.nomFitxer || (doc.titol + '.' + extDoc(doc)));
     if (!document.body.contains(v)) return;
-    const cos = v.querySelector('.doc-visor-cos'), obre = v.querySelector('[data-visor="obre"]');
     obre.href = url; obre.hidden = false; v.querySelector('[data-visor="imprimeix"]').hidden = false;
-    cos.innerHTML = doc.tipus === 'application/pdf'
-      ? `<div class="doc-pdf"><b>PDF</b><p class="help">Toca «Obre / Comparteix» per veure'l sencer.</p></div>`
-      : `<img src="${esc(url)}" alt="${esc(doc.titol)}" draggable="false">`;
-    const img = cos.querySelector('img');
-    if (img) { ampliable(cos, img); v.querySelector('.doc-visor-cap').insertAdjacentHTML('afterend', '<p class="help doc-zoom">Pessiga amb dos dits o toca dues vegades per ampliar</p>'); }
+    if (esFoto) {
+      cos.innerHTML = `<img src="${esc(url)}" alt="${esc(doc.titol)}" draggable="false">`;
+      ampliable(cos, cos.querySelector('img'));
+      v.querySelector('.doc-visor-cap').insertAdjacentHTML('afterend', '<p class="help doc-zoom">Pessiga amb dos dits o toca dues vegades per ampliar</p>');
+    } else {
+      cos.innerHTML = fitxa(`${esc(doc.nomFitxer || '')}${doc.mida ? '<br>' + esc(midaText(doc.mida)) : ''}<br><span class="help">Toca «Obre / Comparteix» per veure'l, desar-lo o enviar-lo.</span>`);
+    }
   } catch (err) {
-    v.querySelector('.doc-visor-cos').innerHTML = `<p class="help">${navigator.onLine ? "No s'ha pogut obrir el document." : 'Cal connexió a internet per veure el document.'}</p>`;
+    cos.innerHTML = `<p class="help">${navigator.onLine ? "No s'ha pogut obrir el document." : 'Cal connexió a internet per veure el document.'}</p>`;
   }
 }
 $('#main').addEventListener('click', (e) => {
@@ -2166,7 +2241,7 @@ $('#main').addEventListener('click', (e) => {
   if (!b) return;
   const doc = state.documents.find((x) => x.id === b.dataset.docobre);
   if (!doc) return;
-  if (!usuari()) { toast('Per veure els documents cal haver entrat amb el correu.'); return; }
+  if (!usuari() && doc.tipus !== 'enllac') { toast('Per veure els documents cal haver entrat amb el correu.'); return; }
   obreVisor(doc);
 });
 

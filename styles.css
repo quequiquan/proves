@@ -996,3 +996,14 @@ button.gx-pindola { display: block; border: 0; background: none; padding: 4px 8p
 .mc-caixa .mc-qui { margin: 4px 12px 6px; color: var(--muted); font-size: 13.5px; line-height: 1.4; }
 .mc-caixa .mc-qui b { color: var(--text); overflow-wrap: anywhere; }
 .mc-caixa .mc-tanca { color: var(--muted); text-align: center; border-top: 1px solid var(--border); border-radius: 0 0 10px 10px; }
+/* Documents: qualsevol fitxer, cerca i filtres */
+.doc-botons { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 12px; }
+.doc-cerca { width: 100%; margin-bottom: 10px; }
+.doc-filtres { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 8px; -webkit-overflow-scrolling: touch; }
+.doc-filtres button { flex: none; border: 1.5px solid var(--border); background: var(--surface); color: var(--text); font: inherit; font-weight: 700; font-size: 13.5px; padding: 6px 12px; border-radius: 99px; cursor: pointer; }
+.doc-filtres button.on { background: var(--fc, var(--text)); border-color: var(--fc, var(--text)); color: #fff; }
+.doc-filtres button:not([style]).on { background: var(--text); color: var(--bg); }
+.doc-mini b { color: var(--fc, var(--c)); font-size: 22px; letter-spacing: .5px; }
+.doc-pdf b { color: var(--fc, var(--c)); }
+.doc-detall { margin: 12px 0 0; font-weight: 700; overflow-wrap: anywhere; line-height: 1.5; }
+.doc-url { font-weight: 600; color: var(--muted); font-size: 14px; }

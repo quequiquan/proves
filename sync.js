@@ -361,16 +361,16 @@ const Sync = (() => {
   /* ---------- Enllaç per apuntar plans per veu (Siri) ---------- */
   const tokenNou = () => { const b = crypto.getRandomValues(new Uint8Array(24)); return btoa(String.fromCharCode(...b)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
   /* ---------- Documents (magatzem privat de Supabase) ---------- */
-  async function pujaDoc(id, blob, tipus) {
+  async function pujaDoc(id, blob, tipus, extensio) {
     if (!sb || !usuari) throw new Error('Cal haver entrat amb el correu');
-    const ext = tipus === 'application/pdf' ? 'pdf' : tipus === 'image/png' ? 'png' : 'jpg';
+    const ext = String(extensio || (tipus === 'application/pdf' ? 'pdf' : tipus === 'image/png' ? 'png' : 'jpg')).toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 8) || 'bin';
     const cami = `${usuari.id}/${ENTORN}/${id}.${ext}`;
     const { error } = await sb.storage.from('documents').upload(cami, blob, { contentType: tipus, upsert: true });
     if (error) throw error;
     return cami;
   }
-  async function urlDoc(cami) {
-    const { data, error } = await sb.storage.from('documents').createSignedUrl(cami, 3600);
+  async function urlDoc(cami, nomDescarrega) {
+    const { data, error } = await sb.storage.from('documents').createSignedUrl(cami, 3600, nomDescarrega ? { download: nomDescarrega } : undefined);
     if (error) throw error;
     return data.signedUrl;
   }
