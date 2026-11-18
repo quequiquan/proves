@@ -1202,14 +1202,24 @@ const fa = (iso) => {
   return !iso || isNaN(dies) ? '' : dies < 1 ? 'Avui' : dies === 1 ? 'Ahir' : dies < 30 ? `Fa ${dies} dies` : dies < 60 ? 'Fa un mes' : `Fa ${Math.floor(dies / 30)} mesos`;
 };
 function vistaRecordatoris() {
-  const llista = pendentsRec().slice().sort((a, b) => String(b.creat || '').localeCompare(String(a.creat || '')));
-  return capSatel('Recordatoris') + `<p class="help">Coses pendents sense data que no vols oblidar. Quan en facis una, toca el cercle i desapareix.</p>
+  const obert = recObert();
+  if (obert) return vistaRecFitxa(obert);
+  const llista = pendentsRec().slice().sort((a, b) => (Boolean(b.important) - Boolean(a.important)) || String(b.creat || '').localeCompare(String(a.creat || '')));
+  const indicadors = (r) => {
+    const subs = r.subtasques || [], n = (r.imatges || []).length, out = [];
+    if (subs.length) out.push(`${subs.filter((x) => x.fet).length}/${subs.length}`);
+    if (n) out.push(n === 1 ? '1 foto' : n + ' fotos');
+    if (r.notes) out.push('Notes');
+    if (r.url) out.push('Enllaç');
+    return out;
+  };
+  return capSatel('Recordatoris') + `<p class="help">Coses pendents que no vols oblidar. Toca un recordatori per afegir-hi notes, fotos, un enllaç o passos; quan el facis, toca el cercle i desapareix.</p>
     <form id="formRec" class="rec-nou" autocomplete="off"><input id="recText" placeholder="Què has de recordar?" maxlength="300" enterkeyhint="done"><button class="btn primary">Afegeix</button></form>
     <button class="enllac enganxa" data-enganxa="recordatoris">Enganxa una llista d'una altra app</button>
     ${llista.length > 3 ? '<input id="cercaRec" type="search" class="doc-cerca" placeholder="Cerca un recordatori…" autocomplete="off">' : ''}
-    ${llista.length ? `<ul class="rec-llista">${llista.map((r) => `<li data-rec="${esc(r.id)}" data-reccerca="${esc(normal(r.text))}">
+    ${llista.length ? `<ul class="rec-llista">${llista.map((r) => `<li data-rec="${esc(r.id)}" data-reccerca="${esc(normal([r.text, r.notes, ...(r.subtasques || []).map((x) => x.text)].filter(Boolean).join(' ')))}"${r.important ? ' class="important"' : ''}>
         <button class="rec-check" data-recfet="${esc(r.id)}" aria-label="Fet"></button>
-        <button class="rec-text" data-recedita="${esc(r.id)}"><span>${esc(r.text)}</span><small>${esc(fa(r.creat))}</small></button></li>`).join('')}</ul>`
+        <button class="rec-text" data-recedita="${esc(r.id)}"><span>${r.important ? '<i class="rec-bandera"></i>' : ''}${esc(r.text)}</span><small>${esc([fa(r.creat), ...indicadors(r)].filter(Boolean).join(' · '))}</small></button></li>`).join('')}</ul>`
       : '<p class="help buit">No tens res pendent.</p>'}
     <p class="help buit" id="recRes" hidden>No hi ha cap recordatori que hi coincideixi.</p>`;
 }
@@ -1873,7 +1883,7 @@ $('#main').addEventListener('click', (e) => {
   if (s) {
     const sat = SATEL.find((x) => x.id === s.dataset.sat);
     if (sat?.aviat) { toast(`${sat.nom}: aviat`); return; }
-    ui.view = s.dataset.sat; ui.llista = ''; ui.memEdita = ''; render(); window.scrollTo(0, 0); return;
+    ui.view = s.dataset.sat; ui.llista = ''; ui.memEdita = ''; ui.recObert = ''; render(); window.scrollTo(0, 0); return;
   }
   const f = e.target.closest('[data-fitxa]');
   if (f) { ui.tornaA = ui.view === 'aniversaris' ? 'aniversaris' : ''; ui.view = 'gent'; ui.persona = f.dataset.fitxa; render(); window.scrollTo(0, 0); return; }
@@ -1887,6 +1897,7 @@ $('#main').addEventListener('click', (e) => {
       state.recordatoris = state.recordatoris.filter((x) => x.id !== r.id);
       save(); render();
       toastDesfes(`Fet: ${r.text}`, () => { state.recordatoris.splice(Math.max(0, lloc), 0, copia); save(); render(); });
+      netejaFotosRec(copia);
     }, 380);
     return;
   }
@@ -1894,10 +1905,7 @@ $('#main').addEventListener('click', (e) => {
   if (ed) {
     const r = state.recordatoris.find((x) => x.id === ed.dataset.recedita);
     if (!r) return;
-    demanaText('Corregeix el recordatori', r.text).then((nou) => {
-      if (nou === null || !nou.trim() || nou.trim() === r.text) return;
-      r.text = nou.trim().slice(0, 300); save(); render();
-    });
+    ui.recObert = r.id; render(); window.scrollTo(0, 0);
   }
 });
 $('#main').addEventListener('submit', (e) => {
@@ -1963,6 +1971,143 @@ $('#main').addEventListener('click', async (e) => {
   save(); render();
   toast(n ? (n === 1 ? '1 element afegit' : `${n} elements afegits`) + (rep ? ` (${rep} ja hi eren)` : '') : 'Ja els tenies tots', 4000);
 });
+
+// Fitxa d'un recordatori: notes, enllaç, important, subtasques i fotos
+function vistaRecFitxa(r) {
+  const subs = Array.isArray(r.subtasques) ? r.subtasques : [], imgs = Array.isArray(r.imatges) ? r.imatges : [];
+  const entrat = Boolean(usuari());
+  return `<div class="sat-cap"><button class="sat-torna" data-rectorna aria-label="Torna als recordatoris">‹ Tornar</button><h1>Recordatori</h1></div>
+    <div class="rec-fitxa">
+      <textarea class="rec-titol" data-reccamp="text" rows="2" maxlength="300" placeholder="Què has de recordar?">${esc(r.text)}</textarea>
+      <button class="rec-imp${r.important ? ' si' : ''}" data-recimp aria-pressed="${Boolean(r.important)}"><span class="rec-bandera"></span>${r.important ? 'Important' : 'Marca com a important'}</button>
+      <label class="rec-bloc"><span>Notes</span><textarea data-reccamp="notes" rows="4" maxlength="3000" placeholder="Detalls, telèfons, el que calgui…">${esc(r.notes || '')}</textarea></label>
+      <label class="rec-bloc"><span>Enllaç</span><div class="rec-url"><input data-reccamp="url" type="url" inputmode="url" maxlength="2000" placeholder="https://…" value="${esc(r.url || '')}">${r.url ? `<a class="btn" href="${esc(r.url)}" target="_blank" rel="noopener">Obre</a>` : ''}</div></label>
+      <div class="rec-bloc"><span>Subtasques${subs.length ? ` · ${subs.filter((s) => s.fet).length}/${subs.length}` : ''}</span>
+        ${subs.length ? `<ul class="rec-subs">${subs.map((s) => `<li class="${s.fet ? 'fet' : ''}"><button class="rec-check petit${s.fet ? ' ple' : ''}" data-subfet="${esc(s.id)}" aria-label="${s.fet ? 'Desmarca' : 'Fet'}"></button><button class="rec-subtext" data-subedita="${esc(s.id)}">${esc(s.text)}</button></li>`).join('')}</ul>` : ''}
+        <form class="rec-nou petit" id="formSub" autocomplete="off"><input name="text" placeholder="Afegeix un pas…" maxlength="200" enterkeyhint="done"><button class="btn">Afegeix</button></form>
+      </div>
+      <div class="rec-bloc"><span>Fotos</span>
+        ${imgs.length ? `<div class="rec-imgs">${imgs.map((im) => `<button class="rec-img" data-recimg="${esc(im.id)}"><img src="${esc(im.mini)}" alt=""></button>`).join('')}</div>` : ''}
+        ${entrat ? `<label class="btn rec-afoto${ui.recPujant ? ' ocupat' : ''}"><input type="file" id="recFoto" accept="image/*" multiple hidden ${ui.recPujant ? 'disabled' : ''}>${ui.recPujant ? 'Pujant…' : 'Afegeix fotos'}</label>`
+          : '<p class="help">Per afegir fotos cal haver entrat amb el teu correu.</p>'}
+      </div>
+      <div class="ll-peu"><button class="btn primary" data-recfitxafet>Fet</button><button class="enllac perill" data-recesborra>Esborra</button></div>
+    </div>`;
+}
+const recObert = () => state.recordatoris.find((x) => x.id === ui.recObert && !x.fet);
+// Treu del núvol les fotos d'un recordatori que ja no hi és (passat el temps de Desfés)
+function netejaFotosRec(r) {
+  setTimeout(() => {
+    if (state.recordatoris.some((x) => x.id === r.id)) return;
+    (r.imatges || []).forEach((im) => { sync()?.esborraDoc(im.cami).catch(() => {}); });
+  }, 7000);
+}
+function treuRecordatori(r, text) {
+  const copia = JSON.parse(JSON.stringify(r)), lloc = state.recordatoris.indexOf(r);
+  state.recordatoris = state.recordatoris.filter((x) => x.id !== r.id);
+  ui.recObert = ''; save(); render(); window.scrollTo(0, 0);
+  toastDesfes(text, () => { state.recordatoris.splice(Math.max(0, lloc), 0, copia); save(); render(); });
+  netejaFotosRec(copia);
+}
+$('#main').addEventListener('change', async (e) => {
+  const t = e.target, r = recObert();
+  if (!r) return;
+  if (t.dataset?.reccamp) {
+    const k = t.dataset.reccamp;
+    let v = t.value.trim();
+    if (k === 'text' && !v) { t.value = r.text; return; }
+    if (k === 'url' && v && !/^https?:\/\//i.test(v)) v = 'https://' + v;
+    if ((r[k] || '') === v) return;
+    r[k] = v.slice(0, k === 'notes' ? 3000 : k === 'url' ? 2000 : 300); save();
+    if (k === 'url') render();
+    return;
+  }
+  if (t.id === 'recFoto') {
+    const files = [...(t.files || [])]; t.value = '';
+    if (!files.length) return;
+    ui.recPujant = true; render();
+    let errors = 0;
+    for (const f of files) {
+      try {
+        const im = await carregaImg(f);
+        const blob = await new Promise((ok) => redueix(im, 2000).toBlob(ok, 'image/jpeg', 0.82));
+        const id = nouId('ri'), cami = await sync().pujaDoc(id, blob, 'image/jpeg', 'jpg');
+        const rr = state.recordatoris.find((x) => x.id === r.id);
+        if (rr) { rr.imatges = [...(rr.imatges || []), { id, cami, mini: redueix(im, 240).toDataURL('image/jpeg', 0.6) }]; save(); }
+      } catch (err) { errors++; if (!navigator.onLine) break; }
+    }
+    ui.recPujant = false; render();
+    if (errors) toast(navigator.onLine ? `${errors === 1 ? 'Una foto no s\'ha' : errors + ' fotos no s\'han'} pogut pujar.` : 'Cal connexió a internet per pujar fotos.', 4500);
+  }
+});
+$('#main').addEventListener('submit', (e) => {
+  if (e.target.id !== 'formSub') return;
+  e.preventDefault();
+  const r = recObert(), inp = e.target.elements.text, text = inp.value.trim();
+  if (!r || !text) { inp.focus(); return; }
+  r.subtasques = [...(r.subtasques || []), { id: nouId('s'), text: text.slice(0, 200), fet: false }];
+  save(); render();
+  document.querySelector('#formSub input')?.focus();
+});
+$('#main').addEventListener('click', async (e) => {
+  const t = e.target;
+  if (t.closest('[data-rectorna]')) { document.activeElement?.blur?.(); ui.recObert = ''; render(); window.scrollTo(0, 0); return; }
+  const r = recObert();
+  if (!r) return;
+  if (t.closest('[data-recimp]')) { r.important = !r.important; save(); render(); return; }
+  const sf = t.closest('[data-subfet]');
+  if (sf) { const s = (r.subtasques || []).find((x) => x.id === sf.dataset.subfet); if (s) { s.fet = !s.fet; save(); render(); } return; }
+  const se = t.closest('[data-subedita]');
+  if (se) {
+    const s = (r.subtasques || []).find((x) => x.id === se.dataset.subedita);
+    if (!s) return;
+    const nou = await demanaText('Corregeix el pas', s.text, { max: 200, ajuda: 'Deixa-ho buit per treure\'l.' });
+    if (nou === null) return;
+    if (!nou.trim()) r.subtasques = r.subtasques.filter((x) => x !== s); else s.text = nou.trim().slice(0, 200);
+    save(); render(); return;
+  }
+  if (t.closest('[data-recfitxafet]')) { treuRecordatori(r, `Fet: ${r.text}`); return; }
+  if (t.closest('[data-recesborra]')) {
+    const b = t.closest('[data-recesborra]');
+    if (b.dataset.segur !== '1') { b.dataset.segur = '1'; b.textContent = "Segur? Toca'l un altre cop"; return; }
+    treuRecordatori(r, `Esborrat: ${r.text}`); return;
+  }
+  const ib = t.closest('[data-recimg]');
+  if (ib) {
+    const im = (r.imatges || []).find((x) => x.id === ib.dataset.recimg);
+    if (im) obreFotoRec(r, im);
+  }
+});
+// Foto en gran, amb zoom, i opció de treure-la
+async function obreFotoRec(r, im) {
+  tancaVisor();
+  const v = document.createElement('div');
+  v.className = 'doc-visor';
+  v.innerHTML = `<div class="doc-visor-cap"><button type="button" class="sat-torna" data-fv="tanca">‹ Tanca</button><b>${esc(r.text)}</b></div>
+    <div class="doc-visor-cos"><img src="${esc(im.mini)}" alt="" draggable="false"></div>
+    <div class="doc-visor-peu"><a class="btn primary" data-fv="obre" target="_blank" rel="noopener" hidden>Obre / Comparteix</a><button type="button" class="enllac perill" data-fv="treu">Treu la foto</button></div>`;
+  document.body.appendChild(v);
+  const cos = v.querySelector('.doc-visor-cos');
+  ampliable(cos, cos.querySelector('img'));
+  v.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-fv]');
+    if (!b) return;
+    if (b.dataset.fv === 'tanca') { tancaVisor(); return; }
+    if (b.dataset.fv === 'treu') {
+      if (b.dataset.segur !== '1') { b.dataset.segur = '1'; b.textContent = "Segur? Toca'l un altre cop"; return; }
+      const rr = state.recordatoris.find((x) => x.id === r.id);
+      if (rr) { rr.imatges = (rr.imatges || []).filter((x) => x.id !== im.id); save(); }
+      sync()?.esborraDoc(im.cami).catch(() => {});
+      tancaVisor(); render(); toast('Foto treta');
+    }
+  });
+  try {
+    const url = await sync().urlDoc(im.cami);
+    if (!document.body.contains(v)) return;
+    v.querySelector('.doc-visor-cos img').src = url;
+    const o = v.querySelector('[data-fv="obre"]'); o.href = url; o.hidden = false;
+  } catch (err) { /* es queda la miniatura */ }
+}
 
 /* ---------- Llista i Compres ---------- */
 // Avís «Ja hi és» al costat de la casella (a baix de tot no es veu quan el teclat és obert) i l'element parpelleja

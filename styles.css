@@ -1058,3 +1058,30 @@ button.gx-pindola, .gx-pindola { color: color-mix(in srgb, var(--text) 82%, var(
 .enllac.enganxa { display: inline-block; margin: -4px 0 12px; font-size: 14px; }
 .demana-caixa textarea { width: 100%; font: inherit; font-size: 16px; resize: vertical; }
 .icones-tria { flex-wrap: wrap; }
+/* Fitxa d'un recordatori */
+.rec-fitxa { display: grid; gap: 14px; }
+.rec-titol { width: 100%; font: inherit; font-size: 19px; font-weight: 800; resize: vertical; }
+.rec-bloc { display: grid; gap: 6px; }
+.rec-bloc > span { font-weight: 800; font-size: 14px; color: var(--muted); }
+.rec-bloc textarea { width: 100%; font: inherit; resize: vertical; }
+.rec-url { display: flex; gap: 8px; }
+.rec-url input { flex: 1; min-width: 0; }
+.rec-url .btn { text-decoration: none; }
+.rec-imp { justify-self: start; display: inline-flex; align-items: center; gap: 8px; border: 1.5px solid var(--border); background: var(--surface); color: var(--text); font: inherit; font-weight: 700; padding: 7px 14px; border-radius: 99px; cursor: pointer; }
+.rec-imp.si { background: #FFF0E6; border-color: #E8590C; color: #C2410C; }
+.rec-bandera { display: inline-block; width: 10px; height: 13px; background: #E8590C; clip-path: polygon(0 0, 100% 0, 75% 45%, 100% 90%, 18% 90%, 18% 100%, 0 100%); flex: none; }
+.rec-text .rec-bandera { margin-right: 7px; vertical-align: -1px; }
+.rec-llista li.important { border-color: color-mix(in srgb, #E8590C 55%, var(--border)); background: color-mix(in srgb, #E8590C 6%, var(--surface)); }
+.rec-subs { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.rec-subs li { display: flex; align-items: center; gap: 10px; }
+.rec-subs li.fet .rec-subtext { text-decoration: line-through; color: var(--muted); }
+.rec-check.petit { width: 22px; height: 22px; }
+.rec-check.ple { background: var(--c, #E8590C); }
+.rec-subtext { flex: 1; min-width: 0; text-align: left; border: 0; background: none; padding: 4px 0; font: inherit; font-weight: 600; color: var(--text); cursor: pointer; overflow-wrap: anywhere; }
+.rec-nou.petit { margin: 2px 0 0; }
+.rec-imgs { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; }
+.rec-img { aspect-ratio: 1; border: 0; padding: 0; border-radius: 12px; overflow: hidden; cursor: pointer; background: var(--surface-2); }
+.rec-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.rec-afoto { justify-self: start; cursor: pointer; }
+.rec-afoto.ocupat { opacity: .6; pointer-events: none; }
+.sat-torna { white-space: nowrap; }
