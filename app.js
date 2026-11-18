@@ -949,6 +949,11 @@ function vistaAjustos() {
       </form>
       ${externs().length ? '<button class="btn" id="extActualitza">Actualitza ara</button>' : ''}
     </div>
+    <div class="section" id="seccioTema">
+      <h2>Aspecte</h2>
+      <p class="help"><b>Automàtic</b> fa el mateix que l'iPhone: clar de dia i fosc quan l'iPhone és en mode fosc.</p>
+      <div class="seg tema-seg">${[['clar', 'Clar'], ['fosc', 'Fosc'], ['auto', 'Automàtic']].map(([k, n]) => `<button aria-pressed="${(state.ajustos.tema || 'auto') === k}" data-tema="${k}">${n}</button>`).join('')}</div>
+    </div>
     <div class="section" id="seccioMode">
       <h2>Com vols l'app</h2>
       <p class="help"><b>Galàxia</b>: el cercle amb l'agenda al mig i les micro-apps al voltant (recordatoris, compres, documents…). <b>Agenda</b>: només l'agenda, més senzilla. Ho pots canviar quan vulguis; no es perd res.</p>
@@ -1394,7 +1399,16 @@ function vistaPindoles() {
     + (queden > 0 ? '<div class="grp centre"><button class="btn" data-pdmes>Mostra\'n més</button></div>' : '');
 }
 const VISTES = { inici: vistaInici, aniversaris: vistaAniversaris, recordatoris: vistaRecordatoris, llista: vistaLlista, compres: vistaCompres, memoria: vistaMemoria, documents: vistaDocuments, pindoles: vistaPindoles, propers: vistaPropers, calendari: vistaCalendari, gent: vistaGent, ajustos: vistaAjustos, entrada: vistaEntrada };
+// Aspecte: Clar, Fosc o Automàtic (com l'iPhone). Es guarda amb el compte i també en aquest aparell (per a la guia)
+function aplicaTema() {
+  const t = state.ajustos.tema, r = document.documentElement;
+  if (t === 'clar') r.dataset.theme = 'light'; else if (t === 'fosc') r.dataset.theme = 'dark'; else delete r.dataset.theme;
+  desaPref('tema', t || 'auto');
+  const fosc = t === 'fosc' || (t !== 'clar' && matchMedia('(prefers-color-scheme: dark)').matches);
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', fosc ? '#0E0B09' : '#221C18');
+}
 function render() {
+  aplicaTema();
   if (!VISTES[ui.view]) ui.view = 'propers';
   if (modeAgenda() && SATEL.some((x) => x.id === ui.view) && ui.view !== 'aniversaris') ui.view = 'inici';
   document.body.classList.toggle('mode-agenda', modeAgenda());
@@ -2463,6 +2477,11 @@ $('#main').addEventListener('click', (e) => {
 });
 
 /* ---------- Ajustos: persones convidades ---------- */
+$('#main').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-tema]');
+  if (!b) return;
+  state.ajustos.tema = b.dataset.tema === 'auto' ? '' : b.dataset.tema; save(); render();
+});
 // Canviar el mode propi (Ajustos) o el d'una persona convidada (administrador)
 $('#main').addEventListener('click', (e) => {
   const b = e.target.closest('[data-mode]');
