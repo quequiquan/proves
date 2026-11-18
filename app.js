@@ -1150,11 +1150,11 @@ function vistaInici() {
       <div class="gx-salut"><h1>${esc(salut)}${nom ? ', ' + esc(nom) : ''}</h1>
         <p class="portada-data">${esc(cap(dataLlarga(avui())))}</p>
 </div>
-      <div class="gx-cercle">
-        <div class="gx-orbita" aria-hidden="true"></div>
+      <div class="gx-cercle${modeAgenda() ? ' gx-sol' : ''}">
+        ${modeAgenda() ? '' : '<div class="gx-orbita" aria-hidden="true"></div>'}
         <button class="gx-centre" id="gxAgenda" aria-label="Agenda (mantén premut per a un pla nou)">
           <span class="gx-centre-nom">Agenda</span>${nPlans ? `<small class="gx-centre-n" aria-label="${nPlans} plans avui">${nPlans}</small>` : ''}</button>
-        ${SATEL.map((s, i) => `<button class="gx-sat${s.aviat ? ' aviat' : ''}" data-sat="${s.id}" style="--c:${s.color};--a:${i * 60 - 90}deg;--i:${i}">
+        ${(modeAgenda() ? [] : SATEL).map((s, i) => `<button class="gx-sat${s.aviat ? ' aviat' : ''}" data-sat="${s.id}" style="--c:${s.color};--a:${i * 60 - 90}deg;--i:${i}">
             <span class="gx-bola"><span class="gx-ini" aria-hidden="true">${esc(s.nom[0])}</span>${comptes[s.id] ? `<i>${comptes[s.id]}</i>` : ''}</span><span class="gx-nom">${esc(s.nom)}</span>${s.aviat ? '<small>aviat</small>' : ''}</button>`).join('')}
       </div>
       ${typeof pindolaDelDia === 'function' ? `<button class="gx-pindola" data-pindoles>${esc(pindolaDelDia())}</button>` : ''}
@@ -1377,7 +1377,7 @@ function vistaPindoles() {
 const VISTES = { inici: vistaInici, aniversaris: vistaAniversaris, recordatoris: vistaRecordatoris, llista: vistaLlista, compres: vistaCompres, memoria: vistaMemoria, documents: vistaDocuments, pindoles: vistaPindoles, propers: vistaPropers, calendari: vistaCalendari, gent: vistaGent, ajustos: vistaAjustos, entrada: vistaEntrada };
 function render() {
   if (!VISTES[ui.view]) ui.view = 'propers';
-  if (modeAgenda() && VISTES_GALAXIA.includes(ui.view) && ui.view !== 'aniversaris') ui.view = 'propers';
+  if (modeAgenda() && SATEL.some((x) => x.id === ui.view) && ui.view !== 'aniversaris') ui.view = 'inici';
   document.body.classList.toggle('mode-agenda', modeAgenda());
   if (ui.view === 'entrada' && !sync()?.disponible) ui.view = 'propers';
   document.body.classList.toggle('mode-entrada', ui.view === 'entrada');
@@ -1394,7 +1394,7 @@ function render() {
   if (ui.view === 'ajustos' && sync()) sync().bind();
   if (ui.view === 'entrada') $('.entrada input')?.focus();
 }
-const fiEntrada = () => { ui.view = modeAgenda() ? 'propers' : 'inici'; render(); };
+const fiEntrada = () => { ui.view = 'inici'; render(); };
 
 /* ---------- Clics a la pantalla principal ---------- */
 $('#tabs').addEventListener('click', (e) => {
@@ -2404,7 +2404,7 @@ $('#main').addEventListener('click', (e) => {
   const b = e.target.closest('[data-mode]');
   if (!b || (b.dataset.mode === 'agenda') === modeAgenda()) return;
   state.ajustos.mode = b.dataset.mode; save(); render();
-  toast(b.dataset.mode === 'agenda' ? "Ara l'app comença directament a l'agenda" : 'Ara en obrir l\'app veuràs la galàxia');
+  toast(b.dataset.mode === 'agenda' ? "Ara a l'inici només hi haurà l'Agenda" : 'Ara en obrir l\'app veuràs la galàxia');
 });
 $('#main').addEventListener('change', async (e) => {
   const s = e.target.closest('[data-modeconv]');
@@ -3221,7 +3221,7 @@ function importa(fitxer) {
 if (PROVES) $('#provesTag').hidden = false;
 // S'espera que estigui carregat sync.js. La primera vegada es demana d'entrar amb el correu.
 addEventListener('DOMContentLoaded', () => {
-  ui.view = modeAgenda() ? 'propers' : 'inici';
+  ui.view = 'inici';
   if (sync()?.disponible && !sync().potserEntrat() && !llegeixPref('senseCompte', false)) ui.view = 'entrada';
   render();
   actualitzaExterns();
@@ -3248,7 +3248,7 @@ function obreMenuCompte() {
   const m = document.createElement('div');
   m.className = 'menu-compte';
   m.innerHTML = '<div class="mc-caixa" role="menu">'
-    + (ui.view !== (modeAgenda() ? 'propers' : 'inici') ? '<button type="button" data-mc="inici">Torna a l\'inici</button>' : '')
+    + (ui.view !== 'inici' ? '<button type="button" data-mc="inici">Torna a l\'inici</button>' : '')
     + (u ? '<p class="mc-qui">Has entrat com a<br><b>' + esc(u.email) + '</b></p>'
         + '<button type="button" data-mc="surt">Tanca la sessió en aquest dispositiu</button>'
         + '<button type="button" data-mc="altres">Tanca la sessió als altres dispositius</button>'
@@ -3262,7 +3262,7 @@ function obreMenuCompte() {
     if (!b) { if (e.target === m) tancaMenuCompte(); return; }
     const acc = b.dataset.mc;
     tancaMenuCompte();
-    if (acc === 'inici') { ui.view = modeAgenda() ? 'propers' : 'inici'; ui.persona = ''; render(); window.scrollTo(0, 0); return; }
+    if (acc === 'inici') { ui.view = 'inici'; ui.persona = ''; render(); window.scrollTo(0, 0); return; }
     if (acc === 'entra') { ui.view = 'entrada'; ui.entrada = { pas: 'correu', email: '' }; render(); return; }
     if (acc === 'surt') {
       const pend = sync().pendentsPerPujar();
