@@ -1421,6 +1421,7 @@ function vistaPindoles() {
     const llista = frasesMeves().slice().reverse();
     return capSatel('Píndoles') + pestanyes + `<p class="help">Escriu les frases que t'agradin i sortiran barrejades amb les altres com a frase del dia: la primera vegada, l'endemà d'afegir-la.</p>
       <form id="formFrase" class="rec-nou" autocomplete="off"><input id="fraseText" placeholder="Escriu una frase…" maxlength="200" enterkeyhint="done"><button class="btn primary">Afegeix</button></form>
+      <button class="enllac enganxa" data-enganxa="frases">Enganxa diverses frases de cop</button>
       ${llista.length ? `<div class="pd-llista">${llista.map((f) => `<div class="pd-fila pd-meva"><p>${esc(f.text)}</p>
         <div class="mem-accions"><button class="enllac" data-frasedita="${esc(f.id)}">Edita</button><button class="enllac perill" data-frasetreu="${esc(f.id)}">Treu</button></div></div>`).join('')}</div>`
         : '<p class="help buit">Encara no n\'has afegit cap.</p>'}`;
@@ -1969,6 +1970,25 @@ $('#main').addEventListener('click', async (e) => {
     });
     save(); render();
     toast(n ? (n === 1 ? '1 fitxa afegida' : `${n} fitxes afegides`) + (blocs.length > n ? ` (${blocs.length - n} ja hi eren)` : '') : 'Ja les tenies totes', 4000);
+    return;
+  }
+  if (on === 'frases') {
+    const text = await enganxaText('Enganxa les frases', 'Una frase a cada línia. Sortiran com a frase del dia, una cada dia a partir de demà, i després de tant en tant.');
+    if (!text || !text.trim()) return;
+    const clauF = (t) => normal(t).replace(/[^a-z0-9]/g, '');
+    const ja = new Set([...frasesMeves().map((f) => clauF(f.text)), ...PINDOLES.map(clauF)]);
+    const ocupats = new Set(frasesMeves().map((f) => f.des));
+    let d = addDays(parseYmd(avui()), 1), n = 0, rep = 0;
+    const noves = [];
+    liniesNetes(text).forEach((l) => {
+      const k = clauF(l);
+      if (!k || ja.has(k)) { rep++; return; }
+      ja.add(k);
+      while (ocupats.has(ymd(d))) d = addDays(d, 1);
+      noves.push({ id: nouId('f'), text: l.slice(0, 200), des: ymd(d) }); ocupats.add(ymd(d)); n++;
+    });
+    state.ajustos.frasesMeves = [...frasesMeves(), ...noves]; save(); render();
+    toast(n ? (n === 1 ? '1 frase afegida' : `${n} frases afegides`) + (rep ? ` (${rep} ja hi eren)` : '') : 'Ja les tenies totes', 4000);
     return;
   }
   const text = await enganxaText('Enganxa la llista', AJUDA_ENGANXA);
