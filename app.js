@@ -1256,11 +1256,12 @@ function filesCompres(items) {
 }
 function vistaCompres() {
   const pend = state.compres.filter((r) => !r.fet);
-  const habituals = state.compres.filter((r) => r.fet).sort((a, b) => a.text.localeCompare(b.text, 'ca'));
+  const vegades = (r) => r.vegades || 1;
+  const habituals = state.compres.filter((r) => r.fet).sort((a, b) => vegades(b) - vegades(a) || a.text.localeCompare(b.text, 'ca'));
   return capSatel('Compres') + formItem('compres', '', 'Què falta?')
     + (pend.length ? filesCompres(pend) : '<p class="help buit">No falta res.</p>')
-    + (habituals.length ? `<h2 class="ll-titol">Habituals</h2><p class="help">Toca'n un per tornar-lo a posar a la llista.</p>
-      ${FAMILIES.map((f) => { const seus = habituals.filter((r) => familiaDe(r) === f.id); return seus.length ? `<div class="ll-chips fam-chips" style="--fc:${f.c}">${seus.map((r) => `<button class="ll-chip" data-torna="${esc(r.id)}">${esc(r.text)}</button>`).join('')}</div>` : ''; }).join('')}` : '');
+    + (habituals.length ? `<h2 class="ll-titol">Habituals</h2><p class="help">Toca'n un per tornar-lo a posar a la llista. Mantén-lo premut per treure'l dels habituals.</p>
+      ${FAMILIES.map((f) => { const seus = habituals.filter((r) => familiaDe(r) === f.id); return seus.length ? `<div class="ll-chips fam-chips" style="--fc:${f.c}">${seus.map((r) => `<button class="ll-chip${vegades(r) >= 3 ? ' sovint' : ''}" data-torna="${esc(r.id)}">${esc(r.text)}</button>`).join('')}</div>` : ''; }).join('')}` : '');
 }
 // Memòria: fitxes amb informació per consultar (no contrasenyes)
 function vistaMemoria() {
@@ -1754,6 +1755,23 @@ $('#main').addEventListener('submit', (e) => {
 });
 
 /* ---------- Llista i Compres ---------- */
+let chipPrem = null, chipLlarg = false;
+$('#main').addEventListener('pointerdown', (e) => {
+  const ch = e.target.closest('[data-torna]');
+  if (!ch) return;
+  chipLlarg = false; clearTimeout(chipPrem);
+  chipPrem = setTimeout(() => {
+    chipLlarg = true; setTimeout(() => { chipLlarg = false; }, 800); navigator.vibrate?.(15);
+    const r = state.compres.find((x) => x.id === ch.dataset.torna);
+    if (!r) return;
+    const lloc = state.compres.indexOf(r), copia = { ...r };
+    state.compres.splice(lloc, 1); save(); render();
+    toastDesfes(`Tret dels habituals: ${r.text}`, () => { state.compres.splice(lloc, 0, copia); save(); render(); });
+  }, 600);
+});
+['pointerup', 'pointercancel', 'pointerleave', 'scroll'].forEach((ev) => $('#main').addEventListener(ev, () => clearTimeout(chipPrem), true));
+$('#main').addEventListener('touchmove', () => clearTimeout(chipPrem), { passive: true });
+$('#main').addEventListener('contextmenu', (e) => { if (e.target.closest('[data-torna]')) e.preventDefault(); });
 function itemsDe(col, lid) { return col === 'compres' ? state.compres : state.llistes.find((l) => l.id === lid)?.items || null; }
 $('#main').addEventListener('click', (e) => {
   const t = e.target;
@@ -1767,8 +1785,14 @@ $('#main').addEventListener('click', (e) => {
     if (!it) return;
     chk.closest('li').classList.add('fet');
     setTimeout(() => {
-      it.fet = true; save(); render();
-      toastDesfes(`Fet: ${it.text}`, () => { const x = itemsDe(col, lid)?.find((y) => y.id === iid); if (x) x.fet = false; save(); render(); });
+      it.fet = true;
+      if (col === 'compres') it.vegades = (it.vegades || 0) + 1;   // quantes vegades s'ha comprat
+      save(); render();
+      toastDesfes(`Fet: ${it.text}`, () => {
+        const x = itemsDe(col, lid)?.find((y) => y.id === iid);
+        if (x) { x.fet = false; if (col === 'compres' && x.vegades) x.vegades--; }
+        save(); render();
+      });
     }, 380);
     return;
   }
@@ -1788,6 +1812,7 @@ $('#main').addEventListener('click', (e) => {
     it.text = nou.trim().slice(0, 200); save(); render(); return;
   }
   const tr = t.closest('[data-torna]');
+  if (tr && chipLlarg) { chipLlarg = false; return; }
   if (tr) { const r = state.compres.find((x) => x.id === tr.dataset.torna); if (r) { r.fet = false; save(); render(); } return; }
   const om = t.closest('[data-omple]');
   if (om) { const l = state.llistes.find((x) => x.id === om.dataset.omple); if (l) { l.items.forEach((i) => { i.fet = false; }); save(); render(); toast('Llista a punt'); } return; }
