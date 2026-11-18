@@ -1259,7 +1259,7 @@ function vistaCompres() {
   const vegades = (r) => r.vegades || 1;
   const habituals = state.compres.filter((r) => r.fet).sort((a, b) => vegades(b) - vegades(a) || a.text.localeCompare(b.text, 'ca'));
   return capSatel('Compres') + formItem('compres', '', 'Què falta?')
-    + (pend.length ? filesCompres(pend) : '<p class="help buit">No falta res.</p>')
+    + (pend.length ? filesCompres(pend) + '<div class="ll-peu"><button class="btn" data-comprescomparteix>Comparteix la llista</button></div>' : '<p class="help buit">No falta res.</p>')
     + (habituals.length ? `<h2 class="ll-titol">Habituals</h2><p class="help">Toca'n un per tornar-lo a posar a la llista. Mantén-lo premut per treure'l dels habituals.</p>
       ${FAMILIES.map((f) => { const seus = habituals.filter((r) => familiaDe(r) === f.id); return seus.length ? `<div class="ll-chips fam-chips" style="--fc:${f.c}">${seus.map((r) => `<button class="ll-chip${vegades(r) >= 3 ? ' sovint' : ''}" data-torna="${esc(r.id)}">${esc(r.text)}</button>`).join('')}</div>` : ''; }).join('')}` : '');
 }
@@ -1835,6 +1835,17 @@ $('#main').addEventListener('click', (e) => {
     (async () => {
       if (navigator.share) { try { await navigator.share({ title: l.nom, text }); return; } catch (x) { if (x.name === 'AbortError') return; } }
       try { await navigator.clipboard.writeText(text); toast("Llista copiada: enganxa-la a WhatsApp, a un correu…"); } catch (x) { prompt('Copia la llista:', text); }
+    })();
+    return;
+  }
+  if (t.closest('[data-comprescomparteix]')) {
+    const pend = state.compres.filter((r) => !r.fet);
+    if (!pend.length) return;
+    const blocs = FAMILIES.map((f) => { const seus = pend.filter((r) => familiaDe(r) === f.id); return seus.length ? f.nom + '\n' + seus.map((r) => '- ' + r.text).join('\n') : ''; }).filter(Boolean);
+    const text = 'Llista de la compra\n\n' + blocs.join('\n\n');
+    (async () => {
+      if (navigator.share) { try { await navigator.share({ title: 'Llista de la compra', text }); return; } catch (x) { if (x.name === 'AbortError') return; } }
+      try { await navigator.clipboard.writeText(text); toast('Llista copiada: enganxa-la a WhatsApp, a un correu…'); } catch (x) { prompt('Copia la llista:', text); }
     })();
     return;
   }
