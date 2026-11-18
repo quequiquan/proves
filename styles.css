@@ -1014,3 +1014,7 @@ button.gx-pindola { display: block; border: 0; background: none; padding: 4px 8p
 .demana-caixa input { width: 100%; font-size: 17px; }
 .demana-caixa .help { margin: -4px 0 0; }
 .demana-caixa .grp { justify-content: flex-end; }
+/* Mode Agenda: sense el cercle de Galàxia */
+body.mode-agenda #tabs [data-view="inici"] { display: none; }
+.mode-seg { margin-top: 4px; }
+.convidats .mode-convidat { width: auto; padding: 4px 8px; font-size: 13px; margin-left: auto; }

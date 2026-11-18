@@ -217,6 +217,7 @@ const Sync = (() => {
         canvi = (await baixaComp()) || canvi;
         posaEstat('ok');
         if (canvi && !document.querySelector('#dlg[open]')) render();
+        setTimeout(aplicaModeConvidat, 0);
         if (typeof acceptaAutomatics === 'function') setTimeout(acceptaAutomatics, 0);
       } catch (e) {
         console.warn('Sincronització:', e);
@@ -401,12 +402,29 @@ const Sync = (() => {
     return data === true;
   }
   async function convidats() {
-    const { data, error } = await sb.from('convidats').select('email,nom,afegit').order('afegit', { ascending: false });
+    const { data, error } = await sb.from('convidats').select('email,nom,afegit,mode').order('afegit', { ascending: false });
     if (error) throw error;
     return data || [];
   }
-  async function convida(email, nom = '') {
-    const { error } = await sb.from('convidats').upsert({ email: email.trim().toLowerCase(), nom }, { onConflict: 'email' });
+  async function modeConvidat(email, mode) {
+    const { error } = await sb.from('convidats').update({ mode }).eq('email', email);
+    if (error) throw error;
+  }
+  // El mode amb què l'administrador ha convidat aquesta persona (només s'aplica si encara no n'ha triat cap)
+  let modeMirat = false;
+  async function aplicaModeConvidat() {
+    if (modeMirat || !usuari || state.ajustos.mode) return;
+    modeMirat = true;
+    try {
+      const { data, error } = await sb.rpc('el_meu_mode');
+      if (error || !['galaxia', 'agenda'].includes(data) || state.ajustos.mode) return;
+      state.ajustos.mode = data; save();
+      if (data === 'agenda' && ui.view === 'inici') ui.view = 'propers';
+      if (!document.querySelector('#dlg[open]')) render();
+    } catch (e) { /* sense connexió: ja es mirarà un altre cop */ modeMirat = false; }
+  }
+  async function convida(email, nom = '', mode = 'galaxia') {
+    const { error } = await sb.from('convidats').upsert({ email: email.trim().toLowerCase(), nom, mode }, { onConflict: 'email' });
     if (error) throw error;
   }
   async function desconvida(email) {
@@ -415,7 +433,7 @@ const Sync = (() => {
   }
 
   return {
-    enllacCalendari, enllacVeu, pujaDoc, urlDoc, esborraDoc, esAdmin, convidats, convida, desconvida,
+    enllacCalendari, enllacVeu, pujaDoc, urlDoc, esborraDoc, esAdmin, convidats, convida, desconvida, modeConvidat,
     disponible,
     usuari: () => usuari,
     // Abans de saber si hi ha sessió: n'hi ha alguna de guardada en aquest dispositiu?

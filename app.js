@@ -949,6 +949,11 @@ function vistaAjustos() {
       </form>
       ${externs().length ? '<button class="btn" id="extActualitza">Actualitza ara</button>' : ''}
     </div>
+    <div class="section" id="seccioMode">
+      <h2>Com vols l'app</h2>
+      <p class="help"><b>Galàxia</b>: el cercle amb l'agenda al mig i les micro-apps al voltant (recordatoris, compres, documents…). <b>Agenda</b>: només l'agenda, més senzilla. Ho pots canviar quan vulguis; no es perd res.</p>
+      <div class="seg mode-seg"><button aria-pressed="${!modeAgenda()}" data-mode="galaxia">Galàxia</button><button aria-pressed="${modeAgenda()}" data-mode="agenda">Agenda</button></div>
+    </div>
     ${usuari() && admin.es ? `<div class="section" id="seccioConvidats">
       <h2>Qui pot fer servir l'app</h2>
       <p class="help">Només les persones d'aquesta llista es poden crear un compte. Encara que l'enllaç corri, qui no hi sigui no podrà entrar.
@@ -956,10 +961,13 @@ function vistaAjustos() {
       <form class="barra" id="formConvida">
         <input name="email" type="email" inputmode="email" placeholder="Correu de la persona" autocomplete="off" required>
         <input name="nom" placeholder="Nom (opcional)" autocomplete="off">
+        <select name="mode" aria-label="Mode"><option value="galaxia">Galàxia</option><option value="agenda">Agenda</option></select>
         <button class="btn primary">Convida</button>
       </form>
       ${admin.llista ? `<ul class="convidats">${admin.llista.map((c) => `<li><span><b>${esc(c.nom || c.email.split('@')[0])}</b><small>${esc(c.email)}</small></span>
+        <select class="mode-convidat" data-modeconv="${esc(c.email)}" aria-label="Mode de ${esc(c.nom || c.email)}"><option value="galaxia"${c.mode !== 'agenda' ? ' selected' : ''}>Galàxia</option><option value="agenda"${c.mode === 'agenda' ? ' selected' : ''}>Agenda</option></select>
         ${normal(c.email) === normal(usuari().email) ? '<small>Tu</small>' : `<button class="enllac" data-desconvida="${esc(c.email)}">Treu</button>`}</li>`).join('')}</ul>
+        <p class="help">El mode (Galàxia o Agenda) és com comença l'app cada persona la primera vegada; després el pot canviar als seus Ajustos.</p>
         <p class="help">${admin.llista.length} persones a la llista. Treure algú evita que es pugui crear un compte; si ja en tenia un, el conserva.</p>`
         : '<p class="help">Carregant la llista…</p>'}
     </div>` : ''}
@@ -1105,7 +1113,8 @@ const SATEL = [
   { id: 'compres', nom: 'Compres', color: '#2F9E44' },
   { id: 'documents', nom: 'Documents', color: '#FFC300' },
 ];
-let gxAnimat = false;   // l'animació d'entrada només es fa el primer cop que s'obre l'app
+let gxAnimat = false;
+const modeAgenda = () => state.ajustos.mode === 'agenda';   // l'animació d'entrada només es fa el primer cop que s'obre l'app
 const VISTES_GALAXIA = ['inici', 'aniversaris', 'recordatoris', 'llista', 'compres', 'memoria', 'documents', 'pindoles'];
 const pendentsRec = () => state.recordatoris.filter((r) => !r.fet);
 // Propers aniversaris i sants dels contactes (els dels pròxims 12 mesos, el primer avui)
@@ -1368,6 +1377,8 @@ function vistaPindoles() {
 const VISTES = { inici: vistaInici, aniversaris: vistaAniversaris, recordatoris: vistaRecordatoris, llista: vistaLlista, compres: vistaCompres, memoria: vistaMemoria, documents: vistaDocuments, pindoles: vistaPindoles, propers: vistaPropers, calendari: vistaCalendari, gent: vistaGent, ajustos: vistaAjustos, entrada: vistaEntrada };
 function render() {
   if (!VISTES[ui.view]) ui.view = 'propers';
+  if (modeAgenda() && VISTES_GALAXIA.includes(ui.view) && ui.view !== 'aniversaris') ui.view = 'propers';
+  document.body.classList.toggle('mode-agenda', modeAgenda());
   if (ui.view === 'entrada' && !sync()?.disponible) ui.view = 'propers';
   document.body.classList.toggle('mode-entrada', ui.view === 'entrada');
   document.body.classList.toggle('mode-inici', ui.view === 'inici');
@@ -1383,7 +1394,7 @@ function render() {
   if (ui.view === 'ajustos' && sync()) sync().bind();
   if (ui.view === 'entrada') $('.entrada input')?.focus();
 }
-const fiEntrada = () => { ui.view = 'inici'; render(); };
+const fiEntrada = () => { ui.view = modeAgenda() ? 'propers' : 'inici'; render(); };
 
 /* ---------- Clics a la pantalla principal ---------- */
 $('#tabs').addEventListener('click', (e) => {
@@ -2388,6 +2399,22 @@ $('#main').addEventListener('click', (e) => {
 });
 
 /* ---------- Ajustos: persones convidades ---------- */
+// Canviar el mode propi (Ajustos) o el d'una persona convidada (administrador)
+$('#main').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-mode]');
+  if (!b || (b.dataset.mode === 'agenda') === modeAgenda()) return;
+  state.ajustos.mode = b.dataset.mode; save(); render();
+  toast(b.dataset.mode === 'agenda' ? "Ara l'app comença directament a l'agenda" : 'Ara en obrir l\'app veuràs la galàxia');
+});
+$('#main').addEventListener('change', async (e) => {
+  const s = e.target.closest('[data-modeconv]');
+  if (!s) return;
+  try {
+    await sync().modeConvidat(s.dataset.modeconv, s.value);
+    const c = (admin.llista || []).find((x) => x.email === s.dataset.modeconv); if (c) c.mode = s.value;
+    toast(`Mode ${s.value === 'agenda' ? 'Agenda' : 'Galàxia'} per a ${c?.nom || s.dataset.modeconv}`);
+  } catch (err) { toast(navigator.onLine ? "No s'ha pogut canviar. Has executat l'SQL dels modes?" : 'Cal connexió a internet.'); }
+});
 async function carregaAdmin(forca = false) {
   const u = usuari();
   if (!u) { admin.es = false; admin.mirat = ''; admin.llista = null; return; }
@@ -2398,20 +2425,20 @@ async function carregaAdmin(forca = false) {
   if (admin.es) { try { admin.llista = await sync().convidats(); } catch (e) { admin.llista = []; } }
   if (ui.view === 'ajustos') render();
 }
-async function convidaEmail(email, nom = '') {
+async function convidaEmail(email, nom = '', mode = 'galaxia') {
   if (!admin.es || !emailValid(email)) return false;
   if ((admin.llista || []).some((c) => normal(c.email) === normal(email))) return false;
-  await sync().convida(email, nom);
+  await sync().convida(email, nom, mode);
   admin.llista = await sync().convidats();
   return true;
 }
 $('#main').addEventListener('submit', async (e) => {
   if (e.target.id !== 'formConvida') return;
   e.preventDefault();
-  const f = e.target, email = f.email.value.trim().toLowerCase(), nom = f.nom.value.trim();
+  const f = e.target, email = f.email.value.trim().toLowerCase(), nom = f.nom.value.trim(), mode = f.mode?.value || 'galaxia';
   if (!emailValid(email)) { toast('Aquest correu no sembla correcte'); return; }
   try {
-    const nou = await convidaEmail(email, nom);
+    const nou = await convidaEmail(email, nom, mode);
     toast(nou ? `${nom || email} ja pot entrar a l'app` : 'Aquesta persona ja hi era');
     render();
   } catch (err) { toast(navigator.onLine ? "No s'ha pogut afegir. Torna-ho a provar." : 'Cal connexió a internet.'); }
@@ -3194,7 +3221,7 @@ function importa(fitxer) {
 if (PROVES) $('#provesTag').hidden = false;
 // S'espera que estigui carregat sync.js. La primera vegada es demana d'entrar amb el correu.
 addEventListener('DOMContentLoaded', () => {
-  ui.view = 'inici';
+  ui.view = modeAgenda() ? 'propers' : 'inici';
   if (sync()?.disponible && !sync().potserEntrat() && !llegeixPref('senseCompte', false)) ui.view = 'entrada';
   render();
   actualitzaExterns();
@@ -3221,7 +3248,7 @@ function obreMenuCompte() {
   const m = document.createElement('div');
   m.className = 'menu-compte';
   m.innerHTML = '<div class="mc-caixa" role="menu">'
-    + (ui.view !== 'inici' ? '<button type="button" data-mc="inici">Torna a l\'inici</button>' : '')
+    + (ui.view !== (modeAgenda() ? 'propers' : 'inici') ? '<button type="button" data-mc="inici">Torna a l\'inici</button>' : '')
     + (u ? '<p class="mc-qui">Has entrat com a<br><b>' + esc(u.email) + '</b></p>'
         + '<button type="button" data-mc="surt">Tanca la sessió en aquest dispositiu</button>'
         + '<button type="button" data-mc="altres">Tanca la sessió als altres dispositius</button>'
@@ -3235,7 +3262,7 @@ function obreMenuCompte() {
     if (!b) { if (e.target === m) tancaMenuCompte(); return; }
     const acc = b.dataset.mc;
     tancaMenuCompte();
-    if (acc === 'inici') { ui.view = 'inici'; ui.persona = ''; render(); window.scrollTo(0, 0); return; }
+    if (acc === 'inici') { ui.view = modeAgenda() ? 'propers' : 'inici'; ui.persona = ''; render(); window.scrollTo(0, 0); return; }
     if (acc === 'entra') { ui.view = 'entrada'; ui.entrada = { pas: 'correu', email: '' }; render(); return; }
     if (acc === 'surt') {
       const pend = sync().pendentsPerPujar();
