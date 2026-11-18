@@ -987,3 +987,12 @@ button.gx-pindola { display: block; border: 0; background: none; padding: 4px 8p
 @keyframes ressalta { 0%, 100% { box-shadow: none; } 30%, 70% { box-shadow: 0 0 0 3px var(--c, #2F9E44); } }
 .rec-llista li.ressalta { animation: ressalta 1.2s ease 2; }
 #impressio .full-compra h2 { font-size: 13pt; margin: 14pt 0 2pt; color: #444; break-after: avoid; }
+/* Menú del logo: inici i compte */
+.menu-compte { position: fixed; inset: 0; z-index: 80; background: rgba(0, 0, 0, .25); }
+.mc-caixa { position: absolute; left: 12px; top: calc(56px + var(--safe-t)); width: min(320px, calc(100% - 24px)); background: var(--surface); border-radius: 16px;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, .25); padding: 8px; display: grid; gap: 4px; animation: gxApareix .18s ease; }
+.mc-caixa button { border: 0; background: none; text-align: left; font: inherit; font-weight: 700; color: var(--text); padding: 12px; border-radius: 10px; cursor: pointer; }
+.mc-caixa button:active { background: var(--surface-2); }
+.mc-caixa .mc-qui { margin: 4px 12px 6px; color: var(--muted); font-size: 13.5px; line-height: 1.4; }
+.mc-caixa .mc-qui b { color: var(--text); overflow-wrap: anywhere; }
+.mc-caixa .mc-tanca { color: var(--muted); text-align: center; border-top: 1px solid var(--border); border-radius: 0 0 10px 10px; }

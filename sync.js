@@ -240,6 +240,12 @@ const Sync = (() => {
     await canviUsuari(data.user);
     await sincronitza();
   }
+  // Tanca la sessió a tots els altres dispositius (aquest continua obert)
+  async function surtAltres() {
+    if (!sb || !usuari) throw new Error('Cal haver entrat');
+    const { error } = await sb.auth.signOut({ scope: 'others' });
+    if (error) throw error;
+  }
   async function surt() {
     try { await sb.auth.signOut(); } catch (e) { /* sense connexió: es tanca igualment aquí */ }
     try { localStorage.removeItem(AUTH); } catch (e) { /* res */ }
@@ -418,7 +424,8 @@ const Sync = (() => {
     respostes: (plaId) => Object.entries(comp.enviats).filter(([k]) => k.startsWith(plaId + '|')).map(([k, r]) => ({ email: k.slice(plaId.length + 1), resposta: r })),
     canvi() { if (!aplicant && usuari) { posaEstat('sync'); programa(); } },
     ara: sincronitza,
-    demanaCodi, entra, surt, respon, html, bind, inicia,
+    demanaCodi, entra, surt, surtAltres, respon, html, bind, inicia,
+    pendentsPerPujar: () => (usuari ? pendents().length : 0),
   };
 })();
 

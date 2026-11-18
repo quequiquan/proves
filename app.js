@@ -3082,4 +3082,42 @@ setInterval(() => {
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 
 // Tocar el logo de dalt torna a la portada
-document.querySelector('.brand')?.addEventListener('click', () => { ui.view = 'inici'; ui.persona = ''; render(); window.scrollTo(0, 0); });
+// Tocar el logo obre un menú petit: tornar a l'inici i el compte (sortir d'aquest dispositiu o dels altres)
+function tancaMenuCompte() { document.querySelector('.menu-compte')?.remove(); }
+function obreMenuCompte() {
+  if (document.querySelector('.menu-compte')) { tancaMenuCompte(); return; }
+  const u = usuari();
+  const m = document.createElement('div');
+  m.className = 'menu-compte';
+  m.innerHTML = '<div class="mc-caixa" role="menu">'
+    + (ui.view !== 'inici' ? '<button type="button" data-mc="inici">Torna a l\'inici</button>' : '')
+    + (u ? '<p class="mc-qui">Has entrat com a<br><b>' + esc(u.email) + '</b></p>'
+        + '<button type="button" data-mc="surt">Tanca la sessió en aquest dispositiu</button>'
+        + '<button type="button" data-mc="altres">Tanca la sessió als altres dispositius</button>'
+      : (sync()?.disponible ? '<p class="mc-qui">No has entrat amb el teu correu.</p><button type="button" data-mc="entra">Entra amb el teu correu</button>' : ''))
+    + '<button type="button" class="mc-tanca" data-mc="tanca">Tanca</button></div>';
+  document.body.appendChild(m);
+  const cap = document.querySelector('header.top');
+  if (cap) m.querySelector('.mc-caixa').style.top = (cap.getBoundingClientRect().bottom + 6) + 'px';
+  m.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-mc]');
+    if (!b) { if (e.target === m) tancaMenuCompte(); return; }
+    const acc = b.dataset.mc;
+    tancaMenuCompte();
+    if (acc === 'inici') { ui.view = 'inici'; ui.persona = ''; render(); window.scrollTo(0, 0); return; }
+    if (acc === 'entra') { ui.view = 'entrada'; ui.entrada = { pas: 'correu', email: '' }; render(); return; }
+    if (acc === 'surt') {
+      const pend = sync().pendentsPerPujar();
+      if (!confirm('Tancar la sessió en aquest dispositiu?' + (pend ? '\n\nAtenció: hi ha ' + pend + " canvis que encara no s'han pujat al núvol i es perdran." : "\n\nS'esborraran les teves dades d'aquest aparell. Són al núvol: les recuperaràs quan tornis a entrar."))) return;
+      await sync().surt();
+      ui.view = 'entrada'; ui.entrada = { pas: 'correu', email: '' }; render();
+      return;
+    }
+    if (acc === 'altres') {
+      if (!confirm("Tancar la sessió a tots els altres dispositius (ordinadors, tauletes o mòbils on hagis entrat)?\n\nEn aquest continuaràs dins.")) return;
+      try { await sync().surtAltres(); toast("Sessió tancada als altres dispositius", 4000); }
+      catch (err) { toast(navigator.onLine ? "No s'ha pogut tancar. Torna-ho a provar." : 'Cal connexió a internet.'); }
+    }
+  });
+}
+document.querySelector('.brand')?.addEventListener('click', obreMenuCompte);
