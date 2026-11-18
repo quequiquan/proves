@@ -986,3 +986,4 @@ button.gx-pindola { display: block; border: 0; background: none; padding: 4px 8p
 .ja-hi-es { margin: -8px 0 12px; padding: 8px 12px; border-radius: 10px; background: var(--warn-bg); color: var(--warn-text); font-weight: 700; font-size: 14px; animation: gxApareix .25s ease; }
 @keyframes ressalta { 0%, 100% { box-shadow: none; } 30%, 70% { box-shadow: 0 0 0 3px var(--c, #2F9E44); } }
 .rec-llista li.ressalta { animation: ressalta 1.2s ease 2; }
+#impressio .full-compra h2 { font-size: 13pt; margin: 14pt 0 2pt; color: #444; break-after: avoid; }
