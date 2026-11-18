@@ -1328,6 +1328,12 @@ function vistaMemoria() {
   if (ed) return capSatel('Memòria') + `<form id="formMem" class="mem-form" autocomplete="off">
       <label>Títol<input name="titol" data-triatot value="${esc(f?.titol || '')}" placeholder="Pòlissa de la casa" maxlength="80" required></label>
       <label>Què has de recordar<textarea name="text" rows="6" maxlength="3000" placeholder="Companyia, número, telèfon…">${esc(f?.text || '')}</textarea></label>
+      <div class="rec-bloc"><span>Fotos</span>
+        ${f && (f.imatges || []).length ? `<div class="rec-imgs">${f.imatges.map((im) => `<button type="button" class="rec-img" data-memimg="${esc(f.id)}|${esc(im.id)}"><img src="${esc(im.mini)}" alt=""></button>`).join('')}</div>` : ''}
+        ${!f ? '<p class="help">Desa la fitxa i després, amb «Edita», hi podràs afegir fotos.</p>'
+          : usuari() ? `<label class="btn rec-afoto${ui.memPujant ? ' ocupat' : ''}"><input type="file" id="memFoto" accept="image/*" multiple hidden ${ui.memPujant ? 'disabled' : ''}>${ui.memPujant ? 'Pujant…' : 'Afegeix fotos'}</label>`
+          : '<p class="help">Per afegir fotos cal haver entrat amb el teu correu.</p>'}
+      </div>
       <div class="grp"><button class="btn primary">Desa</button><button type="button" class="btn" data-memcancela>Cancel·la</button>
         ${f ? `<button type="button" class="enllac perill" data-memesborra="${esc(f.id)}">Esborra</button>` : ''}</div>
     </form>`;
@@ -1336,6 +1342,7 @@ function vistaMemoria() {
     <div class="mem-barra">${fitxes.length > 3 ? '<input id="cercaMem" type="search" placeholder="Cerca…" autocomplete="off">' : ''}<button class="btn primary" data-memnova>Nova fitxa</button></div><div><button class="enllac enganxa" data-enganxa="memoria">Enganxa notes d'una altra app</button></div>
     ${fitxes.length ? `<div class="mem-llista">${fitxes.map((x) => `<div class="mem-fitxa" data-memcerca="${esc(normal(x.titol + ' ' + x.text))}">
         <b>${esc(x.titol)}</b>${x.text ? `<p>${esc(x.text)}</p>` : ''}
+        ${(x.imatges || []).length ? `<div class="mem-imgs">${x.imatges.map((im) => `<button class="rec-img" data-memimg="${esc(x.id)}|${esc(im.id)}"><img src="${esc(im.mini)}" alt=""></button>`).join('')}</div>` : ''}
         <div class="mem-accions"><button class="enllac" data-memcomparteix="${esc(x.id)}">Comparteix</button>${x.text ? `<button class="enllac" data-memcopia="${esc(x.id)}">Copia</button>` : ''}<button class="enllac" data-memimprimeix="${esc(x.id)}">Imprimeix</button><button class="enllac" data-memedita="${esc(x.id)}">Edita</button></div>
       </div>`).join('')}</div><p class="help buit" id="memRes" hidden>No hi ha cap fitxa que hi coincideixi.</p>
       ${fitxes.length > 1 ? '<div class="grp centre"><button class="btn" data-memimprimeix="totes">Imprimeix totes les fitxes</button></div>' : ''}`
@@ -2113,6 +2120,32 @@ $('#main').addEventListener('click', async (e) => {
     if (im) obreFotoRec(r, im);
   }
 });
+async function obreFoto(titol, im, treu) {
+  tancaVisor();
+  const v = document.createElement('div');
+  v.className = 'doc-visor';
+  v.innerHTML = `<div class="doc-visor-cap"><button type="button" class="sat-torna" data-fv="tanca">‹ Tanca</button><b>${esc(titol)}</b></div>
+    <div class="doc-visor-cos"><img src="${esc(im.mini)}" alt="" draggable="false"></div>
+    <div class="doc-visor-peu"><a class="btn primary" data-fv="obre" target="_blank" rel="noopener" hidden>Obre / Comparteix</a><button type="button" class="enllac perill" data-fv="treu">Treu la foto</button></div>`;
+  document.body.appendChild(v);
+  const cos = v.querySelector('.doc-visor-cos');
+  ampliable(cos, cos.querySelector('img'));
+  v.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-fv]');
+    if (!b) return;
+    if (b.dataset.fv === 'tanca') { tancaVisor(); return; }
+    if (b.dataset.fv === 'treu') {
+      if (b.dataset.segur !== '1') { b.dataset.segur = '1'; b.textContent = "Segur? Toca'l un altre cop"; return; }
+      tancaVisor(); treu(); toast('Foto treta');
+    }
+  });
+  try {
+    const url = await sync().urlDoc(im.cami);
+    if (!document.body.contains(v)) return;
+    v.querySelector('.doc-visor-cos img').src = url;
+    const o = v.querySelector('[data-fv="obre"]'); o.href = url; o.hidden = false;
+  } catch (err) { /* es queda la miniatura */ }
+}
 // Foto en gran, amb zoom, i opció de treure-la
 async function obreFotoRec(r, im) {
   tancaVisor();
@@ -2344,6 +2377,14 @@ $('#main').addEventListener('click', async (e) => {
     const lloc = state.memoria.indexOf(f), copia = { ...f };
     state.memoria.splice(lloc, 1); ui.memEdita = ''; save(); render();
     toastDesfes(`Esborrada: ${f.titol}`, () => { state.memoria.splice(lloc, 0, copia); save(); render(); });
+    setTimeout(() => { if (!state.memoria.some((x) => x.id === copia.id)) (copia.imatges || []).forEach((im) => sync()?.esborraDoc(im.cami).catch(() => {})); }, 7000);
+    return;
+  }
+  const mi = t.closest('[data-memimg]');
+  if (mi) {
+    const [fid, iid] = mi.dataset.memimg.split('|');
+    const f = state.memoria.find((x) => x.id === fid), im = f && (f.imatges || []).find((x) => x.id === iid);
+    if (im) obreFoto(f.titol, im, () => { f.imatges = f.imatges.filter((x) => x.id !== iid); save(); sync()?.esborraDoc(im.cami).catch(() => {}); render(); });
     return;
   }
   const ip = t.closest('[data-memimprimeix]');
@@ -2369,6 +2410,26 @@ $('#main').addEventListener('click', async (e) => {
     if (!f) return;
     try { await navigator.clipboard.writeText(f.text); toast('Copiat'); } catch (x) { prompt('Copia-ho:', f.text); }
   }
+});
+$('#main').addEventListener('change', async (e) => {
+  if (e.target.id !== 'memFoto') return;
+  const files = [...(e.target.files || [])]; e.target.value = '';
+  const f = state.memoria.find((x) => x.id === ui.memEdita);
+  if (!f || !files.length) return;
+  const form = document.getElementById('formMem');
+  if (form) { const ti = form.elements.titol.value.trim(); if (ti) f.titol = ti.slice(0, 80); f.text = form.elements.text.value.trim().slice(0, 3000); save(); }
+  ui.memPujant = true; render();
+  let errors = 0;
+  for (const file of files) {
+    try {
+      const im = await carregaImg(file);
+      const blob = await new Promise((ok) => redueix(im, 2000).toBlob(ok, 'image/jpeg', 0.82));
+      const id = nouId('mi'), cami = await sync().pujaDoc(id, blob, 'image/jpeg', 'jpg');
+      f.imatges = [...(f.imatges || []), { id, cami, mini: redueix(im, 240).toDataURL('image/jpeg', 0.6) }]; save();
+    } catch (err) { errors++; if (!navigator.onLine) break; }
+  }
+  ui.memPujant = false; render();
+  if (errors) toast(navigator.onLine ? "Alguna foto no s'ha pogut pujar." : 'Cal connexió a internet per pujar fotos.', 4500);
 });
 $('#main').addEventListener('input', (e) => {
   if (e.target.id !== 'cercaMem') return;
