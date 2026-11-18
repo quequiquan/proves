@@ -1205,6 +1205,7 @@ function vistaRecordatoris() {
   const llista = pendentsRec().slice().sort((a, b) => String(b.creat || '').localeCompare(String(a.creat || '')));
   return capSatel('Recordatoris') + `<p class="help">Coses pendents sense data que no vols oblidar. Quan en facis una, toca el cercle i desapareix.</p>
     <form id="formRec" class="rec-nou" autocomplete="off"><input id="recText" placeholder="Què has de recordar?" maxlength="300" enterkeyhint="done"><button class="btn primary">Afegeix</button></form>
+    <button class="enllac enganxa" data-enganxa="recordatoris">Enganxa una llista d'una altra app</button>
     ${llista.length > 3 ? '<input id="cercaRec" type="search" class="doc-cerca" placeholder="Cerca un recordatori…" autocomplete="off">' : ''}
     ${llista.length ? `<ul class="rec-llista">${llista.map((r) => `<li data-rec="${esc(r.id)}" data-reccerca="${esc(normal(r.text))}">
         <button class="rec-check" data-recfet="${esc(r.id)}" aria-label="Fet"></button>
@@ -1241,6 +1242,7 @@ function vistaLlista() {
   const pend = l.items.filter((i) => !i.fet), fets = l.items.length - pend.length;
   return `<div class="sat-cap"><button class="sat-torna" data-llistes aria-label="Torna a les llistes">‹ Llistes</button><h1>${esc(l.nom)}</h1></div>
     ${formItem('llista', l.id, 'Afegeix a la llista')}
+    <button class="enllac enganxa" data-enganxa="llista|${esc(l.id)}">Enganxa una llista d'una altra app</button>
     ${pend.length ? filesItems(pend, 'llista', l.id) : `<p class="help buit">${fets ? 'Llista feta.' : 'La llista és buida.'}</p>`}
     <div class="ll-peu">
       ${fets ? `<button class="btn" data-omple="${esc(l.id)}">Torna-la a omplir (${fets})</button>` : ''}
@@ -1296,7 +1298,7 @@ function vistaCompres() {
   const pend = state.compres.filter((r) => !r.fet);
   const vegades = (r) => r.vegades || 1;
   const habituals = state.compres.filter((r) => r.fet).sort((a, b) => vegades(b) - vegades(a) || a.text.localeCompare(b.text, 'ca'));
-  return capSatel('Compres') + formItem('compres', '', 'Què falta?')
+  return capSatel('Compres') + formItem('compres', '', 'Què falta?') + '<button class="enllac enganxa" data-enganxa="compres">Enganxa una llista d\'una altra app</button>'
     + (pend.length ? filesCompres(pend) + '<div class="ll-peu"><button class="btn" data-comprescomparteix>Comparteix la llista</button><button class="btn" data-comprescimprimeix>Imprimeix</button></div>' : '<p class="help buit">No falta res.</p>')
     + (habituals.length ? `<h2 class="ll-titol">Habituals</h2><p class="help">Toca'n un per tornar-lo a posar a la llista. Mantén-lo premut per treure'l dels habituals.</p>
       ${FAMILIES.map((f) => { const seus = habituals.filter((r) => familiaDe(r) === f.id); return seus.length ? `<div class="ll-chips fam-chips" style="--fc:${f.c}">${seus.map((r) => `<button class="ll-chip${vegades(r) >= 3 ? ' sovint' : ''}" data-torna="${esc(r.id)}">${esc(r.text)}</button>`).join('')}</div>` : ''; }).join('')}` : '');
@@ -1312,7 +1314,7 @@ function vistaMemoria() {
     </form>`;
   const fitxes = state.memoria.slice().sort((a, b) => a.titol.localeCompare(b.titol, 'ca'));
   return capSatel('Memòria') + `<p class="help">Coses importants per consultar: pòlisses, telèfons, la Wi-Fi… Les contrasenyes, millor a l'app Contrasenyes de l'iPhone.</p>
-    <div class="mem-barra">${fitxes.length > 3 ? '<input id="cercaMem" type="search" placeholder="Cerca…" autocomplete="off">' : ''}<button class="btn primary" data-memnova>Nova fitxa</button></div>
+    <div class="mem-barra">${fitxes.length > 3 ? '<input id="cercaMem" type="search" placeholder="Cerca…" autocomplete="off">' : ''}<button class="btn primary" data-memnova>Nova fitxa</button></div><div><button class="enllac enganxa" data-enganxa="memoria">Enganxa notes d'una altra app</button></div>
     ${fitxes.length ? `<div class="mem-llista">${fitxes.map((x) => `<div class="mem-fitxa" data-memcerca="${esc(normal(x.titol + ' ' + x.text))}">
         <b>${esc(x.titol)}</b>${x.text ? `<p>${esc(x.text)}</p>` : ''}
         <div class="mem-accions"><button class="enllac" data-memcomparteix="${esc(x.id)}">Comparteix</button>${x.text ? `<button class="enllac" data-memcopia="${esc(x.id)}">Copia</button>` : ''}<button class="enllac" data-memimprimeix="${esc(x.id)}">Imprimeix</button><button class="enllac" data-memedita="${esc(x.id)}">Edita</button></div>
@@ -1353,7 +1355,7 @@ function vistaDocuments() {
   const q = normal((ui.docCerca || '').trim());
   return capSatel('Documents') + `<p class="help">Guarda qualsevol document: fotos, PDF, contractes en Word, pressupostos en Excel, enllaços a pàgines web… Es guarden al teu núvol privat: només tu els pots veure.</p>
     ${entrat ? `<div class="doc-botons">
-        <label class="btn primary doc-afegeix${ui.docPujant ? ' ocupat' : ''}"><input type="file" id="docFitxer" hidden ${ui.docPujant ? 'disabled' : ''}>${ui.docPujant ? 'Pujant…' : 'Afegeix un fitxer'}</label>
+        <label class="btn primary doc-afegeix${ui.docPujant ? ' ocupat' : ''}"><input type="file" id="docFitxer" multiple hidden ${ui.docPujant ? 'disabled' : ''}>${ui.docPujant ? 'Pujant…' : 'Afegeix fitxers'}</label>
         <button class="btn" data-docenllac ${ui.docPujant ? 'disabled' : ''}>Afegeix un enllaç</button></div>
       ${tots.length > 1 ? `<input id="cercaDoc" type="search" class="doc-cerca" placeholder="Cerca un document…" autocomplete="off" value="${esc(ui.docCerca || '')}">` : ''}
       ${presents.length > 1 ? `<div class="doc-filtres"><button class="${!filtre ? 'on' : ''}" data-docfiltre="">Tots</button>${presents.map((c) => `<button class="${filtre === c.id ? 'on' : ''}" data-docfiltre="${c.id}" style="--fc:${c.c}">${esc(c.nom)}</button>`).join('')}</div>` : ''}`
@@ -1828,6 +1830,28 @@ function demanaText(titol, valor = '', opcions = {}) {
   });
 }
 
+function enganxaText(titol, ajuda) {
+  document.querySelector('.demana')?.remove();
+  return new Promise((resol) => {
+    const d = document.createElement('div');
+    d.className = 'demana';
+    d.innerHTML = '<form class="demana-caixa" autocomplete="off"><label>' + esc(titol)
+      + '<textarea name="v" rows="9" placeholder="Enganxa-hi el text…"></textarea></label><p class="help">' + esc(ajuda) + '</p>'
+      + '<div class="grp"><button type="button" class="btn" data-dm-no>Cancel·la</button><button class="btn primary">Afegeix-ho</button></div></form>';
+    document.body.appendChild(d);
+    const t = d.querySelector('textarea');
+    const acaba = (v) => { d.remove(); resol(v); };
+    d.querySelector('form').addEventListener('submit', (e) => { e.preventDefault(); acaba(t.value); });
+    d.addEventListener('click', (e) => { if (e.target === d || e.target.closest('[data-dm-no]')) acaba(null); });
+    t.focus();
+  });
+}
+// Neteja les línies copiades: treu vinyetes, caselles i números del davant, i les buides
+const liniesNetes = (text) => String(text || '').split(/\r?\n/)
+  .map((l) => l.replace(/^\s*(?:[-–—•·*◦○●▪▫□■☐☑✓✔✗➤>]+|\[[ xX]?\]|\(?\d{1,3}[.)]|[a-z][.)](?=\s))\s*/u, '').replace(/\s+/g, ' ').trim())
+  .filter(Boolean);
+const AJUDA_ENGANXA = "Copia la llista de l'altra app (Recordatorios, Notes, Notebook, Outlook…) i enganxa-la aquí. Cada línia serà un element; les repetides se salten.";
+
 /* ---------- Galàxia: botons del cercle, aniversaris i recordatoris ---------- */
 let gxPrem = null, gxLlarg = false;
 const VISTES_AGENDA = ['propers', 'calendari', 'gent', 'ajustos'];
@@ -1895,6 +1919,49 @@ $('#main').addEventListener('submit', (e) => {
   state.recordatoris.push({ id: 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), text: text.slice(0, 300), creat: new Date().toISOString() });
   save(); render();
   $('#recText')?.focus();
+});
+
+/* ---------- Enganxar llistes d'altres apps ---------- */
+$('#main').addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-enganxa]');
+  if (!b) return;
+  const [on, lid] = b.dataset.enganxa.split('|');
+  if (on === 'memoria') {
+    const text = await enganxaText('Enganxa les notes', "Cada nota, separada de la següent per una línia en blanc. La primera línia de cada nota serà el títol de la fitxa.");
+    if (!text || !text.trim()) return;
+    const blocs = text.split(/\r?\n\s*\r?\n/).map((x) => x.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)).filter((x) => x.length);
+    let n = 0;
+    blocs.forEach((ls) => {
+      const titol = ls[0].replace(/^[-•*#\s]+/, '').slice(0, 80);
+      if (!titol || state.memoria.some((f) => normal(f.titol) === normal(titol))) return;
+      state.memoria.push({ id: nouId('m'), titol, text: ls.slice(1).join('\n').slice(0, 3000), creat: new Date().toISOString() }); n++;
+    });
+    save(); render();
+    toast(n ? (n === 1 ? '1 fitxa afegida' : `${n} fitxes afegides`) + (blocs.length > n ? ` (${blocs.length - n} ja hi eren)` : '') : 'Ja les tenies totes', 4000);
+    return;
+  }
+  const text = await enganxaText('Enganxa la llista', AJUDA_ENGANXA);
+  if (!text || !text.trim()) return;
+  const linies = liniesNetes(text);
+  let n = 0, rep = 0;
+  if (on === 'recordatoris') {
+    linies.forEach((l) => {
+      if (pendentsRec().some((x) => normal(x.text) === normal(l))) { rep++; return; }
+      state.recordatoris.push({ id: nouId('r'), text: l.slice(0, 300), creat: new Date().toISOString() }); n++;
+    });
+  } else {
+    const llista = itemsDe(on, lid);
+    if (!llista) return;
+    linies.forEach((l) => {
+      const igual = llista.find((x) => normal(x.text) === normal(l));
+      if (igual && !igual.fet) { rep++; return; }
+      if (igual) { igual.fet = false; n++; return; }
+      llista.push(on === 'compres' ? { id: nouId('c'), text: l.slice(0, 200), fet: false, creat: new Date().toISOString() } : { id: nouId('i'), text: l.slice(0, 200), fet: false });
+      n++;
+    });
+  }
+  save(); render();
+  toast(n ? (n === 1 ? '1 element afegit' : `${n} elements afegits`) + (rep ? ` (${rep} ja hi eren)` : '') : 'Ja els tenies tots', 4000);
 });
 
 /* ---------- Llista i Compres ---------- */
@@ -2221,39 +2288,52 @@ function redueix(im, max) {
   return c;
 }
 const MAX_DOC = 50 * 1024 * 1024;
-$('#main').addEventListener('change', async (e) => {
-  if (e.target.id !== 'docFitxer') return;
-  const file = e.target.files?.[0];
-  e.target.value = '';
-  if (!file) return;
-  if (file.size > MAX_DOC) { toast(`El fitxer fa ${midaText(file.size)} i el màxim són 50 MB.`, 5000); return; }
+// Puja un fitxer al núvol i el desa a Documents (les fotos es redueixen perquè no ocupin tant)
+async function pujaUnDocument(file, titol) {
   const ext = ((file.name.match(/\.([a-z0-9]{1,8})$/i) || [])[1] || '').toLowerCase();
   const esFoto = /^image\/(jpeg|png|webp|heic|heif|gif)$/.test(file.type) || /^(jpe?g|png|webp|heic|heif)$/.test(ext);
+  const id = nouId('d');
+  let blob = file, tipus = file.type || 'application/octet-stream', mini = '', extFinal = ext || 'bin';
+  if (esFoto) {
+    try {
+      const im = await carregaImg(file);
+      blob = await new Promise((ok) => redueix(im, 2000).toBlob(ok, 'image/jpeg', 0.82));
+      tipus = 'image/jpeg'; extFinal = 'jpg';
+      mini = redueix(im, 240).toDataURL('image/jpeg', 0.6);
+    } catch (x) { blob = file; }
+  }
+  const cami = await sync().pujaDoc(id, blob, tipus, extFinal);
+  state.documents.push({ id, titol: titol.slice(0, 80), tipus, cami, nomFitxer: file.name.slice(0, 120), mida: blob.size, mini, creat: new Date().toISOString() });
+  save();
+}
+const nomPerDefecte = (file) => {
   const nomNet = file.name.replace(/\.[a-z0-9]{1,8}$/i, '');
-  const perDefecte = esFoto && /^(image|img|photo|foto|dsc|pxl)[\s_-]?\d*/i.test(nomNet) ? 'Document ' + new Date().toLocaleDateString('ca-ES') : nomNet || 'Document';
-  const titol = await demanaText('Nom del document', perDefecte, { max: 80 });
-  if (titol === null) return;
+  return /^(image|img|photo|foto|dsc|pxl)[\s_-]?\d*/i.test(nomNet) ? 'Document ' + new Date().toLocaleDateString('ca-ES') : nomNet || 'Document';
+};
+$('#main').addEventListener('change', async (e) => {
+  if (e.target.id !== 'docFitxer') return;
+  const tots = [...(e.target.files || [])];
+  e.target.value = '';
+  if (!tots.length) return;
+  const grans = tots.filter((f) => f.size > MAX_DOC), files = tots.filter((f) => f.size <= MAX_DOC);
+  if (grans.length) toast(grans.length === 1 ? `«${grans[0].name}» fa ${midaText(grans[0].size)} i el màxim són 50 MB.` : `${grans.length} fitxers passen de 50 MB i no es pujaran.`, 5000);
+  if (!files.length) return;
+  // Un sol fitxer: es demana el nom. Diversos: cadascun amb el seu nom de fitxer (després es pot canviar)
+  let titolUn = '';
+  if (files.length === 1) {
+    titolUn = await demanaText('Nom del document', nomPerDefecte(files[0]), { max: 80 });
+    if (titolUn === null) return;
+  }
   ui.docPujant = true; render();
-  try {
-    const id = nouId('d');
-    let blob = file, tipus = file.type || 'application/octet-stream', mini = '', extFinal = ext || 'bin';
-    if (esFoto) {
-      // Les fotos es redueixen perquè no ocupin tant; si el navegador no la pot llegir, es puja tal com és
-      try {
-        const im = await carregaImg(file);
-        blob = await new Promise((ok) => redueix(im, 2000).toBlob(ok, 'image/jpeg', 0.82));
-        tipus = 'image/jpeg'; extFinal = 'jpg';
-        mini = redueix(im, 240).toDataURL('image/jpeg', 0.6);
-      } catch (x) { blob = file; }
-    }
-    const cami = await sync().pujaDoc(id, blob, tipus, extFinal);
-    state.documents.push({ id, titol: (titol.trim() || perDefecte).slice(0, 80), tipus, cami, nomFitxer: file.name.slice(0, 120), mida: blob.size, mini, creat: new Date().toISOString() });
-    save(); toast('Document desat');
-  } catch (err) {
-    const gran = /size|large|exceed|413/i.test(String(err?.message || err?.error || err?.statusCode || ''));
-    toast(!navigator.onLine ? 'Cal connexió a internet per pujar documents.' : gran ? 'El fitxer és massa gran per al núvol.' : "No s'ha pogut pujar el document.", 4500);
+  let fets = 0, errors = 0;
+  for (const f of files) {
+    if (files.length > 1) { const b = document.querySelector('.doc-afegeix'); if (b) b.lastChild.textContent = `Pujant ${fets + errors + 1} de ${files.length}…`; }
+    try { await pujaUnDocument(f, (files.length === 1 ? titolUn.trim() : '') || nomPerDefecte(f)); fets++; }
+    catch (err) { errors++; if (!navigator.onLine) break; }
   }
   ui.docPujant = false; render();
+  if (!errors) toast(fets === 1 ? 'Document desat' : `${fets} documents desats`);
+  else toast(!navigator.onLine ? 'Cal connexió a internet per pujar documents.' : `${fets} desats, ${errors} no s'han pogut pujar.`, 4500);
 });
 // Enllaç a una pàgina web: no es puja cap fitxer, només es guarda l'adreça
 $('#main').addEventListener('click', async (e) => {
