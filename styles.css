@@ -1049,3 +1049,8 @@ button.gx-pindola { display: block; border: 0; background: none; padding: 4px 8p
 .sat-cap h1 { grid-column: 2; text-align: center; min-width: 0; max-width: calc(100vw - 210px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Frase del dia: més llegible, sense negreta */
 button.gx-pindola, .gx-pindola { color: color-mix(in srgb, var(--text) 82%, var(--bg)); font-weight: 500; }
+/* Ajustos: triar la icona */
+.icones-tria { display: flex; gap: 14px; margin: 8px 0 10px; }
+.icona-opcio { display: flex; flex-direction: column; align-items: center; gap: 6px; border: 2px solid transparent; background: none; padding: 6px; border-radius: 18px; cursor: pointer; color: var(--text); font: inherit; font-weight: 700; }
+.icona-opcio img { width: 72px; height: 72px; border-radius: 17px; box-shadow: 0 3px 10px rgba(0, 0, 0, .18); }
+.icona-opcio[aria-pressed="true"] { border-color: var(--accent); }

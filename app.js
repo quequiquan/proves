@@ -954,6 +954,21 @@ function vistaAjustos() {
       <p class="help"><b>Automàtic</b> fa el mateix que l'iPhone: clar de dia i fosc quan l'iPhone és en mode fosc.</p>
       <div class="seg tema-seg">${[['clar', 'Clar'], ['fosc', 'Fosc'], ['auto', 'Automàtic']].map(([k, n]) => `<button aria-pressed="${(state.ajustos.tema || 'auto') === k}" data-tema="${k}">${n}</button>`).join('')}</div>
     </div>
+    <div class="section" id="seccioIcona">
+      <h2>Icona</h2>
+      <p class="help">Tria la que es vegi millor amb el fons de pantalla del teu mòbil.</p>
+      <div class="icones-tria">${[['fosca', 'Fosca', 'img/icona.svg'], ['crua', 'Crua', 'img/icona-crua.svg']].map(([k, n, src]) => `<button class="icona-opcio" aria-pressed="${(llegeixPref('icona', 'fosca')) === k}" data-icona="${k}"><img src="${src}" alt=""><span>${n}</span></button>`).join('')}</div>
+      <details class="ajuda"><summary>Com es canvia la icona del mòbil</summary>
+        <ol class="passos-veu">
+          <li>Tria la icona aquí a sobre i prem <b>Copia l'enllaç</b>.</li>
+          <li>Obre <b>Safari</b>, enganxa l'enllaç a la barra d'adreces i obre'l.</li>
+          <li>Toca <b>Compartir</b> → <b>Afegir a la pantalla d'inici</b>. Ja sortirà amb la icona nova.</li>
+          <li>Obre l'app nova i entra amb el teu correu i el codi.</li>
+          <li>Esborra la icona antiga (mantén-la premuda → <b>Eliminar l'app</b>).</li>
+        </ol>
+        <div class="grp"><button class="btn primary" id="iconaCopia">Copia l'enllaç</button></div>
+      </details>
+    </div>
     <div class="section" id="seccioMode">
       <h2>Com vols l'app</h2>
       <p class="help"><b>Galàxia</b>: el cercle amb l'agenda al mig i les micro-apps al voltant (recordatoris, compres, documents…). <b>Agenda</b>: només l'agenda, més senzilla. Ho pots canviar quan vulguis; no es perd res.</p>
@@ -2481,6 +2496,15 @@ $('#main').addEventListener('click', (e) => {
   const b = e.target.closest('[data-tema]');
   if (!b) return;
   state.ajustos.tema = b.dataset.tema === 'auto' ? '' : b.dataset.tema; save(); render();
+});
+// Triar la icona (fosca o crua) i copiar l'enllaç per tornar-la a afegir des de Safari
+const enllacIcona = () => location.origin + location.pathname.replace(/index\.html$/, '') + '?icona=' + llegeixPref('icona', 'fosca');
+$('#main').addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-icona]');
+  if (b) { desaPref('icona', b.dataset.icona); render(); return; }
+  if (!e.target.closest('#iconaCopia')) return;
+  const url = enllacIcona();
+  try { await navigator.clipboard.writeText(url); toast("Enllaç copiat: obre Safari i enganxa'l", 4500); } catch (x) { demanaText("Copia aquest enllaç i obre'l a Safari", url); }
 });
 // Canviar el mode propi (Ajustos) o el d'una persona convidada (administrador)
 $('#main').addEventListener('click', (e) => {

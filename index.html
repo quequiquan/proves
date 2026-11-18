@@ -7,13 +7,27 @@
   <meta name="description" content="Agenda ràpida dels teus plans d'oci: sopars, concerts, trobades, sortides…">
 
   <!-- App instal·lable (iPhone i ordinador) -->
-  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="manifest" href="manifest.webmanifest" id="manifestLink">
   <meta name="theme-color" content="#221C18">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Galàxia">
-  <link rel="apple-touch-icon" href="img/icona-180.png">
+  <link rel="apple-touch-icon" href="img/icona-180.png" id="iconaApple">
+  <script>
+    // Icona fosca o crua: l'iPhone l'agafa en afegir l'app a la pantalla d'inici
+    (function () {
+      try {
+        var q = new URLSearchParams(location.search).get('icona');
+        if (q === 'crua' || q === 'fosca') localStorage.setItem('qqq-pref-icona', JSON.stringify(q));
+        var t = JSON.parse(localStorage.getItem('qqq-pref-icona') || '"fosca"');
+        if (t === 'crua') {
+          document.getElementById('iconaApple').href = 'img/icona-crua-180.png';
+          document.getElementById('manifestLink').href = 'manifest-crua.webmanifest';
+        }
+      } catch (e) { /* res */ }
+    })();
+  </script>
   <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
