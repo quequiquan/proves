@@ -1206,7 +1206,7 @@ function vistaLlista() {
     ${pend.length ? filesItems(pend, 'llista', l.id) : `<p class="help buit">${fets ? 'Llista feta.' : 'La llista és buida.'}</p>`}
     <div class="ll-peu">
       ${fets ? `<button class="btn" data-omple="${esc(l.id)}">Torna-la a omplir (${fets})</button>` : ''}
-      ${l.items.length ? `<button class="btn" data-llistaimprimeix="${esc(l.id)}">Imprimeix</button>` : ''}
+      ${l.items.length ? `<button class="btn" data-llistacomparteix="${esc(l.id)}">Comparteix</button><button class="btn" data-llistaimprimeix="${esc(l.id)}">Imprimeix</button>` : ''}
       <button class="enllac" data-llistanom="${esc(l.id)}">Canvia el nom</button>
       <button class="enllac perill" data-llistaesborra="${esc(l.id)}">Esborra la llista</button>
     </div>`;
@@ -1826,6 +1826,18 @@ $('#main').addEventListener('click', (e) => {
   if (tr) { const r = state.compres.find((x) => x.id === tr.dataset.torna); if (r) { r.fet = false; save(); render(); } return; }
   const om = t.closest('[data-omple]');
   if (om) { const l = state.llistes.find((x) => x.id === om.dataset.omple); if (l) { l.items.forEach((i) => { i.fet = false; }); save(); render(); toast('Llista a punt'); } return; }
+  const cl = t.closest('[data-llistacomparteix]');
+  if (cl) {
+    const l = state.llistes.find((x) => x.id === cl.dataset.llistacomparteix);
+    if (!l) return;
+    const pend = l.items.filter((i) => !i.fet), items = pend.length ? pend : l.items;
+    const text = l.nom + '\n' + items.map((i) => '- ' + i.text).join('\n');
+    (async () => {
+      if (navigator.share) { try { await navigator.share({ title: l.nom, text }); return; } catch (x) { if (x.name === 'AbortError') return; } }
+      try { await navigator.clipboard.writeText(text); toast("Llista copiada: enganxa-la a WhatsApp, a un correu…"); } catch (x) { prompt('Copia la llista:', text); }
+    })();
+    return;
+  }
   const im = t.closest('[data-llistaimprimeix]');
   if (im) {
     const l = state.llistes.find((x) => x.id === im.dataset.llistaimprimeix);
