@@ -1793,8 +1793,9 @@ $('#main').addEventListener('contextmenu', (e) => { if (e.target.closest('#gxAge
 $('#main').addEventListener('click', (e) => {
   if (e.target.closest('#gxAgenda')) {
     if (gxLlarg) { gxLlarg = false; return; }
-    const v = llegeixPref('vistaAgenda', 'propers');
-    ui.view = VISTES_AGENDA.includes(v) ? v : 'propers'; render(); window.scrollTo(0, 0); return;
+    // L'Agenda s'obre sempre al calendari, situat en el dia d'avui
+    ui.view = 'calendari'; ui.diaSel = avui(); ui.cursor = new Date(); ui.persona = '';
+    render(); window.scrollTo(0, 0); return;
   }
   const s = e.target.closest('[data-sat]');
   if (s) {
