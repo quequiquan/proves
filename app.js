@@ -1184,7 +1184,7 @@ function vistaRecordatoris() {
 // Elements d'una llista (Llista i Compres): casella per marcar i text per corregir
 const nouId = (p) => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 function filesItems(items, col, lid) {
-  return `<ul class="rec-llista">${items.map((it) => `<li>
+  return `<ul class="rec-llista">${items.map((it) => `<li data-item="${esc(it.id)}">
       <button class="rec-check" data-chk="${col}|${esc(lid)}|${esc(it.id)}" aria-label="Fet"></button>
       <button class="rec-text" data-itedita="${col}|${esc(lid)}|${esc(it.id)}"><span>${esc(it.text)}</span></button></li>`).join('')}</ul>`;
 }
@@ -1248,7 +1248,7 @@ function filesCompres(items) {
   return FAMILIES.map((f) => {
     const seus = items.filter((r) => familiaDe(r) === f.id);
     if (!seus.length) return '';
-    return `<h3 class="fam-titol" style="--fc:${f.c}">${esc(f.nom)}</h3><ul class="rec-llista">${seus.map((it) => `<li>
+    return `<h3 class="fam-titol" style="--fc:${f.c}">${esc(f.nom)}</h3><ul class="rec-llista">${seus.map((it) => `<li data-item="${esc(it.id)}">
       <button class="rec-check" data-chk="compres||${esc(it.id)}" aria-label="Fet"></button>
       <button class="rec-text" data-itedita="compres||${esc(it.id)}"><span>${esc(it.text)}</span></button>
       <select class="fam-tria" data-fam="${esc(it.id)}" aria-label="Família">${FAMILIES.map((x) => `<option value="${x.id}"${x.id === f.id ? ' selected' : ''}>${esc(x.nom)}</option>`).join('')}</select></li>`).join('')}</ul>`;
@@ -1755,6 +1755,16 @@ $('#main').addEventListener('submit', (e) => {
 });
 
 /* ---------- Llista i Compres ---------- */
+// Avís «Ja hi és» al costat de la casella (a baix de tot no es veu quan el teclat és obert) i l'element parpelleja
+function jaHiEs(form, it) {
+  form.parentElement.querySelector('.ja-hi-es')?.remove();
+  form.insertAdjacentHTML('afterend', `<p class="ja-hi-es">«${esc(it.text)}» ja és a la llista</p>`);
+  const avis = form.nextElementSibling;
+  setTimeout(() => avis?.remove(), 2600);
+  const li = document.querySelector(`li[data-item="${CSS.escape(it.id)}"]`);
+  if (li) { li.classList.remove('ressalta'); void li.offsetWidth; li.classList.add('ressalta'); }
+  form.elements.text.focus();
+}
 let chipPrem = null, chipLlarg = false;
 $('#main').addEventListener('pointerdown', (e) => {
   const ch = e.target.closest('[data-torna]');
@@ -1867,8 +1877,12 @@ $('#main').addEventListener('submit', (e) => {
   const text = f.elements.text.value.trim().slice(0, 200), llista = itemsDe(col, lid);
   if (!text || !llista) { f.elements.text.focus(); return; }
   const igual = llista.find((x) => normal(x.text) === normal(text));
-  if (igual && !igual.fet) toast('Ja hi és');
-  else if (igual) igual.fet = false;
+  if (igual && !igual.fet) {
+    f.elements.text.value = '';
+    jaHiEs(f, igual);
+    return;
+  }
+  if (igual) igual.fet = false;
   else llista.push(col === 'compres' ? { id: nouId('c'), text, fet: false, creat: new Date().toISOString() } : { id: nouId('i'), text, fet: false });
   save(); render();
   document.querySelector(`[data-formitem="${f.dataset.formitem}"] input`)?.focus();

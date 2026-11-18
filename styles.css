@@ -982,3 +982,7 @@ button.gx-pindola { display: block; border: 0; background: none; padding: 4px 8p
 .ll-chip { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .fam-chips .ll-chip { color: var(--muted); font-weight: 600; border-style: dashed; }
 .fam-chips .ll-chip.sovint { color: var(--text); font-weight: 800; border-style: solid; border-color: var(--fc); background: color-mix(in srgb, var(--fc) 14%, var(--surface)); }
+/* «Ja hi és» */
+.ja-hi-es { margin: -8px 0 12px; padding: 8px 12px; border-radius: 10px; background: var(--warn-bg); color: var(--warn-text); font-weight: 700; font-size: 14px; animation: gxApareix .25s ease; }
+@keyframes ressalta { 0%, 100% { box-shadow: none; } 30%, 70% { box-shadow: 0 0 0 3px var(--c, #2F9E44); } }
+.rec-llista li.ressalta { animation: ressalta 1.2s ease 2; }
