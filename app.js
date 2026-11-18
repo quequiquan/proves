@@ -863,7 +863,7 @@ function vistaGent() {
       pe.email ? `<a class="btn" href="mailto:${esc(pe.email)}">Correu</a>` : '',
       pe.adreca ? `<a class="btn" href="${esc(Cal.mapa(pe.adreca))}" target="_blank" rel="noopener">Mapa</a>` : '',
     ].filter(Boolean).join('');
-    return `<div class="cal-cap"><button class="btn" data-persona="">‹ Contactes</button><h2 id="fitxaNom">${esc(pe.nom)}</h2></div>
+    return `<div class="cal-cap"><button class="btn" data-persona="">${ui.tornaA === 'aniversaris' ? '‹ Aniversaris' : '‹ Contactes'}</button><h2 id="fitxaNom">${esc(pe.nom)}</h2></div>
       ${accions ? `<div class="grp fitxa-accions">${accions}</div>` : ''}
       <div class="section fitxa">
         ${camp('nom', 'Nom')}
@@ -1389,7 +1389,7 @@ const fiEntrada = () => { ui.view = 'inici'; render(); };
 $('#tabs').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-view]');
   if (!b) return;
-  ui.view = b.dataset.view; ui.persona = ''; ui.cercaGent = '';
+  ui.view = b.dataset.view; ui.persona = ''; ui.cercaGent = ''; ui.tornaA = '';
   desaPref('view', ui.view);
   if (VISTES_AGENDA.includes(ui.view)) desaPref('vistaAgenda', ui.view);
   render(); window.scrollTo(0, 0);
@@ -1454,7 +1454,10 @@ $('#main').addEventListener('click', (e) => {
   const ad = t.closest('[data-anadia]');
   if (ad) { ui.diaSel = ad.dataset.anadia; ui.calMode = 'dia'; desaPref('calMode', 'dia'); render(); window.scrollTo(0, 0); return; }
   const pe = t.closest('[data-persona]');
-  if (pe) { ui.persona = pe.dataset.persona; ui.cercaGent = ''; render(); window.scrollTo(0, 0); return; }
+  if (pe) {
+    if (!pe.dataset.persona && ui.tornaA) { ui.view = ui.tornaA; ui.tornaA = ''; ui.persona = ''; render(); window.scrollTo(0, 0); return; }
+    ui.persona = pe.dataset.persona; ui.cercaGent = ''; ui.tornaA = ''; render(); window.scrollTo(0, 0); return;
+  }
   if (t.id === 'pRenom') {
     const p = pers(ui.persona);
     demanaText('Nom del contacte', p.nom, { max: 80 }).then((n) => { if (n && n.trim()) { p.nom = n.trim(); save(); render(); } });
@@ -1655,9 +1658,13 @@ $('#main').addEventListener('submit', async (e) => {
   if (e.target.id === 'formPersona') {
     const nom = String(f.get('nom') || '').trim();
     if (!nom) return;
-    if (state.persones.some((p) => normal(p.nom) === normal(nom))) { toast(`${nom} ja hi és.`); return; }
-    state.persones.push({ id: 'pe-' + uid(), nom }); save(); render();
-    $('#formPersona input')?.focus();
+    const ja = state.persones.find((p) => normal(p.nom) === normal(nom));
+    if (ja) { toast(`${ja.nom} ja hi és: t'obro la fitxa`); ui.persona = ja.id; ui.cercaGent = ''; render(); window.scrollTo(0, 0); return; }
+    const nou = { id: 'pe-' + uid(), nom };
+    state.persones.push(nou); save();
+    ui.persona = nou.id; ui.cercaGent = ''; ui.tornaA = ''; render(); window.scrollTo(0, 0);
+    toast('Contacte creat: omple les dades que vulguis');
+    (document.querySelector('#main [data-pcamp="tel"]') || document.querySelector('#main [data-pcamp]'))?.focus();
   }
   if (e.target.id === 'formExtern') {
     const nom = String(f.get('nom') || '').trim() || 'Gravacions';
@@ -1785,7 +1792,7 @@ $('#main').addEventListener('click', (e) => {
     ui.view = s.dataset.sat; ui.llista = ''; ui.memEdita = ''; render(); window.scrollTo(0, 0); return;
   }
   const f = e.target.closest('[data-fitxa]');
-  if (f) { ui.view = 'gent'; ui.persona = f.dataset.fitxa; render(); window.scrollTo(0, 0); return; }
+  if (f) { ui.tornaA = ui.view === 'aniversaris' ? 'aniversaris' : ''; ui.view = 'gent'; ui.persona = f.dataset.fitxa; render(); window.scrollTo(0, 0); return; }
   const fet = e.target.closest('[data-recfet]');
   if (fet) {
     const r = state.recordatoris.find((x) => x.id === fet.dataset.recfet);
