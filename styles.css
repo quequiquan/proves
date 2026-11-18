@@ -1027,3 +1027,5 @@ button.gx-pindola { display: block; border: 0; background: none; padding: 4px 8p
 .sat-cap { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; }
 .sat-cap .sat-torna { justify-self: start; }
 .sat-cap h1 { grid-column: 2; text-align: center; min-width: 0; max-width: calc(100vw - 210px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Frase del dia: més llegible, sense negreta */
+button.gx-pindola, .gx-pindola { color: color-mix(in srgb, var(--text) 82%, var(--bg)); font-weight: 500; }
