@@ -11,7 +11,7 @@ const Sync = (() => {
   const AUTH = 'qqq-auth';
   const MKEY = KEY + '-sync';
   const CKEY = KEY + '-comp';
-  const COLS = ['tipus', 'persones', 'plans'];
+  const COLS = ['tipus', 'persones', 'plans', 'recordatoris', 'llistes', 'compres', 'memoria', 'documents'];
   const META0 = { snap: {}, ultima: null, usuari: null, compSnap: {}, compUltima: null };
   const COMP0 = { enviats: {}, rebuts: {} };
 
@@ -217,6 +217,7 @@ const Sync = (() => {
         canvi = (await baixaComp()) || canvi;
         posaEstat('ok');
         if (canvi && !document.querySelector('#dlg[open]')) render();
+        setTimeout(aplicaModeConvidat, 0);
         if (typeof acceptaAutomatics === 'function') setTimeout(acceptaAutomatics, 0);
       } catch (e) {
         console.warn('Sincronització:', e);
@@ -239,6 +240,12 @@ const Sync = (() => {
     if (error) throw error;
     await canviUsuari(data.user);
     await sincronitza();
+  }
+  // Tanca la sessió a tots els altres dispositius (aquest continua obert)
+  async function surtAltres() {
+    if (!sb || !usuari) throw new Error('Cal haver entrat');
+    const { error } = await sb.auth.signOut({ scope: 'others' });
+    if (error) throw error;
   }
   async function surt() {
     try { await sb.auth.signOut(); } catch (e) { /* sense connexió: es tanca igualment aquí */ }
@@ -354,6 +361,25 @@ const Sync = (() => {
 
   /* ---------- Enllaç per apuntar plans per veu (Siri) ---------- */
   const tokenNou = () => { const b = crypto.getRandomValues(new Uint8Array(24)); return btoa(String.fromCharCode(...b)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
+  /* ---------- Documents (magatzem privat de Supabase) ---------- */
+  async function pujaDoc(id, blob, tipus, extensio) {
+    if (!sb || !usuari) throw new Error('Cal haver entrat amb el correu');
+    const ext = String(extensio || (tipus === 'application/pdf' ? 'pdf' : tipus === 'image/png' ? 'png' : 'jpg')).toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 8) || 'bin';
+    const cami = `${usuari.id}/${ENTORN}/${id}.${ext}`;
+    const { error } = await sb.storage.from('documents').upload(cami, blob, { contentType: tipus, upsert: true });
+    if (error) throw error;
+    return cami;
+  }
+  async function urlDoc(cami, nomDescarrega) {
+    const { data, error } = await sb.storage.from('documents').createSignedUrl(cami, 3600, nomDescarrega ? { download: nomDescarrega } : undefined);
+    if (error) throw error;
+    return data.signedUrl;
+  }
+  async function esborraDoc(cami) {
+    const { error } = await sb.storage.from('documents').remove([cami]);
+    if (error) throw error;
+  }
+
   async function enllacVeu(nou = false) {
     if (!sb || !usuari) throw new Error('Cal haver entrat amb el correu');
     const { data, error } = await sb.from('calendaris').select('token,token_veu').eq('propietari', usuari.id).maybeSingle();
@@ -376,12 +402,29 @@ const Sync = (() => {
     return data === true;
   }
   async function convidats() {
-    const { data, error } = await sb.from('convidats').select('email,nom,afegit').order('afegit', { ascending: false });
+    const { data, error } = await sb.from('convidats').select('email,nom,afegit,mode').order('afegit', { ascending: false });
     if (error) throw error;
     return data || [];
   }
-  async function convida(email, nom = '') {
-    const { error } = await sb.from('convidats').upsert({ email: email.trim().toLowerCase(), nom }, { onConflict: 'email' });
+  async function modeConvidat(email, mode) {
+    const { error } = await sb.from('convidats').update({ mode }).eq('email', email);
+    if (error) throw error;
+  }
+  // El mode amb què l'administrador ha convidat aquesta persona (només s'aplica si encara no n'ha triat cap)
+  let modeMirat = false;
+  async function aplicaModeConvidat() {
+    if (modeMirat || !usuari || state.ajustos.mode) return;
+    modeMirat = true;
+    try {
+      const { data, error } = await sb.rpc('el_meu_mode');
+      if (error || !['galaxia', 'agenda'].includes(data) || state.ajustos.mode) return;
+      state.ajustos.mode = data; save();
+      if (data === 'agenda' && ui.view === 'inici') ui.view = 'propers';
+      if (!document.querySelector('#dlg[open]')) render();
+    } catch (e) { /* sense connexió: ja es mirarà un altre cop */ modeMirat = false; }
+  }
+  async function convida(email, nom = '', mode = 'galaxia') {
+    const { error } = await sb.from('convidats').upsert({ email: email.trim().toLowerCase(), nom, mode }, { onConflict: 'email' });
     if (error) throw error;
   }
   async function desconvida(email) {
@@ -390,7 +433,7 @@ const Sync = (() => {
   }
 
   return {
-    enllacCalendari, enllacVeu, esAdmin, convidats, convida, desconvida,
+    enllacCalendari, enllacVeu, pujaDoc, urlDoc, esborraDoc, esAdmin, convidats, convida, desconvida, modeConvidat,
     disponible,
     usuari: () => usuari,
     // Abans de saber si hi ha sessió: n'hi ha alguna de guardada en aquest dispositiu?
@@ -399,7 +442,8 @@ const Sync = (() => {
     respostes: (plaId) => Object.entries(comp.enviats).filter(([k]) => k.startsWith(plaId + '|')).map(([k, r]) => ({ email: k.slice(plaId.length + 1), resposta: r })),
     canvi() { if (!aplicant && usuari) { posaEstat('sync'); programa(); } },
     ara: sincronitza,
-    demanaCodi, entra, surt, respon, html, bind, inicia,
+    demanaCodi, entra, surt, surtAltres, respon, html, bind, inicia,
+    pendentsPerPujar: () => (usuari ? pendents().length : 0),
   };
 })();
 

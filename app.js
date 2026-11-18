@@ -143,7 +143,7 @@ const llistaNoms = (n) => (n.length < 2 ? n.join('') : n.slice(0, -1).join(', ')
 
 /* ---------- Dades ---------- */
 function seed() {
-  return { tipus: ambPrincipals(TIPUS_INICIALS), persones: [], plans: [], ajustos: { nom: '', categories: VERSIO_CATEGORIES, principals: VERSIO_PRINCIPALS } };
+  return { tipus: ambPrincipals(TIPUS_INICIALS), persones: [], plans: [], recordatoris: [], llistes: [], compres: [], memoria: [], documents: [], ajustos: { nom: '', categories: VERSIO_CATEGORIES, principals: VERSIO_PRINCIPALS } };
 }
 function normalize(d) {
   const arr = (x) => (Array.isArray(x) ? x : []);
@@ -151,6 +151,11 @@ function normalize(d) {
     tipus: arr(d.tipus).length ? arr(d.tipus) : TIPUS_INICIALS.map((t) => ({ ...t })),
     persones: arr(d.persones),
     plans: arr(d.plans).map((p) => ({ qui: [], estat: 'confirmat', ...p })),
+    recordatoris: arr(d.recordatoris).filter((r) => r && r.id),
+    llistes: arr(d.llistes).filter((l) => l && l.id).map((l) => ({ nom: '', ...l, items: arr(l.items).filter((i) => i && i.id) })),
+    compres: arr(d.compres).filter((r) => r && r.id),
+    memoria: arr(d.memoria).filter((r) => r && r.id),
+    documents: arr(d.documents).filter((r) => r && r.id && (r.cami || r.url)),
     ajustos: d.ajustos && typeof d.ajustos === 'object' ? { nom: '', ...d.ajustos } : { nom: '' },
   };
 }
@@ -858,7 +863,7 @@ function vistaGent() {
       pe.email ? `<a class="btn" href="mailto:${esc(pe.email)}">Correu</a>` : '',
       pe.adreca ? `<a class="btn" href="${esc(Cal.mapa(pe.adreca))}" target="_blank" rel="noopener">Mapa</a>` : '',
     ].filter(Boolean).join('');
-    return `<div class="cal-cap"><button class="btn" data-persona="">‹ Contactes</button><h2 id="fitxaNom">${esc(pe.nom)}</h2></div>
+    return `<div class="cal-cap"><button class="btn" data-persona="">${ui.tornaA === 'aniversaris' ? '‹ Aniversaris' : '‹ Contactes'}</button><h2 id="fitxaNom">${esc(pe.nom)}</h2></div>
       ${accions ? `<div class="grp fitxa-accions">${accions}</div>` : ''}
       <div class="section fitxa">
         ${camp('nom', 'Nom')}
@@ -866,7 +871,7 @@ function vistaGent() {
         ${camp('tel2', 'Un altre telèfon', 'type="tel" inputmode="tel"')}
         <label class="camp">Correu
           <input data-pcamp="email" type="email" value="${esc(pe.email || '')}" placeholder="nom@exemple.com" autocomplete="off" inputmode="email"></label>
-        <label class="check te-app"><input type="checkbox" data-papp ${pe.teApp ? 'checked' : ''}> <span>Té l'app <b>Què · Qui · Quan</b>: els plans on surti li arribaran sols a la seva app <small>(amb aquest mateix correu)</small></span></label>
+        <label class="check te-app"><input type="checkbox" data-papp ${pe.teApp ? 'checked' : ''}> <span>Té l'app <b>Galàxia</b>: els plans on surti li arribaran sols a la seva app <small>(amb aquest mateix correu)</small></span></label>
         ${camp('adreca', 'Adreça')}
         ${campDiaMes('aniversari', 'Aniversari', true)}
         ${campDiaMes('sant', 'Sant', false)}
@@ -944,6 +949,16 @@ function vistaAjustos() {
       </form>
       ${externs().length ? '<button class="btn" id="extActualitza">Actualitza ara</button>' : ''}
     </div>
+    <div class="section" id="seccioTema">
+      <h2>Aspecte</h2>
+      <p class="help"><b>Automàtic</b> fa el mateix que l'iPhone: clar de dia i fosc quan l'iPhone és en mode fosc.</p>
+      <div class="seg tema-seg">${[['clar', 'Clar'], ['fosc', 'Fosc'], ['auto', 'Automàtic']].map(([k, n]) => `<button aria-pressed="${(state.ajustos.tema || 'auto') === k}" data-tema="${k}">${n}</button>`).join('')}</div>
+    </div>
+    <div class="section" id="seccioMode">
+      <h2>Com vols l'app</h2>
+      <p class="help"><b>Galàxia</b>: el cercle amb l'agenda al mig i les micro-apps al voltant (recordatoris, compres, documents…). <b>Agenda</b>: només l'agenda, més senzilla. Ho pots canviar quan vulguis; no es perd res.</p>
+      <div class="seg mode-seg"><button aria-pressed="${!modeAgenda()}" data-mode="galaxia">Galàxia</button><button aria-pressed="${modeAgenda()}" data-mode="agenda">Agenda</button></div>
+    </div>
     ${usuari() && admin.es ? `<div class="section" id="seccioConvidats">
       <h2>Qui pot fer servir l'app</h2>
       <p class="help">Només les persones d'aquesta llista es poden crear un compte. Encara que l'enllaç corri, qui no hi sigui no podrà entrar.
@@ -951,10 +966,13 @@ function vistaAjustos() {
       <form class="barra" id="formConvida">
         <input name="email" type="email" inputmode="email" placeholder="Correu de la persona" autocomplete="off" required>
         <input name="nom" placeholder="Nom (opcional)" autocomplete="off">
+        <select name="mode" aria-label="Mode"><option value="galaxia">Galàxia</option><option value="agenda">Agenda</option></select>
         <button class="btn primary">Convida</button>
       </form>
       ${admin.llista ? `<ul class="convidats">${admin.llista.map((c) => `<li><span><b>${esc(c.nom || c.email.split('@')[0])}</b><small>${esc(c.email)}</small></span>
+        <select class="mode-convidat" data-modeconv="${esc(c.email)}" aria-label="Mode de ${esc(c.nom || c.email)}"><option value="galaxia"${c.mode !== 'agenda' ? ' selected' : ''}>Galàxia</option><option value="agenda"${c.mode === 'agenda' ? ' selected' : ''}>Agenda</option></select>
         ${normal(c.email) === normal(usuari().email) ? '<small>Tu</small>' : `<button class="enllac" data-desconvida="${esc(c.email)}">Treu</button>`}</li>`).join('')}</ul>
+        <p class="help">El mode (Galàxia o Agenda) és com comença l'app cada persona la primera vegada; després el pot canviar als seus Ajustos.</p>
         <p class="help">${admin.llista.length} persones a la llista. Treure algú evita que es pugui crear un compte; si ja en tenia un, el conserva.</p>`
         : '<p class="help">Carregant la llista…</p>'}
     </div>` : ''}
@@ -1042,7 +1060,7 @@ function vistaAjustos() {
       <p class="help">Manual visual amb totes les funcions de l'app, pas a pas. També el pots enviar a qui comenci a fer-la servir: quequiquan.github.io/guia.html</p>
       <a class="btn" href="guia.html" target="_blank" rel="noopener">Obre la guia</a>
     </div>
-    <p class="versio">Què · Qui · Quan${PROVES ? ' · versió de proves' : ''}</p>`;
+    <p class="versio">Galàxia${PROVES ? ' · versió de proves' : ''}</p>`;
 }
 
 /* ---------- Vista: Entrada (correu + codi, sense contrasenya) ---------- */
@@ -1075,8 +1093,8 @@ function vistaEntrada() {
   }
   return `<div class="entrada">
       <img src="img/icona.svg" alt="" class="entrada-logo">
-      <h1><span class="w-que">Què</span> · <span class="w-qui">Qui</span> · <span class="w-quan">Quan</span></h1>
-      <p class="entrada-sub">Els teus sopars, concerts, trobades i sortides, en un sol lloc.</p>
+      <h1 class="entrada-galaxia">Galàxia</h1>
+      <p class="entrada-sub">La teva agenda i tot el que has de recordar, en un sol lloc.</p>
       ${cos}
     </div>`;
 }
@@ -1091,33 +1109,315 @@ function ajustaPortada() {
   document.documentElement.style.setProperty('--alt-portada', Math.max(alt, 360) + 'px');
 }
 addEventListener('resize', () => { if (ui.view === 'inici') ajustaPortada(); });
+/* ---------- Galàxia: l'Agenda al mig i les micro-apps al voltant ---------- */
+const SATEL = [
+  { id: 'recordatoris', nom: 'Recordatoris', color: '#E8590C' },
+  { id: 'memoria', nom: 'Memòria', color: '#7048E8' },
+  { id: 'aniversaris', nom: 'Aniversaris', color: '#E64980' },
+  { id: 'llista', nom: 'Llista', color: '#1C7ED6' },
+  { id: 'compres', nom: 'Compres', color: '#2F9E44' },
+  { id: 'documents', nom: 'Documents', color: '#FFC300' },
+];
+let gxAnimat = false;
+const modeAgenda = () => state.ajustos.mode === 'agenda';   // l'animació d'entrada només es fa el primer cop que s'obre l'app
+const VISTES_GALAXIA = ['inici', 'aniversaris', 'recordatoris', 'llista', 'compres', 'memoria', 'documents', 'pindoles'];
+const pendentsRec = () => state.recordatoris.filter((r) => !r.fet);
+// Propers aniversaris i sants dels contactes (els dels pròxims 12 mesos, el primer avui)
+function propersAniv() {
+  const avuiD = parseYmd(avui()), y = avuiD.getFullYear(), out = [];
+  state.persones.forEach((pe) => {
+    [['aniversari', pe.aniversari], ['sant', pe.sant]].forEach(([tipus, txt]) => {
+      const a = llegeixAniv(txt);
+      if (!a || a.m < 1 || a.m > 12 || a.d < 1 || a.d > 31) return;
+      let any = y;
+      const dia = (yy) => new Date(yy, a.m - 1, Math.min(a.d, new Date(yy, a.m, 0).getDate()));
+      if (dia(any) < avuiD) any++;
+      const d = dia(any);
+      out.push({ pe, tipus, ds: ymd(d), d, edat: tipus === 'aniversari' && a.y && a.y <= any ? any - a.y : null, falten: Math.round((d - avuiD) / 86400000) });
+    });
+  });
+  return out.sort((a, b) => a.d - b.d || a.pe.nom.localeCompare(b.pe.nom));
+}
+function capSatel(nom) {
+  return `<div class="sat-cap"><button class="sat-torna" data-anar="inici" aria-label="Torna a Galàxia">‹ Galàxia</button><h1>${esc(nom)}</h1></div>`;
+}
 function vistaInici() {
   const h = new Date().getHours();
   const salut = h < 6 ? 'Bona nit' : h < 13 ? 'Bon dia' : h < 20 ? 'Bona tarda' : 'Bona nit';
   const nom = (state.ajustos.nom || '').trim().split(' ')[0];
+  const nPlans = delDia(avui()).filter((p) => p.estat !== 'cancelat').length, nRec = pendentsRec().length;
+  const aviatAniv = propersAniv().filter((x) => x.falten === 0).length;
   const inv = rebuts().filter((p) => p.rebut.resposta === 'pendent' && p.data >= avui()).length;
-  // Portada minimalista: logotip, nom de l'app, salutació, data i un botó rodó per crear un pla
-  return `<div class="portada">
-      <svg class="portada-logo" viewBox="160 160 704 680" aria-hidden="true">
-        <circle cx="512" cy="392" r="200" fill="#FF5A47" opacity=".92"/>
-        <circle cx="392" cy="600" r="200" fill="#FFC23D" opacity=".88"/>
-        <circle cx="632" cy="600" r="200" fill="#1FB39C" opacity=".88"/>
-        <circle cx="512" cy="528" r="34" style="fill: var(--bg)"/>
-      </svg>
-      <p class="portada-nom"><span class="w-que">Què</span> · <span class="w-qui">Qui</span> · <span class="w-quan">Quan</span></p>
-      <h1>${esc(salut)}${nom ? ', ' + esc(nom) : ''}</h1>
-      <p class="portada-data">${esc(cap(dataLlarga(avui())))}</p>
-      <button class="portada-mes" data-nou="${avui()}" aria-label="Nou pla"><span>+</span></button>
+  const comptes = { recordatoris: nRec, aniversaris: aviatAniv, compres: state.compres.filter((r) => !r.fet).length,
+    llista: state.llistes.reduce((n, l) => n + l.items.filter((i) => !i.fet).length, 0) };
+  const entra = !gxAnimat; gxAnimat = true;
+  return `<div class="galaxia${entra ? ' entra' : ''}">
+      <div class="gx-salut"><h1>${esc(salut)}${nom ? ', ' + esc(nom) : ''}</h1>
+        <p class="portada-data">${esc(cap(dataLlarga(avui())))}</p>
+</div>
+      <div class="gx-cercle${modeAgenda() ? ' gx-sol' : ''}">
+        ${modeAgenda() ? '' : '<div class="gx-orbita" aria-hidden="true"></div>'}
+        <button class="gx-centre" id="gxAgenda" aria-label="Agenda (mantén premut per a un pla nou)">
+          <span class="gx-centre-nom">Agenda</span>${nPlans ? `<small class="gx-centre-n" aria-label="${nPlans} plans avui">${nPlans}</small>` : ''}</button>
+        ${(modeAgenda() ? [] : SATEL).map((s, i) => `<button class="gx-sat${s.aviat ? ' aviat' : ''}" data-sat="${s.id}" style="--c:${s.color};--a:${i * 60 - 90}deg;--i:${i}">
+            <span class="gx-bola"><span class="gx-ini" aria-hidden="true">${esc(s.nom[0])}</span>${comptes[s.id] ? `<i>${comptes[s.id]}</i>` : ''}</span><span class="gx-nom">${esc(s.nom)}</span>${s.aviat ? '<small>aviat</small>' : ''}</button>`).join('')}
+      </div>
+      ${typeof pindolaDelDia === 'function' ? `<button class="gx-pindola" data-pindoles>${esc(pindola())}</button>` : ''}
       ${inv ? `<button class="enllac portada-veure" data-anar="propers">${inv === 1 ? 'Tens 1 invitació per respondre' : `Tens ${inv} invitacions per respondre`}</button>` : ''}
     </div>`;
 }
+function vistaAniversaris() {
+  const llista = propersAniv();
+  if (!llista.length) return capSatel('Aniversaris') + `<p class="help buit">Encara no hi ha cap aniversari. Posa'ls a la fitxa de cada contacte (pestanya Contactes).</p>
+    <div class="grp"><button class="btn" data-anar="gent">Ves a Contactes</button></div>`;
+  let mes = -1, html = '';
+  llista.forEach((x) => {
+    const m = x.d.getMonth() + x.d.getFullYear() * 12;
+    if (m !== mes) { mes = m; html += `<h2 class="aniv-mes">${esc(cap(MESOS[x.d.getMonth()]))}${x.d.getFullYear() !== new Date().getFullYear() ? ' ' + x.d.getFullYear() : ''}</h2>`; }
+    const quan = x.falten === 0 ? 'Avui' : x.falten === 1 ? 'Demà' : x.falten <= 7 ? `D'aquí a ${x.falten} dies` : '';
+    const que = x.tipus === 'sant' ? 'Sant' : x.edat ? `Fa ${x.edat} anys` : 'Aniversari';
+    html += `<button class="aniv-fila${x.falten === 0 ? ' avui' : ''}${x.tipus === 'sant' ? ' sant' : ''}" data-fitxa="${esc(x.pe.id)}">
+        <span class="aniv-dia"><b>${x.d.getDate()}</b><small>${esc(DIES[(x.d.getDay() + 6) % 7].slice(0, 3))}</small></span>
+        <span class="aniv-cos"><b>${esc(x.pe.nom)}</b><small>${esc([que, quan].filter(Boolean).join(' · '))}</small></span></button>`;
+  });
+  return capSatel('Aniversaris') + `<div class="aniv-llista">${html}</div>`;
+}
+const fa = (iso) => {
+  const dies = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+  return !iso || isNaN(dies) ? '' : dies < 1 ? 'Avui' : dies === 1 ? 'Ahir' : dies < 30 ? `Fa ${dies} dies` : dies < 60 ? 'Fa un mes' : `Fa ${Math.floor(dies / 30)} mesos`;
+};
+function vistaRecordatoris() {
+  const llista = pendentsRec().slice().sort((a, b) => String(b.creat || '').localeCompare(String(a.creat || '')));
+  return capSatel('Recordatoris') + `<p class="help">Coses pendents sense data que no vols oblidar. Quan en facis una, toca el cercle i desapareix.</p>
+    <form id="formRec" class="rec-nou" autocomplete="off"><input id="recText" placeholder="Què has de recordar?" maxlength="300" enterkeyhint="done"><button class="btn primary">Afegeix</button></form>
+    ${llista.length > 3 ? '<input id="cercaRec" type="search" class="doc-cerca" placeholder="Cerca un recordatori…" autocomplete="off">' : ''}
+    ${llista.length ? `<ul class="rec-llista">${llista.map((r) => `<li data-rec="${esc(r.id)}" data-reccerca="${esc(normal(r.text))}">
+        <button class="rec-check" data-recfet="${esc(r.id)}" aria-label="Fet"></button>
+        <button class="rec-text" data-recedita="${esc(r.id)}"><span>${esc(r.text)}</span><small>${esc(fa(r.creat))}</small></button></li>`).join('')}</ul>`
+      : '<p class="help buit">No tens res pendent.</p>'}
+    <p class="help buit" id="recRes" hidden>No hi ha cap recordatori que hi coincideixi.</p>`;
+}
+$('#main').addEventListener('input', (e) => {
+  if (e.target.id !== 'cercaRec') return;
+  const q = normal(e.target.value.trim());
+  let n = 0;
+  document.querySelectorAll('[data-reccerca]').forEach((el) => { el.hidden = Boolean(q) && !el.dataset.reccerca.includes(q); if (!el.hidden) n++; });
+  const r = document.getElementById('recRes'); if (r) r.hidden = n > 0;
+});
+// Elements d'una llista (Llista i Compres): casella per marcar i text per corregir
+const nouId = (p) => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+function filesItems(items, col, lid) {
+  return `<ul class="rec-llista">${items.map((it) => `<li data-item="${esc(it.id)}">
+      <button class="rec-check" data-chk="${col}|${esc(lid)}|${esc(it.id)}" aria-label="Fet"></button>
+      <button class="rec-text" data-itedita="${col}|${esc(lid)}|${esc(it.id)}"><span>${esc(it.text)}</span></button></li>`).join('')}</ul>`;
+}
+const formItem = (col, lid, ph) => `<form class="rec-nou" data-formitem="${col}|${esc(lid)}" autocomplete="off"><input name="text" placeholder="${esc(ph)}" maxlength="200" enterkeyhint="done"><button class="btn primary">Afegeix</button></form>`;
+function vistaLlista() {
+  const l = state.llistes.find((x) => x.id === ui.llista);
+  if (!l) {
+    const llistes = state.llistes.slice().sort((a, b) => String(b.creat || '').localeCompare(String(a.creat || '')));
+    return capSatel('Llista') + `<p class="help">Llistes per a un moment concret: el que t'has d'endur de viatge, els encàrrecs d'avui…</p>
+      <form id="formLlistaNova" class="rec-nou" autocomplete="off"><input id="llistaNom" placeholder="Nom de la llista nova" maxlength="60" enterkeyhint="done"><button class="btn primary">Crea</button></form>
+      ${llistes.length ? `<div class="ll-index">${llistes.map((x) => {
+        const n = x.items.filter((i) => !i.fet).length;
+        return `<button class="ll-fila" data-obrellista="${esc(x.id)}"><b>${esc(x.nom)}</b><small>${n ? (n === 1 ? '1 pendent' : n + ' pendents') : x.items.length ? 'Feta' : 'Buida'}</small></button>`;
+      }).join('')}</div>` : '<p class="help buit">Encara no tens cap llista.</p>'}`;
+  }
+  const pend = l.items.filter((i) => !i.fet), fets = l.items.length - pend.length;
+  return `<div class="sat-cap"><button class="sat-torna" data-llistes aria-label="Torna a les llistes">‹ Llistes</button><h1>${esc(l.nom)}</h1></div>
+    ${formItem('llista', l.id, 'Afegeix a la llista')}
+    ${pend.length ? filesItems(pend, 'llista', l.id) : `<p class="help buit">${fets ? 'Llista feta.' : 'La llista és buida.'}</p>`}
+    <div class="ll-peu">
+      ${fets ? `<button class="btn" data-omple="${esc(l.id)}">Torna-la a omplir (${fets})</button>` : ''}
+      ${l.items.length ? `<button class="btn" data-llistacomparteix="${esc(l.id)}">Comparteix</button><button class="btn" data-llistaimprimeix="${esc(l.id)}">Imprimeix</button>` : ''}
+      <button class="enllac" data-llistanom="${esc(l.id)}">Canvia el nom</button>
+      <button class="enllac perill" data-llistaesborra="${esc(l.id)}">Esborra la llista</button>
+    </div>`;
+}
+// Famílies de la compra: cada producte es classifica sol per paraules clau (i es pot canviar a mà)
+const FAMILIES = [
+  { id: 'verdura', nom: 'Verdura', c: '#2F9E44', p: 'verdura,enciam,lletuga,tomaquet,tomate,ceba,ceba tendra,all,pebrot,carbasso,carbassa,albergina,pastanaga,patata,broquil,coliflor,espinac,mongeta tendra,mongeta,cogombre,porro,api,carxofa,bolet,xampinyo,col,julivert,rucula,canonges,remolatxa,nap,amanida' },
+  { id: 'fruita', nom: 'Fruita', c: '#F08C00', p: 'fruita,poma,pera,platan,banana,taronja,mandarina,maduixa,raim,pressec,melo,sindria,kiwi,llimona,cirera,pinya,alvocat,figa,nespra,albercoc,pruna,mango,nabius,gerds' },
+  { id: 'neteja', nom: 'Neteja i higiene', c: '#1C7ED6', p: 'detergent,lleixiu,sabo,xampu,gel de dutxa,gel de bany,paper higienic,paper de vater,paper wc,paper de cuina,rotllo de cuina,esponja,fregall,suavitzant,raspall de dents,pasta de dents,dentifric,desodorant,bosses d escombraries,bosses de brossa,bosses,escombraries,rentavaixelles,netejavidres,netejador,amoniac,tovalloletes,compreses,tampons,maquineta,fulles d afaitar,colonia,coto,bastonets,mocadors de paper,mocadors,crema' },
+  { id: 'olis', nom: 'Olis, vinagres i salses', c: '#C2A100', p: 'oli,oli d oliva,vinagre,maionesa,quetxup,ketchup,mostassa,salsa,tomaquet fregit,tomaquet triturat,sal,pebre,especies,orenga,comi,allioli,salsa de soja' },
+  { id: 'pa', nom: 'Pans, rebosteria i cereals', c: '#B07D48', p: 'pa,barra de pa,llesques,pa de motlle,pa torrat,torrades,biscotes,galeta,magdalena,croissant,cereals,muesli,civada,bescuit,coca,ensaimada,pastes,brioix,farina' },
+  { id: 'cafe', nom: 'Cafè, te i infusions', c: '#8B5E3C', p: 'cafe,descafeinat,capsules de cafe,capsules,te,te verd,infusio,camamilla,poliol,tila,menta,poleo,cacau,colacao,xocolata a la tassa' },
+  { id: 'carn', nom: 'Carns', c: '#E03131', p: 'carn,carn picada,pollastre,pit de pollastre,cuixes de pollastre,vedella,porc,xai,conill,botifarra,salsitxa,hamburguesa,pernil,pernil dolc,pernil salat,embotit,fuet,llonganissa,llom,costella,bacon,gall dindi,mandonguilles,filet,xorico,chorizo' },
+  { id: 'peix', nom: 'Peixos', c: '#0B7285', p: 'peix,lluc,bacalla,salmo,tonyina,sardina,gamba,musclo,calamar,sipia,rap,llobarro,orada,anxova,seito,cloissa,marisc,surimi,navalla' },
+  { id: 'lactics', nom: 'Làctics i ous', c: '#74C0FC', p: 'llet,llet sencera,llet semi,llet desnatada,llet sense lactosa,llet de soja,llet de civada,beguda de civada,beguda de soja,iogurt,iogurts,iogurt grec,formatge,formatge ratllat,formatget,mato,mantega,nata,nata per cuinar,quallada,flam,natilles,kefir,ou,ous' },
+  { id: 'pasta', nom: 'Pasta, arròs i llegums', c: '#E8B04B', p: 'pasta,macarrons,espaguetis,fideus,tallarines,lasanya,canelons,arros,arros integral,cigrons,llenties,mongetes seques,fesols,quinoa,cuscus,sopa de sobre,brou' },
+  { id: 'conserves', nom: 'Conserves', c: '#A9744F', p: 'conserva,llauna,tonyina en llauna,olives,escopinyes,espàrrecs,esparrecs,pebrots del piquillo,blat de moro,tomaquet en conserva,melmelada,confitura,mel' },
+  { id: 'congelats', nom: 'Congelats', c: '#66D9E8', p: 'congelat,congelats,gelat,gelats,pizza,pizza congelada,croquetes,verdura congelada,peix congelat,gel,glacons,canelons congelats' },
+  { id: 'begudes', nom: 'Begudes', c: '#7950F2', p: 'aigua,aigua amb gas,vi,vi negre,vi blanc,cava,cervesa,cerveses,refresc,refrescos,coca cola,cola,taronjada,llimonada,suc,sucs,suc de taronja,tonica,gasosa,vermut,licor,whisky,ginebra,brandi,orxata' },
+  { id: 'altres', nom: 'Altres', c: '#868E96', p: '' },
+];
+// Formes en plural de l'última paraula: poma → pomes, pastanaga → pastanagues, vaca → vaques, platja → platges
+function formesPlural(x) {
+  const out = [x, x + 's', x + 'es', x + 'ns'];
+  if (/a$/.test(x)) { const b = x.slice(0, -1); out.push(b + 'es'); if (/ga$/.test(x)) out.push(x.slice(0, -2) + 'gues'); if (/ca$/.test(x)) out.push(x.slice(0, -2) + 'ques'); if (/ja$/.test(x)) out.push(x.slice(0, -2) + 'ges'); if (/qua$/.test(x)) out.push(x.slice(0, -3) + 'qües'); }
+  return out;
+}
+// Cada paraula o expressió (també en plural); les expressions llargues es miren primer («tomàquet fregit» abans que «tomàquet»)
+const PARAULES_FAM = FAMILIES.flatMap((f) => f.p.split(',').map((x) => x.trim()).filter(Boolean)
+  .map((x) => [new RegExp(' (' + formesPlural(x).join('|') + ') '), f.id, x.length]))
+  .sort((a, b) => b[2] - a[2]);
+function endevinaFamilia(text) {
+  const t = ' ' + normal(text).replace(/[^a-z0-9]+/g, ' ').trim() + ' ';
+  for (const [re, id] of PARAULES_FAM) if (re.test(t)) return id;
+  return 'altres';
+}
+const familiaDe = (r) => (FAMILIES.some((f) => f.id === r.familia) ? r.familia : endevinaFamilia(r.text));
+function filesCompres(items) {
+  return FAMILIES.map((f) => {
+    const seus = items.filter((r) => familiaDe(r) === f.id);
+    if (!seus.length) return '';
+    return `<h3 class="fam-titol" style="--fc:${f.c}">${esc(f.nom)}</h3><ul class="rec-llista">${seus.map((it) => `<li data-item="${esc(it.id)}">
+      <button class="rec-check" data-chk="compres||${esc(it.id)}" aria-label="Fet"></button>
+      <button class="rec-text" data-itedita="compres||${esc(it.id)}"><span>${esc(it.text)}</span></button>
+      <select class="fam-tria" data-fam="${esc(it.id)}" aria-label="Família">${FAMILIES.map((x) => `<option value="${x.id}"${x.id === f.id ? ' selected' : ''}>${esc(x.nom)}</option>`).join('')}</select></li>`).join('')}</ul>`;
+  }).join('');
+}
+function vistaCompres() {
+  const pend = state.compres.filter((r) => !r.fet);
+  const vegades = (r) => r.vegades || 1;
+  const habituals = state.compres.filter((r) => r.fet).sort((a, b) => vegades(b) - vegades(a) || a.text.localeCompare(b.text, 'ca'));
+  return capSatel('Compres') + formItem('compres', '', 'Què falta?')
+    + (pend.length ? filesCompres(pend) + '<div class="ll-peu"><button class="btn" data-comprescomparteix>Comparteix la llista</button><button class="btn" data-comprescimprimeix>Imprimeix</button></div>' : '<p class="help buit">No falta res.</p>')
+    + (habituals.length ? `<h2 class="ll-titol">Habituals</h2><p class="help">Toca'n un per tornar-lo a posar a la llista. Mantén-lo premut per treure'l dels habituals.</p>
+      ${FAMILIES.map((f) => { const seus = habituals.filter((r) => familiaDe(r) === f.id); return seus.length ? `<div class="ll-chips fam-chips" style="--fc:${f.c}">${seus.map((r) => `<button class="ll-chip${vegades(r) >= 3 ? ' sovint' : ''}" data-torna="${esc(r.id)}">${esc(r.text)}</button>`).join('')}</div>` : ''; }).join('')}` : '');
+}
+// Memòria: fitxes amb informació per consultar (no contrasenyes)
+function vistaMemoria() {
+  const ed = ui.memEdita, f = ed && ed !== 'nova' ? state.memoria.find((x) => x.id === ed) : null;
+  if (ed) return capSatel('Memòria') + `<form id="formMem" class="mem-form" autocomplete="off">
+      <label>Títol<input name="titol" data-triatot value="${esc(f?.titol || '')}" placeholder="Pòlissa de la casa" maxlength="80" required></label>
+      <label>Què has de recordar<textarea name="text" rows="6" maxlength="3000" placeholder="Companyia, número, telèfon…">${esc(f?.text || '')}</textarea></label>
+      <div class="grp"><button class="btn primary">Desa</button><button type="button" class="btn" data-memcancela>Cancel·la</button>
+        ${f ? `<button type="button" class="enllac perill" data-memesborra="${esc(f.id)}">Esborra</button>` : ''}</div>
+    </form>`;
+  const fitxes = state.memoria.slice().sort((a, b) => a.titol.localeCompare(b.titol, 'ca'));
+  return capSatel('Memòria') + `<p class="help">Coses importants per consultar: pòlisses, telèfons, la Wi-Fi… Les contrasenyes, millor a l'app Contrasenyes de l'iPhone.</p>
+    <div class="mem-barra">${fitxes.length > 3 ? '<input id="cercaMem" type="search" placeholder="Cerca…" autocomplete="off">' : ''}<button class="btn primary" data-memnova>Nova fitxa</button></div>
+    ${fitxes.length ? `<div class="mem-llista">${fitxes.map((x) => `<div class="mem-fitxa" data-memcerca="${esc(normal(x.titol + ' ' + x.text))}">
+        <b>${esc(x.titol)}</b>${x.text ? `<p>${esc(x.text)}</p>` : ''}
+        <div class="mem-accions"><button class="enllac" data-memcomparteix="${esc(x.id)}">Comparteix</button>${x.text ? `<button class="enllac" data-memcopia="${esc(x.id)}">Copia</button>` : ''}<button class="enllac" data-memimprimeix="${esc(x.id)}">Imprimeix</button><button class="enllac" data-memedita="${esc(x.id)}">Edita</button></div>
+      </div>`).join('')}</div><p class="help buit" id="memRes" hidden>No hi ha cap fitxa que hi coincideixi.</p>
+      ${fitxes.length > 1 ? '<div class="grp centre"><button class="btn" data-memimprimeix="totes">Imprimeix totes les fitxes</button></div>' : ''}`
+      : '<p class="help buit">Encara no tens cap fitxa.</p>'}`;
+}
+// Documents: qualsevol fitxer (fotos, PDF, Word, Excel…) al núvol privat de cada persona, i enllaços a pàgines web.
+// A l'app només hi ha el nom, el tipus i, a les fotos, una miniatura.
+const dataDoc = (iso) => { const d = new Date(iso); return isNaN(d) ? '' : `${d.getDate()} ${MESOS[d.getMonth()].slice(0, 3)}. ${d.getFullYear()}`; };
+const extDoc = (d) => (d.tipus === 'enllac' ? '' : ((d.nomFitxer || d.cami || '').match(/\.([a-z0-9]{1,8})$/i) || [])[1]?.toLowerCase() || '');
+const CATS_DOC = [
+  { id: 'foto', nom: 'Fotos', c: '#2F9E44' },
+  { id: 'pdf', nom: 'PDF', c: '#E03131' },
+  { id: 'text', nom: 'Textos', c: '#1C7ED6', ext: 'doc docx odt rtf txt pages md' },
+  { id: 'full', nom: 'Fulls de càlcul', c: '#2B8A3E', ext: 'xls xlsx ods csv numbers' },
+  { id: 'presentacio', nom: 'Presentacions', c: '#E8590C', ext: 'ppt pptx odp key' },
+  { id: 'enllac', nom: 'Enllaços', c: '#7048E8' },
+  { id: 'altres', nom: 'Altres', c: '#868E96' },
+];
+function catDoc(d) {
+  if (d.tipus === 'enllac') return 'enllac';
+  if (/^image\//.test(d.tipus || '')) return 'foto';
+  const e = extDoc(d);
+  if (d.tipus === 'application/pdf' || e === 'pdf') return 'pdf';
+  const c = CATS_DOC.find((x) => x.ext && x.ext.split(' ').includes(e));
+  return c ? c.id : 'altres';
+}
+const midaText = (b) => (!b ? '' : b < 1024 * 1024 ? Math.max(1, Math.round(b / 1024)) + ' kB' : (b / 1024 / 1024).toFixed(1).replace('.', ',') + ' MB');
+const etiquetaDoc = (d) => (d.tipus === 'enllac' ? 'WEB' : extDoc(d).toUpperCase().slice(0, 4) || 'DOC');
+const domini = (u) => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return u; } };
+function vistaDocuments() {
+  const entrat = Boolean(usuari());
+  const tots = state.documents.slice().sort((a, b) => String(b.creat || '').localeCompare(String(a.creat || '')));
+  const presents = CATS_DOC.filter((c) => tots.some((d) => catDoc(d) === c.id));
+  const filtre = presents.some((c) => c.id === ui.docFiltre) ? ui.docFiltre : '';
+  const docs = filtre ? tots.filter((d) => catDoc(d) === filtre) : tots;
+  const q = normal((ui.docCerca || '').trim());
+  return capSatel('Documents') + `<p class="help">Guarda qualsevol document: fotos, PDF, contractes en Word, pressupostos en Excel, enllaços a pàgines web… Es guarden al teu núvol privat: només tu els pots veure.</p>
+    ${entrat ? `<div class="doc-botons">
+        <label class="btn primary doc-afegeix${ui.docPujant ? ' ocupat' : ''}"><input type="file" id="docFitxer" hidden ${ui.docPujant ? 'disabled' : ''}>${ui.docPujant ? 'Pujant…' : 'Afegeix un fitxer'}</label>
+        <button class="btn" data-docenllac ${ui.docPujant ? 'disabled' : ''}>Afegeix un enllaç</button></div>
+      ${tots.length > 1 ? `<input id="cercaDoc" type="search" class="doc-cerca" placeholder="Cerca un document…" autocomplete="off" value="${esc(ui.docCerca || '')}">` : ''}
+      ${presents.length > 1 ? `<div class="doc-filtres"><button class="${!filtre ? 'on' : ''}" data-docfiltre="">Tots</button>${presents.map((c) => `<button class="${filtre === c.id ? 'on' : ''}" data-docfiltre="${c.id}" style="--fc:${c.c}">${esc(c.nom)}</button>`).join('')}</div>` : ''}`
+      : '<p class="help avis-doc">Per guardar documents cal haver entrat amb el teu correu (toca el logo de Galàxia, a dalt).</p>'}
+    ${docs.length ? `<div class="doc-graella">${docs.map((x) => {
+        const cat = CATS_DOC.find((c) => c.id === catDoc(x)), cerca = normal([x.titol, x.nomFitxer, x.url, cat.nom, etiquetaDoc(x)].filter(Boolean).join(' '));
+        return `<button class="doc-fitxa" data-docobre="${esc(x.id)}" data-doccerca="${esc(cerca)}"${q && !cerca.includes(q) ? ' hidden' : ''}>
+        <span class="doc-mini" style="--fc:${cat.c}">${x.mini ? `<img src="${esc(x.mini)}" alt="">` : `<b>${esc(etiquetaDoc(x))}</b>`}</span>
+        <span class="doc-nom">${esc(x.titol)}</span><small>${esc(x.tipus === 'enllac' ? domini(x.url) : [dataDoc(x.creat), midaText(x.mida)].filter(Boolean).join(' · '))}</small></button>`;
+      }).join('')}</div><p class="help buit" id="docRes" hidden>No hi ha cap document que hi coincideixi.</p>`
+      : entrat ? '<p class="help buit">Encara no tens cap document.</p>' : ''}
+    ${entrat ? '<p class="help doc-consell">Mida màxima de cada fitxer: 50 MB. Per escanejar diverses pàgines en un sol PDF: a l\'app <b>Arxius</b> de l\'iPhone, toca <b>···</b> → <b>Escanejar documents</b>, desa\'l i després tria\'l aquí.</p>' : ''}`;
+}
 
-const VISTES = { inici: vistaInici, propers: vistaPropers, calendari: vistaCalendari, gent: vistaGent, ajustos: vistaAjustos, entrada: vistaEntrada };
+// Píndoles: la d'avui i les dels dies anteriors, i les preferides (guardades a Ajustos, es sincronitzen)
+const preferides = () => (Array.isArray(state.ajustos.pindoles) ? state.ajustos.pindoles : []);
+function filaPindola(text, data) {
+  const fav = preferides().includes(text);
+  return `<div class="pd-fila">${data ? `<small>${esc(data)}</small>` : ''}<p>${esc(text)}</p>
+    <button class="pd-fav${fav ? ' si' : ''}" data-pdfav="${esc(text)}" aria-pressed="${fav}" aria-label="${fav ? 'Treu de preferides' : 'Marca com a preferida'}"><svg viewBox="0 0 24 24"><path d="M12 20.5s-7.5-4.6-9.3-9.2C1.5 8 3.6 4.5 7.2 4.5c2 0 3.6 1.1 4.8 2.8 1.2-1.7 2.8-2.8 4.8-2.8 3.6 0 5.7 3.5 4.5 6.8-1.8 4.6-9.3 9.2-9.3 9.2z"/></svg></button></div>`;
+}
+const frasesMeves = () => (Array.isArray(state.ajustos.frasesMeves) ? state.ajustos.frasesMeves : []);
+function pindola(d = parseYmd(avui())) {
+  const ds = ymd(d), meves = frasesMeves().filter((f) => f.des && f.des <= ds);
+  if (meves.length) {
+    const primera = meves.find((f) => f.des === ds);
+    if (primera) return primera.text;
+    const n = Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000);
+    if (n % 3 === 0) return meves[Math.floor(n / 3) % meves.length].text;
+  }
+  return pindolaDelDia(d);
+}
+function vistaPindoles() {
+  const tab = ['pref', 'meves'].includes(ui.pindTab) ? ui.pindTab : 'dies';
+  const pestanyes = `<div class="seg pd-seg"><button aria-pressed="${tab === 'dies'}" data-pdtab="dies">Aquests dies</button><button aria-pressed="${tab === 'pref'}" data-pdtab="pref">Preferides${preferides().length ? ' (' + preferides().length + ')' : ''}</button><button aria-pressed="${tab === 'meves'}" data-pdtab="meves">Les meves${frasesMeves().length ? ' (' + frasesMeves().length + ')' : ''}</button></div>`;
+  if (tab === 'meves') {
+    const llista = frasesMeves().slice().reverse();
+    return capSatel('Píndoles') + pestanyes + `<p class="help">Escriu les frases que t'agradin i sortiran barrejades amb les altres com a frase del dia: la primera vegada, l'endemà d'afegir-la.</p>
+      <form id="formFrase" class="rec-nou" autocomplete="off"><input id="fraseText" placeholder="Escriu una frase…" maxlength="200" enterkeyhint="done"><button class="btn primary">Afegeix</button></form>
+      ${llista.length ? `<div class="pd-llista">${llista.map((f) => `<div class="pd-fila pd-meva"><p>${esc(f.text)}</p>
+        <div class="mem-accions"><button class="enllac" data-frasedita="${esc(f.id)}">Edita</button><button class="enllac perill" data-frasetreu="${esc(f.id)}">Treu</button></div></div>`).join('')}</div>`
+        : '<p class="help buit">Encara no n\'has afegit cap.</p>'}`;
+  }
+  if (tab === 'pref') {
+    const llista = preferides().slice().reverse();
+    return capSatel('Píndoles') + pestanyes + (llista.length ? `<div class="pd-llista">${llista.map((t) => filaPindola(t, '')).join('')}</div>`
+      : '<p class="help buit">Encara no tens cap preferida. Marca les frases que més t\'agradin i les trobaràs aquí.</p>');
+  }
+  const avuiD = parseYmd(avui()), inici = new Date(avuiD.getFullYear(), 0, 1);
+  const n = Math.min(ui.pindDies || 30, Math.round((avuiD - inici) / 86400000) + 1);
+  let html = '';
+  for (let i = 0; i < n; i++) {
+    const d = addDays(avuiD, -i);
+    html += filaPindola(pindola(d), i === 0 ? 'Avui' : i === 1 ? 'Ahir' : cap(dataLlarga(ymd(d))));
+  }
+  const queden = Math.round((avuiD - inici) / 86400000) + 1 - n;
+  return capSatel('Píndoles') + pestanyes + `<div class="pd-llista">${html}</div>`
+    + (queden > 0 ? '<div class="grp centre"><button class="btn" data-pdmes>Mostra\'n més</button></div>' : '');
+}
+const VISTES = { inici: vistaInici, aniversaris: vistaAniversaris, recordatoris: vistaRecordatoris, llista: vistaLlista, compres: vistaCompres, memoria: vistaMemoria, documents: vistaDocuments, pindoles: vistaPindoles, propers: vistaPropers, calendari: vistaCalendari, gent: vistaGent, ajustos: vistaAjustos, entrada: vistaEntrada };
+// Aspecte: Clar, Fosc o Automàtic (com l'iPhone). Es guarda amb el compte i també en aquest aparell (per a la guia)
+function aplicaTema() {
+  const t = state.ajustos.tema, r = document.documentElement;
+  if (t === 'clar') r.dataset.theme = 'light'; else if (t === 'fosc') r.dataset.theme = 'dark'; else delete r.dataset.theme;
+  desaPref('tema', t || 'auto');
+  const fosc = t === 'fosc' || (t !== 'clar' && matchMedia('(prefers-color-scheme: dark)').matches);
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', fosc ? '#0E0B09' : '#221C18');
+}
 function render() {
+  aplicaTema();
   if (!VISTES[ui.view]) ui.view = 'propers';
+  if (modeAgenda() && SATEL.some((x) => x.id === ui.view) && ui.view !== 'aniversaris') ui.view = 'inici';
+  document.body.classList.toggle('mode-agenda', modeAgenda());
   if (ui.view === 'entrada' && !sync()?.disponible) ui.view = 'propers';
   document.body.classList.toggle('mode-entrada', ui.view === 'entrada');
   document.body.classList.toggle('mode-inici', ui.view === 'inici');
+  document.body.classList.toggle('mode-galaxia', VISTES_GALAXIA.includes(ui.view));
+  const marca = document.querySelector('.brand-nom b');
+  if (marca && !marca.querySelector('.w-galaxia')) marca.innerHTML = '<span class="w-galaxia">Galàxia</span>';
   if (ui.view === 'inici') requestAnimationFrame(ajustaPortada);
   if ($('#syncBtn') && sync()?.disponible) $('#syncBtn').hidden = ui.view === 'entrada';
   $$('#tabs button').forEach((b) => b.setAttribute('aria-current', b.dataset.view === ui.view ? 'page' : 'false'));
@@ -1133,8 +1433,9 @@ const fiEntrada = () => { ui.view = 'inici'; render(); };
 $('#tabs').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-view]');
   if (!b) return;
-  ui.view = b.dataset.view; ui.persona = ''; ui.cercaGent = '';
+  ui.view = b.dataset.view; ui.persona = ''; ui.cercaGent = ''; ui.tornaA = '';
   desaPref('view', ui.view);
+  if (VISTES_AGENDA.includes(ui.view)) desaPref('vistaAgenda', ui.view);
   render(); window.scrollTo(0, 0);
 });
 $('#btnNou').addEventListener('click', () => obreForm(null, { data: ui.view === 'calendari' ? ui.diaSel : avui() }));
@@ -1197,11 +1498,13 @@ $('#main').addEventListener('click', (e) => {
   const ad = t.closest('[data-anadia]');
   if (ad) { ui.diaSel = ad.dataset.anadia; ui.calMode = 'dia'; desaPref('calMode', 'dia'); render(); window.scrollTo(0, 0); return; }
   const pe = t.closest('[data-persona]');
-  if (pe) { ui.persona = pe.dataset.persona; ui.cercaGent = ''; render(); window.scrollTo(0, 0); return; }
+  if (pe) {
+    if (!pe.dataset.persona && ui.tornaA) { ui.view = ui.tornaA; ui.tornaA = ''; ui.persona = ''; render(); window.scrollTo(0, 0); return; }
+    ui.persona = pe.dataset.persona; ui.cercaGent = ''; ui.tornaA = ''; render(); window.scrollTo(0, 0); return;
+  }
   if (t.id === 'pRenom') {
     const p = pers(ui.persona);
-    const n = prompt('Nom nou:', p.nom);
-    if (n && n.trim()) { p.nom = n.trim(); save(); render(); }
+    demanaText('Nom del contacte', p.nom, { max: 80 }).then((n) => { if (n && n.trim()) { p.nom = n.trim(); save(); render(); } });
     return;
   }
   if (t.id === 'pEsborra') {
@@ -1399,9 +1702,13 @@ $('#main').addEventListener('submit', async (e) => {
   if (e.target.id === 'formPersona') {
     const nom = String(f.get('nom') || '').trim();
     if (!nom) return;
-    if (state.persones.some((p) => normal(p.nom) === normal(nom))) { toast(`${nom} ja hi és.`); return; }
-    state.persones.push({ id: 'pe-' + uid(), nom }); save(); render();
-    $('#formPersona input')?.focus();
+    const ja = state.persones.find((p) => normal(p.nom) === normal(nom));
+    if (ja) { toast(`${ja.nom} ja hi és: t'obro la fitxa`); ui.persona = ja.id; ui.cercaGent = ''; render(); window.scrollTo(0, 0); return; }
+    const nou = { id: 'pe-' + uid(), nom };
+    state.persones.push(nou); save();
+    ui.persona = nou.id; ui.cercaGent = ''; ui.tornaA = ''; render(); window.scrollTo(0, 0);
+    toast('Contacte creat: omple les dades que vulguis');
+    (document.querySelector('#main [data-pcamp="tel"]') || document.querySelector('#main [data-pcamp]'))?.focus();
   }
   if (e.target.id === 'formExtern') {
     const nom = String(f.get('nom') || '').trim() || 'Gravacions';
@@ -1482,6 +1789,606 @@ $('#main').addEventListener('contextmenu', (e) => {
 $('#main').addEventListener('click', (e) => {
   if (ignoraClic && e.target.closest('[data-pla]')) { e.stopImmediatePropagation(); e.preventDefault(); }
 }, true);
+
+/* ---------- Finestreta per escriure o canviar un nom (el text surt seleccionat: el que escrius el substitueix) ---------- */
+function demanaText(titol, valor = '', opcions = {}) {
+  document.querySelector('.demana')?.remove();
+  return new Promise((resol) => {
+    const d = document.createElement('div');
+    d.className = 'demana';
+    d.innerHTML = '<form class="demana-caixa" autocomplete="off"><label>' + esc(titol)
+      + '<input name="v" type="' + (opcions.tipus || 'text') + '" maxlength="' + (opcions.max || 300) + '" placeholder="' + esc(opcions.placeholder || '') + '" enterkeyhint="done" autocapitalize="sentences"></label>'
+      + (opcions.ajuda ? '<p class="help">' + esc(opcions.ajuda) + '</p>' : '')
+      + '<div class="grp"><button type="button" class="btn" data-dm-no>Cancel·la</button><button class="btn primary">Desa</button></div></form>';
+    document.body.appendChild(d);
+    const inp = d.querySelector('input');
+    inp.value = valor;
+    const acaba = (v) => { d.remove(); resol(v); };
+    d.querySelector('form').addEventListener('submit', (e) => { e.preventDefault(); acaba(inp.value); });
+    d.addEventListener('click', (e) => { if (e.target === d || e.target.closest('[data-dm-no]')) acaba(null); });
+    inp.addEventListener('keydown', (e) => { if (e.key === 'Escape') acaba(null); });
+    inp.focus();
+    try { inp.setSelectionRange(0, inp.value.length); } catch (x) { inp.select(); }
+    setTimeout(() => { try { inp.setSelectionRange(0, inp.value.length); } catch (x) { /* res */ } }, 40);
+  });
+}
+
+/* ---------- Galàxia: botons del cercle, aniversaris i recordatoris ---------- */
+let gxPrem = null, gxLlarg = false;
+const VISTES_AGENDA = ['propers', 'calendari', 'gent', 'ajustos'];
+$('#main').addEventListener('pointerdown', (e) => {
+  if (!e.target.closest('#gxAgenda')) return;
+  gxLlarg = false; clearTimeout(gxPrem);
+  gxPrem = setTimeout(() => { gxLlarg = true; navigator.vibrate?.(15); obreForm(null, { data: avui() }); }, 550);
+});
+['pointerup', 'pointercancel', 'pointerleave'].forEach((ev) => $('#main').addEventListener(ev, () => clearTimeout(gxPrem), true));
+$('#main').addEventListener('contextmenu', (e) => { if (e.target.closest('#gxAgenda')) e.preventDefault(); });
+$('#main').addEventListener('click', (e) => {
+  if (e.target.closest('#gxAgenda')) {
+    if (gxLlarg) { gxLlarg = false; return; }
+    // L'Agenda s'obre sempre al calendari, situat en el dia d'avui
+    ui.view = 'calendari'; ui.diaSel = avui(); ui.cursor = new Date(); ui.persona = '';
+    render(); window.scrollTo(0, 0); return;
+  }
+  const s = e.target.closest('[data-sat]');
+  if (s) {
+    const sat = SATEL.find((x) => x.id === s.dataset.sat);
+    if (sat?.aviat) { toast(`${sat.nom}: aviat`); return; }
+    ui.view = s.dataset.sat; ui.llista = ''; ui.memEdita = ''; render(); window.scrollTo(0, 0); return;
+  }
+  const f = e.target.closest('[data-fitxa]');
+  if (f) { ui.tornaA = ui.view === 'aniversaris' ? 'aniversaris' : ''; ui.view = 'gent'; ui.persona = f.dataset.fitxa; render(); window.scrollTo(0, 0); return; }
+  const fet = e.target.closest('[data-recfet]');
+  if (fet) {
+    const r = state.recordatoris.find((x) => x.id === fet.dataset.recfet);
+    if (!r) return;
+    fet.closest('li').classList.add('fet');
+    setTimeout(() => {
+      const copia = { ...r }, lloc = state.recordatoris.indexOf(r);
+      state.recordatoris = state.recordatoris.filter((x) => x.id !== r.id);
+      save(); render();
+      toastDesfes(`Fet: ${r.text}`, () => { state.recordatoris.splice(Math.max(0, lloc), 0, copia); save(); render(); });
+    }, 380);
+    return;
+  }
+  const ed = e.target.closest('[data-recedita]');
+  if (ed) {
+    const r = state.recordatoris.find((x) => x.id === ed.dataset.recedita);
+    if (!r) return;
+    demanaText('Corregeix el recordatori', r.text).then((nou) => {
+      if (nou === null || !nou.trim() || nou.trim() === r.text) return;
+      r.text = nou.trim().slice(0, 300); save(); render();
+    });
+  }
+});
+$('#main').addEventListener('submit', (e) => {
+  if (e.target.id !== 'formRec') return;
+  e.preventDefault();
+  const text = $('#recText').value.trim();
+  if (!text) { $('#recText').focus(); return; }
+  const igual = pendentsRec().find((x) => normal(x.text) === normal(text));
+  if (igual) {
+    $('#recText').value = '';
+    e.target.parentElement.querySelector('.ja-hi-es')?.remove();
+    e.target.insertAdjacentHTML('afterend', `<p class="ja-hi-es">«${esc(igual.text)}» ja és als recordatoris</p>`);
+    const avis = e.target.nextElementSibling; setTimeout(() => avis?.remove(), 2600);
+    const li = document.querySelector(`li[data-rec="${CSS.escape(igual.id)}"]`);
+    if (li) { li.classList.remove('ressalta'); void li.offsetWidth; li.classList.add('ressalta'); }
+    $('#recText').focus();
+    return;
+  }
+  state.recordatoris.push({ id: 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), text: text.slice(0, 300), creat: new Date().toISOString() });
+  save(); render();
+  $('#recText')?.focus();
+});
+
+/* ---------- Llista i Compres ---------- */
+// Avís «Ja hi és» al costat de la casella (a baix de tot no es veu quan el teclat és obert) i l'element parpelleja
+function jaHiEs(form, it) {
+  form.parentElement.querySelector('.ja-hi-es')?.remove();
+  form.insertAdjacentHTML('afterend', `<p class="ja-hi-es">«${esc(it.text)}» ja és a la llista</p>`);
+  const avis = form.nextElementSibling;
+  setTimeout(() => avis?.remove(), 2600);
+  const li = document.querySelector(`li[data-item="${CSS.escape(it.id)}"]`);
+  if (li) { li.classList.remove('ressalta'); void li.offsetWidth; li.classList.add('ressalta'); }
+  form.elements.text.focus();
+}
+let chipPrem = null, chipLlarg = false;
+$('#main').addEventListener('pointerdown', (e) => {
+  const ch = e.target.closest('[data-torna]');
+  if (!ch) return;
+  chipLlarg = false; clearTimeout(chipPrem);
+  chipPrem = setTimeout(() => {
+    chipLlarg = true; setTimeout(() => { chipLlarg = false; }, 800); navigator.vibrate?.(15);
+    const r = state.compres.find((x) => x.id === ch.dataset.torna);
+    if (!r) return;
+    const lloc = state.compres.indexOf(r), copia = { ...r };
+    state.compres.splice(lloc, 1); save(); render();
+    toastDesfes(`Tret dels habituals: ${r.text}`, () => { state.compres.splice(lloc, 0, copia); save(); render(); });
+  }, 600);
+});
+['pointerup', 'pointercancel', 'pointerleave', 'scroll'].forEach((ev) => $('#main').addEventListener(ev, () => clearTimeout(chipPrem), true));
+$('#main').addEventListener('touchmove', () => clearTimeout(chipPrem), { passive: true });
+$('#main').addEventListener('contextmenu', (e) => { if (e.target.closest('[data-torna]')) e.preventDefault(); });
+function itemsDe(col, lid) { return col === 'compres' ? state.compres : state.llistes.find((l) => l.id === lid)?.items || null; }
+$('#main').addEventListener('click', (e) => {
+  const t = e.target;
+  if (t.closest('[data-llistes]')) { ui.llista = ''; render(); window.scrollTo(0, 0); return; }
+  const ob = t.closest('[data-obrellista]');
+  if (ob) { ui.llista = ob.dataset.obrellista; render(); window.scrollTo(0, 0); return; }
+  const chk = t.closest('[data-chk]');
+  if (chk) {
+    const [col, lid, iid] = chk.dataset.chk.split('|');
+    const it = itemsDe(col, lid)?.find((x) => x.id === iid);
+    if (!it) return;
+    chk.closest('li').classList.add('fet');
+    setTimeout(() => {
+      it.fet = true;
+      if (col === 'compres') it.vegades = (it.vegades || 0) + 1;   // quantes vegades s'ha comprat
+      save(); render();
+      toastDesfes(`Fet: ${it.text}`, () => {
+        const x = itemsDe(col, lid)?.find((y) => y.id === iid);
+        if (x) { x.fet = false; if (col === 'compres' && x.vegades) x.vegades--; }
+        save(); render();
+      });
+    }, 380);
+    return;
+  }
+  const ed = t.closest('[data-itedita]');
+  if (ed) {
+    const [col, lid, iid] = ed.dataset.itedita.split('|');
+    const llista = itemsDe(col, lid), it = llista?.find((x) => x.id === iid);
+    if (!it) return;
+    demanaText('Corregeix-ho', it.text, { max: 200, ajuda: 'Deixa-ho buit per treure-ho de la llista.' }).then((nou) => {
+      if (nou === null || nou.trim() === it.text) return;
+      if (!nou.trim()) {
+        const lloc = llista.indexOf(it), copia = { ...it };
+        llista.splice(lloc, 1); save(); render();
+        toastDesfes(`Tret: ${it.text}`, () => { itemsDe(col, lid)?.splice(lloc, 0, copia); save(); render(); });
+        return;
+      }
+      it.text = nou.trim().slice(0, 200); save(); render();
+    });
+    return;
+  }
+  const tr = t.closest('[data-torna]');
+  if (tr && chipLlarg) { chipLlarg = false; return; }
+  if (tr) { const r = state.compres.find((x) => x.id === tr.dataset.torna); if (r) { r.fet = false; save(); render(); } return; }
+  const om = t.closest('[data-omple]');
+  if (om) { const l = state.llistes.find((x) => x.id === om.dataset.omple); if (l) { l.items.forEach((i) => { i.fet = false; }); save(); render(); toast('Llista a punt'); } return; }
+  const cl = t.closest('[data-llistacomparteix]');
+  if (cl) {
+    const l = state.llistes.find((x) => x.id === cl.dataset.llistacomparteix);
+    if (!l) return;
+    const pend = l.items.filter((i) => !i.fet), items = pend.length ? pend : l.items;
+    const text = l.nom + '\n' + items.map((i) => '- ' + i.text).join('\n');
+    (async () => {
+      if (navigator.share) { try { await navigator.share({ title: l.nom, text }); return; } catch (x) { if (x.name === 'AbortError') return; } }
+      try { await navigator.clipboard.writeText(text); toast("Llista copiada: enganxa-la a WhatsApp, a un correu…"); } catch (x) { prompt('Copia la llista:', text); }
+    })();
+    return;
+  }
+  if (t.closest('[data-comprescimprimeix]')) {
+    const pend = state.compres.filter((r) => !r.fet);
+    if (!pend.length) return;
+    const blocs = FAMILIES.map((f) => { const seus = pend.filter((r) => familiaDe(r) === f.id); return seus.length ? '<h2>' + esc(f.nom) + '</h2><ul>' + seus.map((r) => '<li><span class="quadret"></span>' + esc(r.text) + '</li>').join('') + '</ul>' : ''; }).join('');
+    imprimeixFull('<div class="llista-full imprès full-llista full-compra"><p class="ll-app">Galàxia</p><h1>Llista de la compra</h1>' + blocs + '</div>');
+    return;
+  }
+  if (t.closest('[data-comprescomparteix]')) {
+    const pend = state.compres.filter((r) => !r.fet);
+    if (!pend.length) return;
+    const blocs = FAMILIES.map((f) => { const seus = pend.filter((r) => familiaDe(r) === f.id); return seus.length ? f.nom + '\n' + seus.map((r) => '- ' + r.text).join('\n') : ''; }).filter(Boolean);
+    const text = 'Llista de la compra\n\n' + blocs.join('\n\n');
+    (async () => {
+      if (navigator.share) { try { await navigator.share({ title: 'Llista de la compra', text }); return; } catch (x) { if (x.name === 'AbortError') return; } }
+      try { await navigator.clipboard.writeText(text); toast('Llista copiada: enganxa-la a WhatsApp, a un correu…'); } catch (x) { prompt('Copia la llista:', text); }
+    })();
+    return;
+  }
+  const im = t.closest('[data-llistaimprimeix]');
+  if (im) {
+    const l = state.llistes.find((x) => x.id === im.dataset.llistaimprimeix);
+    if (!l) return;
+    const pend = l.items.filter((i) => !i.fet), items = pend.length ? pend : l.items;
+    $('#impressio').innerHTML = `<div class="llista-full imprès full-llista"><p class="ll-app">Galàxia</p><h1>${esc(l.nom)}</h1>
+      <ul>${items.map((i) => `<li><span class="quadret"></span>${esc(i.text)}</li>`).join('')}</ul></div>`;
+    document.body.classList.add('imprimint');
+    setTimeout(() => { window.print(); setTimeout(() => document.body.classList.remove('imprimint'), 500); }, 100);
+    return;
+  }
+  const nm = t.closest('[data-llistanom]');
+  if (nm) {
+    const l = state.llistes.find((x) => x.id === nm.dataset.llistanom);
+    if (l) demanaText('Nom de la llista', l.nom, { max: 60 }).then((nou) => { if (nou && nou.trim()) { l.nom = nou.trim().slice(0, 60); save(); render(); } });
+    return;
+  }
+  const es = t.closest('[data-llistaesborra]');
+  if (es) {
+    const l = state.llistes.find((x) => x.id === es.dataset.llistaesborra);
+    if (!l) return;
+    const lloc = state.llistes.indexOf(l), copia = JSON.parse(JSON.stringify(l));
+    state.llistes.splice(lloc, 1); ui.llista = ''; save(); render();
+    toastDesfes(`Esborrada: ${l.nom}`, () => { state.llistes.splice(lloc, 0, copia); ui.llista = copia.id; save(); render(); });
+  }
+});
+$('#main').addEventListener('change', (e) => {
+  if (!e.target.dataset?.fam) return;
+  const r = state.compres.find((x) => x.id === e.target.dataset.fam);
+  if (!r) return;
+  r.familia = e.target.value; save(); render();
+  toast(`Ara és a ${FAMILIES.find((f) => f.id === r.familia)?.nom || 'Altres'}`);
+});
+$('#main').addEventListener('submit', (e) => {
+  const f = e.target;
+  if (f.id === 'formLlistaNova') {
+    e.preventDefault();
+    const nom = $('#llistaNom').value.trim();
+    if (!nom) { $('#llistaNom').focus(); return; }
+    const l = { id: nouId('l'), nom: nom.slice(0, 60), creat: new Date().toISOString(), items: [] };
+    state.llistes.push(l); ui.llista = l.id; save(); render();
+    document.querySelector('[data-formitem] input')?.focus();
+    return;
+  }
+  if (!f.dataset.formitem) return;
+  e.preventDefault();
+  const [col, lid] = f.dataset.formitem.split('|');
+  const text = f.elements.text.value.trim().slice(0, 200), llista = itemsDe(col, lid);
+  if (!text || !llista) { f.elements.text.focus(); return; }
+  const igual = llista.find((x) => normal(x.text) === normal(text));
+  if (igual && !igual.fet) {
+    f.elements.text.value = '';
+    jaHiEs(f, igual);
+    return;
+  }
+  if (igual) igual.fet = false;
+  else llista.push(col === 'compres' ? { id: nouId('c'), text, fet: false, creat: new Date().toISOString() } : { id: nouId('i'), text, fet: false });
+  save(); render();
+  document.querySelector(`[data-formitem="${f.dataset.formitem}"] input`)?.focus();
+});
+
+/* ---------- Imprimir un full (Llista, Memòria, Documents) ---------- */
+function imprimeixFull(html) {
+  const full = $('#impressio');
+  full.innerHTML = html;
+  const imgs = [...full.querySelectorAll('img')];
+  const ves = () => {
+    document.body.classList.add('imprimint');
+    setTimeout(() => { window.print(); setTimeout(() => document.body.classList.remove('imprimint'), 500); }, 100);
+  };
+  if (!imgs.length) { ves(); return; }
+  let falten = imgs.length;
+  const una = () => { if (--falten === 0) ves(); };
+  imgs.forEach((im) => { if (im.complete) una(); else { im.onload = una; im.onerror = una; } });
+}
+const htmlFitxa = (f) => `<div class="mem-imp"><h2>${esc(f.titol)}</h2>${f.text ? `<p>${esc(f.text)}</p>` : ''}</div>`;
+
+/* ---------- Memòria ---------- */
+$('#main').addEventListener('click', async (e) => {
+  const t = e.target;
+  if (t.closest('[data-memnova]')) { ui.memEdita = 'nova'; render(); window.scrollTo(0, 0); $('#formMem input')?.focus(); return; }
+  const ed = t.closest('[data-memedita]');
+  if (ed) {
+    ui.memEdita = ed.dataset.memedita; render(); window.scrollTo(0, 0);
+    const ti = $('#formMem input');
+    if (ti) { ti.focus(); try { ti.setSelectionRange(0, ti.value.length); } catch (x) { /* res */ } }
+    return;
+  }
+  if (t.closest('[data-memcancela]')) { ui.memEdita = ''; render(); return; }
+  const es = t.closest('[data-memesborra]');
+  if (es) {
+    const f = state.memoria.find((x) => x.id === es.dataset.memesborra);
+    if (!f) return;
+    const lloc = state.memoria.indexOf(f), copia = { ...f };
+    state.memoria.splice(lloc, 1); ui.memEdita = ''; save(); render();
+    toastDesfes(`Esborrada: ${f.titol}`, () => { state.memoria.splice(lloc, 0, copia); save(); render(); });
+    return;
+  }
+  const ip = t.closest('[data-memimprimeix]');
+  if (ip) {
+    const totes = ip.dataset.memimprimeix === 'totes';
+    const llista = totes ? state.memoria.slice().sort((a, b) => a.titol.localeCompare(b.titol, 'ca')) : state.memoria.filter((x) => x.id === ip.dataset.memimprimeix);
+    if (!llista.length) return;
+    imprimeixFull(`<div class="llista-full imprès full-mem"><p class="ll-app">Galàxia · Memòria</p>${llista.map(htmlFitxa).join('')}</div>`);
+    return;
+  }
+  const sh = t.closest('[data-memcomparteix]');
+  if (sh) {
+    const f = state.memoria.find((x) => x.id === sh.dataset.memcomparteix);
+    if (!f) return;
+    const text = f.titol + (f.text ? '\n' + f.text : '');
+    if (navigator.share) { try { await navigator.share({ title: f.titol, text }); return; } catch (x) { if (x.name === 'AbortError') return; } }
+    try { await navigator.clipboard.writeText(text); toast("Copiat: enganxa'l a WhatsApp, a un correu…"); } catch (x) { prompt('Copia-ho:', text); }
+    return;
+  }
+  const cp = t.closest('[data-memcopia]');
+  if (cp) {
+    const f = state.memoria.find((x) => x.id === cp.dataset.memcopia);
+    if (!f) return;
+    try { await navigator.clipboard.writeText(f.text); toast('Copiat'); } catch (x) { prompt('Copia-ho:', f.text); }
+  }
+});
+$('#main').addEventListener('input', (e) => {
+  if (e.target.id !== 'cercaMem') return;
+  const q = normal(e.target.value.trim());
+  let n = 0;
+  document.querySelectorAll('[data-memcerca]').forEach((el) => { const si = !q || el.dataset.memcerca.includes(q); el.hidden = !si; if (si) n++; });
+  const r = document.getElementById('memRes'); if (r) r.hidden = n > 0;
+});
+$('#main').addEventListener('submit', (e) => {
+  if (e.target.id !== 'formMem') return;
+  e.preventDefault();
+  const titol = e.target.elements.titol.value.trim().slice(0, 80), text = e.target.elements.text.value.trim().slice(0, 3000);
+  if (!titol) { e.target.elements.titol.focus(); return; }
+  const ara = new Date().toISOString();
+  const f = state.memoria.find((x) => x.id === ui.memEdita);
+  if (f) Object.assign(f, { titol, text, modificat: ara });
+  else state.memoria.push({ id: nouId('m'), titol, text, creat: ara });
+  ui.memEdita = ''; save(); render();
+  toast(/contrasenya|password|\bpw\b|\bpin\b/i.test(titol + ' ' + text) ? "Desat. Recorda: les contrasenyes, millor a l'app Contrasenyes de l'iPhone." : 'Desat', 4500);
+});
+
+/* ---------- Píndoles ---------- */
+$('#main').addEventListener('click', (e) => {
+  const t = e.target;
+  if (t.closest('[data-pindoles]')) { ui.view = 'pindoles'; ui.pindTab = 'dies'; ui.pindDies = 30; render(); window.scrollTo(0, 0); return; }
+  const tb = t.closest('[data-pdtab]');
+  if (tb) { ui.pindTab = tb.dataset.pdtab; render(); return; }
+  if (t.closest('[data-pdmes]')) { ui.pindDies = (ui.pindDies || 30) + 30; render(); return; }
+  const fv = t.closest('[data-pdfav]');
+  if (fv) {
+    const text = fv.dataset.pdfav, llista = preferides().filter((x) => x !== text);
+    if (llista.length === preferides().length) llista.push(text);
+    state.ajustos.pindoles = llista; save();
+    const y = window.scrollY; render(); window.scrollTo(0, y);
+  }
+});
+
+// Frases pròpies: afegir, corregir i treure
+$('#main').addEventListener('submit', (e) => {
+  if (e.target.id !== 'formFrase') return;
+  e.preventDefault();
+  const text = $('#fraseText').value.trim().replace(/\s+/g, ' ');
+  if (!text) { $('#fraseText').focus(); return; }
+  const totes = [...frasesMeves().map((f) => f.text), ...PINDOLES];
+  if (totes.some((t) => normal(t).replace(/[^a-z0-9]/g, '') === normal(text).replace(/[^a-z0-9]/g, ''))) {
+    e.target.parentElement.querySelector('.ja-hi-es')?.remove();
+    e.target.insertAdjacentHTML('afterend', '<p class="ja-hi-es">Aquesta frase ja hi és</p>');
+    const avis = e.target.nextElementSibling; setTimeout(() => avis?.remove(), 2600);
+    $('#fraseText').value = ''; $('#fraseText').focus(); return;
+  }
+  // Surt per primer cop el primer dia lliure a partir de demà
+  const ocupats = new Set(frasesMeves().map((f) => f.des));
+  let d = addDays(parseYmd(avui()), 1);
+  while (ocupats.has(ymd(d))) d = addDays(d, 1);
+  state.ajustos.frasesMeves = [...frasesMeves(), { id: nouId('f'), text: text.slice(0, 200), des: ymd(d) }];
+  save(); render();
+  const dies = Math.round((d - parseYmd(avui())) / 86400000);
+  toast(dies === 1 ? 'Frase afegida: sortirà demà' : `Frase afegida: sortirà per primer cop el ${dataLlarga(ymd(d))}`, 4000);
+  $('#fraseText')?.focus();
+});
+$('#main').addEventListener('click', (e) => {
+  const tr = e.target.closest('[data-frasetreu]');
+  if (tr) {
+    const llista = frasesMeves(), f = llista.find((x) => x.id === tr.dataset.frasetreu);
+    if (!f) return;
+    state.ajustos.frasesMeves = llista.filter((x) => x !== f); save(); render();
+    toastDesfes('Frase treta', () => { state.ajustos.frasesMeves = [...frasesMeves(), f]; save(); render(); });
+    return;
+  }
+  const ed = e.target.closest('[data-frasedita]');
+  if (ed) {
+    const f = frasesMeves().find((x) => x.id === ed.dataset.frasedita);
+    if (!f) return;
+    demanaText('Corregeix la frase', f.text, { max: 200 }).then((nou) => {
+      if (!nou || !nou.trim() || nou.trim() === f.text) return;
+      state.ajustos.frasesMeves = frasesMeves().map((x) => (x.id === f.id ? { ...x, text: nou.trim().slice(0, 200) } : x));
+      save(); render();
+    });
+  }
+});
+
+/* ---------- Documents ---------- */
+function carregaImg(file) {
+  return new Promise((ok, ko) => {
+    const u = URL.createObjectURL(file), im = new Image();
+    im.onload = () => { URL.revokeObjectURL(u); ok(im); };
+    im.onerror = () => { URL.revokeObjectURL(u); ko(new Error('imatge')); };
+    im.src = u;
+  });
+}
+function redueix(im, max) {
+  const w = im.naturalWidth, h = im.naturalHeight, s = Math.min(1, max / Math.max(w, h));
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.round(w * s)); c.height = Math.max(1, Math.round(h * s));
+  const x = c.getContext('2d');
+  x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(im, 0, 0, c.width, c.height);
+  return c;
+}
+const MAX_DOC = 50 * 1024 * 1024;
+$('#main').addEventListener('change', async (e) => {
+  if (e.target.id !== 'docFitxer') return;
+  const file = e.target.files?.[0];
+  e.target.value = '';
+  if (!file) return;
+  if (file.size > MAX_DOC) { toast(`El fitxer fa ${midaText(file.size)} i el màxim són 50 MB.`, 5000); return; }
+  const ext = ((file.name.match(/\.([a-z0-9]{1,8})$/i) || [])[1] || '').toLowerCase();
+  const esFoto = /^image\/(jpeg|png|webp|heic|heif|gif)$/.test(file.type) || /^(jpe?g|png|webp|heic|heif)$/.test(ext);
+  const nomNet = file.name.replace(/\.[a-z0-9]{1,8}$/i, '');
+  const perDefecte = esFoto && /^(image|img|photo|foto|dsc|pxl)[\s_-]?\d*/i.test(nomNet) ? 'Document ' + new Date().toLocaleDateString('ca-ES') : nomNet || 'Document';
+  const titol = await demanaText('Nom del document', perDefecte, { max: 80 });
+  if (titol === null) return;
+  ui.docPujant = true; render();
+  try {
+    const id = nouId('d');
+    let blob = file, tipus = file.type || 'application/octet-stream', mini = '', extFinal = ext || 'bin';
+    if (esFoto) {
+      // Les fotos es redueixen perquè no ocupin tant; si el navegador no la pot llegir, es puja tal com és
+      try {
+        const im = await carregaImg(file);
+        blob = await new Promise((ok) => redueix(im, 2000).toBlob(ok, 'image/jpeg', 0.82));
+        tipus = 'image/jpeg'; extFinal = 'jpg';
+        mini = redueix(im, 240).toDataURL('image/jpeg', 0.6);
+      } catch (x) { blob = file; }
+    }
+    const cami = await sync().pujaDoc(id, blob, tipus, extFinal);
+    state.documents.push({ id, titol: (titol.trim() || perDefecte).slice(0, 80), tipus, cami, nomFitxer: file.name.slice(0, 120), mida: blob.size, mini, creat: new Date().toISOString() });
+    save(); toast('Document desat');
+  } catch (err) {
+    const gran = /size|large|exceed|413/i.test(String(err?.message || err?.error || err?.statusCode || ''));
+    toast(!navigator.onLine ? 'Cal connexió a internet per pujar documents.' : gran ? 'El fitxer és massa gran per al núvol.' : "No s'ha pogut pujar el document.", 4500);
+  }
+  ui.docPujant = false; render();
+});
+// Enllaç a una pàgina web: no es puja cap fitxer, només es guarda l'adreça
+$('#main').addEventListener('click', async (e) => {
+  if (!e.target.closest('[data-docenllac]')) return;
+  let url = ((await demanaText("Adreça de la pàgina web", '', { tipus: 'url', max: 2000, placeholder: 'Enganxa-la aquí' })) || '').trim();
+  if (!url) return;
+  if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+  if (!/^https?:\/\/[^\s.]+\.[^\s]+$/i.test(url)) { toast('Aquesta adreça no sembla correcta.'); return; }
+  const titol = await demanaText('Nom del document', domini(url), { max: 80 });
+  if (titol === null) return;
+  state.documents.push({ id: nouId('d'), titol: (titol.trim() || domini(url)).slice(0, 80), tipus: 'enllac', url: url.slice(0, 2000), creat: new Date().toISOString() });
+  save(); render(); toast('Enllaç desat');
+});
+$('#main').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-docfiltre]');
+  if (!b) return;
+  ui.docFiltre = b.dataset.docfiltre; render();
+});
+$('#main').addEventListener('input', (e) => {
+  if (e.target.id !== 'cercaDoc') return;
+  ui.docCerca = e.target.value;
+  const q = normal(e.target.value.trim());
+  let n = 0;
+  document.querySelectorAll('[data-doccerca]').forEach((el) => { el.hidden = Boolean(q) && !el.dataset.doccerca.includes(q); if (!el.hidden) n++; });
+  const r = document.getElementById('docRes'); if (r) r.hidden = n > 0;
+});
+// Visor a pantalla completa: imatge, o botó per obrir el PDF
+// Ampliar la imatge: pessigar amb dos dits, arrossegar amb un dit i doble toc per ampliar o tornar a la mida
+function ampliable(cos, img) {
+  let s = 1, x = 0, y = 0, ini = null, ultimToc = 0;
+  const limita = () => {
+    const mx = (img.offsetWidth * (s - 1)) / 2, my = (img.offsetHeight * (s - 1)) / 2;
+    x = Math.max(-mx, Math.min(mx, x)); y = Math.max(-my, Math.min(my, y));
+  };
+  const aplica = (anima) => { img.style.transition = anima ? 'transform .2s ease' : 'none'; img.style.transform = `translate(${x}px, ${y}px) scale(${s})`; };
+  const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  cos.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2) ini = { d: dist(e.touches), s, x, y, mx: (e.touches[0].clientX + e.touches[1].clientX) / 2, my: (e.touches[0].clientY + e.touches[1].clientY) / 2 };
+    else if (e.touches.length === 1) {
+      const ara = Date.now();
+      if (ara - ultimToc < 300) {   // doble toc
+        if (s > 1) { s = 1; x = 0; y = 0; }
+        else {
+          const r = cos.getBoundingClientRect();
+          s = 2.5; x = -(e.touches[0].clientX - (r.left + r.width / 2)) * 1.5; y = -(e.touches[0].clientY - (r.top + r.height / 2)) * 1.5; limita();
+        }
+        aplica(true); ultimToc = 0; ini = null; return;
+      }
+      ultimToc = ara;
+      ini = { px: e.touches[0].clientX, py: e.touches[0].clientY, x, y };
+    }
+  }, { passive: true });
+  cos.addEventListener('touchmove', (e) => {
+    if (!ini) return;
+    e.preventDefault();
+    if (e.touches.length === 2 && ini.d) {
+      s = Math.max(1, Math.min(6, ini.s * dist(e.touches) / ini.d));
+      const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2, my = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      x = ini.x + (mx - ini.mx); y = ini.y + (my - ini.my);
+    } else if (e.touches.length === 1 && ini.px !== undefined && s > 1) {
+      x = ini.x + e.touches[0].clientX - ini.px; y = ini.y + e.touches[0].clientY - ini.py;
+    } else return;
+    limita(); aplica(false);
+  }, { passive: false });
+  cos.addEventListener('touchend', (e) => {
+    if (e.touches.length === 1) ini = { px: e.touches[0].clientX, py: e.touches[0].clientY, x, y };
+    else if (!e.touches.length) { ini = null; if (s < 1.05) { s = 1; x = 0; y = 0; aplica(true); } }
+  });
+  // A l'ordinador: roda del ratolí
+  cos.addEventListener('wheel', (e) => { e.preventDefault(); s = Math.max(1, Math.min(6, s * (e.deltaY < 0 ? 1.15 : 0.87))); if (s === 1) { x = 0; y = 0; } limita(); aplica(false); }, { passive: false });
+}
+function tancaVisor() { document.querySelector('.doc-visor')?.remove(); }
+// Visor a pantalla completa: la foto (amb zoom), o una fitxa amb el tipus i el botó per obrir-lo
+async function obreVisor(doc) {
+  tancaVisor();
+  const cat = catDoc(doc), esEnllac = cat === 'enllac', esFoto = cat === 'foto' && doc.tipus === 'image/jpeg';
+  const v = document.createElement('div');
+  v.className = 'doc-visor';
+  v.innerHTML = `<div class="doc-visor-cap"><button type="button" class="sat-torna" data-visor="tanca">‹ Tanca</button><b>${esc(doc.titol)}</b></div>
+    <div class="doc-visor-cos"><p class="help">Carregant…</p></div>
+    <div class="doc-visor-peu"><a class="btn primary" data-visor="obre" target="_blank" rel="noopener" hidden>${esEnllac ? 'Obre la pàgina' : 'Obre / Comparteix'}</a>
+      ${esEnllac ? '<button type="button" class="btn" data-visor="comparteix">Comparteix</button>' : '<button type="button" class="btn" data-visor="imprimeix" hidden>Imprimeix</button>'}
+      <button type="button" class="enllac" data-visor="nom">Canvia el nom</button><button type="button" class="enllac perill" data-visor="esborra">Esborra</button></div>`;
+  document.body.appendChild(v);
+  v.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-visor]');
+    if (!b) return;
+    const acc = b.dataset.visor;
+    if (acc === 'tanca') { tancaVisor(); return; }
+    if (acc === 'comparteix') {
+      if (navigator.share) { try { await navigator.share({ title: doc.titol, url: doc.url }); return; } catch (x) { if (x.name === 'AbortError') return; } }
+      try { await navigator.clipboard.writeText(doc.url); toast('Enllaç copiat'); } catch (x) { prompt("Copia l'enllaç:", doc.url); }
+      return;
+    }
+    if (acc === 'imprimeix') {
+      const url = v.querySelector('[data-visor="obre"]').href;
+      if (!url) return;
+      if (!esFoto) {   // els altres documents s'imprimeixen des del visor de l'iPhone
+        window.open(url, '_blank', 'noopener');
+        toast('Al document, toca Compartir i després Imprimir', 5000);
+        return;
+      }
+      imprimeixFull(`<div class="doc-imp"><img src="${esc(url)}" alt=""></div>`);
+      return;
+    }
+    if (acc === 'nom') {
+      const nou = await demanaText('Nom del document', doc.titol, { max: 80 });
+      if (nou && nou.trim()) { doc.titol = nou.trim().slice(0, 80); save(); render(); v.querySelector('.doc-visor-cap b').textContent = doc.titol; }
+      return;
+    }
+    if (acc === 'esborra') {
+      if (b.dataset.segur !== '1') { b.dataset.segur = '1'; b.textContent = "Segur? Toca'l un altre cop"; return; }
+      try {
+        if (doc.cami) await sync().esborraDoc(doc.cami);
+        state.documents = state.documents.filter((x) => x.id !== doc.id);
+        save(); tancaVisor(); render(); toast('Document esborrat');
+      } catch (err) { toast(navigator.onLine ? "No s'ha pogut esborrar." : 'Cal connexió a internet.'); }
+    }
+  });
+  const cos = v.querySelector('.doc-visor-cos'), obre = v.querySelector('[data-visor="obre"]');
+  const fitxa = (detall) => `<div class="doc-pdf" style="--fc:${CATS_DOC.find((c) => c.id === cat).c}"><b>${esc(etiquetaDoc(doc))}</b><p class="doc-detall">${detall}</p></div>`;
+  if (esEnllac) {
+    obre.href = doc.url; obre.hidden = false;
+    cos.innerHTML = fitxa(`<span class="doc-url">${esc(doc.url)}</span>`);
+    return;
+  }
+  try {
+    // Les fotos i els PDF s'obren dins del navegador; la resta es descarreguen amb el seu nom
+    const url = await sync().urlDoc(doc.cami, esFoto || cat === 'pdf' ? '' : doc.nomFitxer || (doc.titol + '.' + extDoc(doc)));
+    if (!document.body.contains(v)) return;
+    obre.href = url; obre.hidden = false; v.querySelector('[data-visor="imprimeix"]').hidden = false;
+    if (esFoto) {
+      cos.innerHTML = `<img src="${esc(url)}" alt="${esc(doc.titol)}" draggable="false">`;
+      ampliable(cos, cos.querySelector('img'));
+      v.querySelector('.doc-visor-cap').insertAdjacentHTML('afterend', '<p class="help doc-zoom">Pessiga amb dos dits o toca dues vegades per ampliar</p>');
+    } else {
+      cos.innerHTML = fitxa(`${esc(doc.nomFitxer || '')}${doc.mida ? '<br>' + esc(midaText(doc.mida)) : ''}<br><span class="help">Toca «Obre / Comparteix» per veure'l, desar-lo o enviar-lo.</span>`);
+    }
+  } catch (err) {
+    cos.innerHTML = `<p class="help">${navigator.onLine ? "No s'ha pogut obrir el document." : 'Cal connexió a internet per veure el document.'}</p>`;
+  }
+}
+$('#main').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-docobre]');
+  if (!b) return;
+  const doc = state.documents.find((x) => x.id === b.dataset.docobre);
+  if (!doc) return;
+  if (!usuari() && doc.tipus !== 'enllac') { toast('Per veure els documents cal haver entrat amb el correu.'); return; }
+  obreVisor(doc);
+});
 
 /* ---------- Lliscar un pla cap a l'esquerra: Confirma / Esborra ---------- */
 let llisc = null, murObert = null;
@@ -1570,6 +2477,27 @@ $('#main').addEventListener('click', (e) => {
 });
 
 /* ---------- Ajustos: persones convidades ---------- */
+$('#main').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-tema]');
+  if (!b) return;
+  state.ajustos.tema = b.dataset.tema === 'auto' ? '' : b.dataset.tema; save(); render();
+});
+// Canviar el mode propi (Ajustos) o el d'una persona convidada (administrador)
+$('#main').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-mode]');
+  if (!b || (b.dataset.mode === 'agenda') === modeAgenda()) return;
+  state.ajustos.mode = b.dataset.mode; save(); render();
+  toast(b.dataset.mode === 'agenda' ? "Ara a l'inici només hi haurà l'Agenda" : 'Ara en obrir l\'app veuràs la galàxia');
+});
+$('#main').addEventListener('change', async (e) => {
+  const s = e.target.closest('[data-modeconv]');
+  if (!s) return;
+  try {
+    await sync().modeConvidat(s.dataset.modeconv, s.value);
+    const c = (admin.llista || []).find((x) => x.email === s.dataset.modeconv); if (c) c.mode = s.value;
+    toast(`Mode ${s.value === 'agenda' ? 'Agenda' : 'Galàxia'} per a ${c?.nom || s.dataset.modeconv}`);
+  } catch (err) { toast(navigator.onLine ? "No s'ha pogut canviar. Has executat l'SQL dels modes?" : 'Cal connexió a internet.'); }
+});
 async function carregaAdmin(forca = false) {
   const u = usuari();
   if (!u) { admin.es = false; admin.mirat = ''; admin.llista = null; return; }
@@ -1580,20 +2508,20 @@ async function carregaAdmin(forca = false) {
   if (admin.es) { try { admin.llista = await sync().convidats(); } catch (e) { admin.llista = []; } }
   if (ui.view === 'ajustos') render();
 }
-async function convidaEmail(email, nom = '') {
+async function convidaEmail(email, nom = '', mode = 'galaxia') {
   if (!admin.es || !emailValid(email)) return false;
   if ((admin.llista || []).some((c) => normal(c.email) === normal(email))) return false;
-  await sync().convida(email, nom);
+  await sync().convida(email, nom, mode);
   admin.llista = await sync().convidats();
   return true;
 }
 $('#main').addEventListener('submit', async (e) => {
   if (e.target.id !== 'formConvida') return;
   e.preventDefault();
-  const f = e.target, email = f.email.value.trim().toLowerCase(), nom = f.nom.value.trim();
+  const f = e.target, email = f.email.value.trim().toLowerCase(), nom = f.nom.value.trim(), mode = f.mode?.value || 'galaxia';
   if (!emailValid(email)) { toast('Aquest correu no sembla correcte'); return; }
   try {
-    const nou = await convidaEmail(email, nom);
+    const nou = await convidaEmail(email, nom, mode);
     toast(nou ? `${nom || email} ja pot entrar a l'app` : 'Aquesta persona ja hi era');
     render();
   } catch (err) { toast(navigator.onLine ? "No s'ha pogut afegir. Torna-ho a provar." : 'Cal connexió a internet.'); }
@@ -1690,7 +2618,7 @@ function obreLlista(quin) {
     if (e.target.closest('#llImprimeix')) {
       // Es prepara un full a part (fora de la finestra) i s'imprimeix només aquest
       const full = $('#impressio');
-      full.innerHTML = `<div class="llista-full imprès"><p class="ll-app">Què · Qui · Quan</p>${htmlLlista(dies)}</div>`;
+      full.innerHTML = `<div class="llista-full imprès"><p class="ll-app">Galàxia</p>${htmlLlista(dies)}</div>`;
       tancaDlg();
       document.body.classList.add('imprimint');
       setTimeout(() => { window.print(); setTimeout(() => document.body.classList.remove('imprimint'), 500); }, 100);
@@ -1758,7 +2686,7 @@ $('#main').addEventListener('click', (e) => {
 // Caselles de data: en tocar-ne una, se selecciona el que hi ha i el que escriguis ho substitueix
 $('#main').addEventListener('focusin', (e) => {
   const t = e.target;
-  if (!t.dataset?.dm) return;
+  if (!t.dataset?.dm && !(t.dataset && 'triatot' in t.dataset)) return;
   const tria = () => { try { t.setSelectionRange(0, t.value.length); } catch (x) { t.select?.(); } };
   tria(); setTimeout(tria, 30);
 });
@@ -1945,7 +2873,7 @@ function obreComparteix(p) {
       <input type="email" data-email="${i}" value="${esc(f.email)}" placeholder="Correu de ${esc(f.nom)}" autocomplete="off" inputmode="email">
     </div>`;
   const app = usuari()
-    ? `<p class="help">Les persones que marquis veuran el pla a la seva app <b>Què · Qui · Quan</b> i et podran dir si hi van. Si encara no la tenen, els sortirà quan hi entrin amb aquest correu.</p>
+    ? `<p class="help">Les persones que marquis veuran el pla a la seva app <b>Galàxia</b> i et podran dir si hi van. Si encara no la tenen, els sortirà quan hi entrin amb aquest correu.</p>
        <div id="dests">${files.map(fila).join('') || '<p class="help">Afegeix el correu de qui vulguis:</p>'}</div>
        <div class="afegeix"><input type="email" id="altreCorreu" placeholder="Un altre correu" autocomplete="off" inputmode="email"><button type="button" class="btn" id="afegeixCorreu">Afegeix</button></div>
        <button type="button" class="btn primary ample" id="envia">Desa i envia</button>`
@@ -2336,7 +3264,7 @@ function afegeixPlans(fitxer) {
     let d;
     try { d = JSON.parse(r.result); } catch (e) { d = null; }
     const llista = d && d.app === 'que-qui-quan-plans' && Array.isArray(d.plans) ? d.plans.filter((p) => p && p.id && /^\d{4}-\d{2}-\d{2}$/.test(p.data || '')) : null;
-    if (!llista) { toast('Aquest fitxer no és una llista de plans de Què · Qui · Quan.'); return; }
+    if (!llista) { toast('Aquest fitxer no és una llista de plans de Galàxia.'); return; }
     const nous = llista.filter((p) => !state.plans.some((x) => x.id === p.id));
     if (!nous.length) { toast('Tots aquests plans ja els tens'); return; }
     if (!confirm(`Vols afegir ${nous.length === 1 ? '1 pla' : nous.length + ' plans'} a la teva agenda?${d.nom ? ' (' + d.nom + ')' : ''}`)) return;
@@ -2367,7 +3295,7 @@ function importa(fitxer) {
       if (!d || !Array.isArray(d.plans)) throw new Error('format');
       if (!confirm(`Aquesta còpia té ${d.plans.length} plans. Vols substituir les dades actuals per les de la còpia?`)) return;
       state = normalize(d); save(); render(); toast('Còpia recuperada');
-    } catch (e) { toast('Aquest fitxer no és una còpia de Què · Qui · Quan.'); }
+    } catch (e) { toast('Aquest fitxer no és una còpia de Galàxia.'); }
   };
   r.readAsText(fitxer);
 }
@@ -2395,4 +3323,42 @@ setInterval(() => {
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 
 // Tocar el logo de dalt torna a la portada
-document.querySelector('.brand')?.addEventListener('click', () => { ui.view = 'inici'; ui.persona = ''; render(); window.scrollTo(0, 0); });
+// Tocar el logo obre un menú petit: tornar a l'inici i el compte (sortir d'aquest dispositiu o dels altres)
+function tancaMenuCompte() { document.querySelector('.menu-compte')?.remove(); }
+function obreMenuCompte() {
+  if (document.querySelector('.menu-compte')) { tancaMenuCompte(); return; }
+  const u = usuari();
+  const m = document.createElement('div');
+  m.className = 'menu-compte';
+  m.innerHTML = '<div class="mc-caixa" role="menu">'
+    + (ui.view !== 'inici' ? '<button type="button" data-mc="inici">Torna a l\'inici</button>' : '')
+    + (u ? '<p class="mc-qui">Has entrat com a<br><b>' + esc(u.email) + '</b></p>'
+        + '<button type="button" data-mc="surt">Tanca la sessió en aquest dispositiu</button>'
+        + '<button type="button" data-mc="altres">Tanca la sessió als altres dispositius</button>'
+      : (sync()?.disponible ? '<p class="mc-qui">No has entrat amb el teu correu.</p><button type="button" data-mc="entra">Entra amb el teu correu</button>' : ''))
+    + '<button type="button" class="mc-tanca" data-mc="tanca">Tanca</button></div>';
+  document.body.appendChild(m);
+  const cap = document.querySelector('header.top');
+  if (cap) m.querySelector('.mc-caixa').style.top = (cap.getBoundingClientRect().bottom + 6) + 'px';
+  m.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-mc]');
+    if (!b) { if (e.target === m) tancaMenuCompte(); return; }
+    const acc = b.dataset.mc;
+    tancaMenuCompte();
+    if (acc === 'inici') { ui.view = 'inici'; ui.persona = ''; render(); window.scrollTo(0, 0); return; }
+    if (acc === 'entra') { ui.view = 'entrada'; ui.entrada = { pas: 'correu', email: '' }; render(); return; }
+    if (acc === 'surt') {
+      const pend = sync().pendentsPerPujar();
+      if (!confirm('Tancar la sessió en aquest dispositiu?' + (pend ? '\n\nAtenció: hi ha ' + pend + " canvis que encara no s'han pujat al núvol i es perdran." : "\n\nS'esborraran les teves dades d'aquest aparell. Són al núvol: les recuperaràs quan tornis a entrar."))) return;
+      await sync().surt();
+      ui.view = 'entrada'; ui.entrada = { pas: 'correu', email: '' }; render();
+      return;
+    }
+    if (acc === 'altres') {
+      if (!confirm("Tancar la sessió a tots els altres dispositius (ordinadors, tauletes o mòbils on hagis entrat)?\n\nEn aquest continuaràs dins.")) return;
+      try { await sync().surtAltres(); toast("Sessió tancada als altres dispositius", 4000); }
+      catch (err) { toast(navigator.onLine ? "No s'ha pogut tancar. Torna-ho a provar." : 'Cal connexió a internet.'); }
+    }
+  });
+}
+document.querySelector('.brand')?.addEventListener('click', obreMenuCompte);

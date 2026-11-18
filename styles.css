@@ -23,7 +23,7 @@
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #16120F;
     --surface: #211B17;
     --surface-2: #2B241F;
@@ -43,6 +43,26 @@
     color-scheme: dark;
   }
 }
+:root[data-theme="dark"] {
+    --bg: #16120F;
+    --surface: #211B17;
+    --surface-2: #2B241F;
+    --text: #F6EFE6;
+    --muted: #A89B8F;
+    --border: #3A3029;
+    --accent: #FF6E5C;
+    --accent-text: #1A1512;
+    --que: #FF7A69;
+    --qui: #FFC94A;
+    --quan: #34C7AE;
+    --danger: #FF7B72;
+    --warn-bg: #3A2E12;
+    --warn-text: #FFD27A;
+    --head-bg: #0E0B09;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 6px 18px rgba(0, 0, 0, .35);
+    color-scheme: dark;
+  }
+:root[data-theme="light"] { color-scheme: light; }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { margin: 0; }
@@ -799,3 +819,233 @@ body.mode-inici main { padding-top: 0; padding-bottom: 0; }
 .vista-dia .franja .pla-mur { flex: 1; min-width: 0; margin-bottom: 0; }
 .setm-plans .pla-mur { margin-bottom: 6px; }
 .pla-mur { min-width: 0; max-width: 100%; }
+
+/* =========  GALÀXIA: l'Agenda al mig i les micro-apps al voltant  ========= */
+.brand-nom .w-galaxia { color: var(--head-text); letter-spacing: .5px; }
+body.mode-galaxia .tabs, body.mode-galaxia .top .nou { display: none; }
+body.mode-galaxia main { padding-bottom: calc(40px + var(--safe-b)); }
+.galaxia { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 10px 0 20px; min-height: calc(100dvh - 130px - var(--safe-t)); box-sizing: border-box; }
+.gx-salut h1 { font-weight: 700; font-size: 21px; margin: 6px 0 2px; }
+.gx-salut .portada-data { margin: 0 0 4px; }
+.gx-resum { margin: 0; color: var(--text); font-weight: 700; font-size: 14px; }
+.gx-cercle { --r: min(32vw, 150px); position: relative; width: calc(var(--r) * 2 + 96px); height: calc(var(--r) * 2 + 110px); margin: 14px auto 0; }
+.gx-orbita { position: absolute; left: 50%; top: 50%; width: calc(var(--r) * 2); height: calc(var(--r) * 2); transform: translate(-50%, -50%);
+  border-radius: 50%; border: 1.5px dashed var(--border); }
+.gx-centre { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 124px; height: 124px; border-radius: 50%;
+  border: 0; cursor: pointer; background: var(--accent); color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--accent) 40%, transparent); -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; transition: transform .15s; }
+.gx-centre:active { transform: translate(-50%, -50%) scale(.95); }
+.gx-centre b { font-family: var(--font-title); font-size: 44px; font-weight: 600; line-height: 1; }
+.gx-centre span { font-weight: 800; font-size: 15px; margin-top: 2px; }
+.gx-sat { position: absolute; left: 50%; top: 50%; width: 96px; border: 0; background: none; padding: 0; cursor: pointer; color: var(--text);
+  transform: translate(calc(-50% + cos(var(--a)) * var(--r)), calc(-34px + sin(var(--a)) * var(--r)));
+  display: flex; flex-direction: column; align-items: center; gap: 5px; -webkit-tap-highlight-color: transparent; }
+.gx-bola { position: relative; width: 62px; height: 62px; border-radius: 50%; background: var(--c); box-shadow: 0 6px 18px color-mix(in srgb, var(--c) 35%, transparent); transition: transform .15s; }
+.gx-sat:active .gx-bola { transform: scale(.92); }
+.gx-bola i { position: absolute; right: -4px; top: -4px; min-width: 24px; height: 24px; padding: 0 6px; box-sizing: border-box; border-radius: 99px;
+  background: var(--surface); color: var(--text); font-style: normal; font-weight: 800; font-size: 13px; line-height: 24px; box-shadow: var(--shadow); }
+.gx-nom { font-weight: 800; font-size: 13.5px; background: var(--surface); padding: 2px 9px; border-radius: 99px; box-shadow: var(--shadow); white-space: nowrap; }
+.gx-sat small { color: var(--muted); font-size: 11px; font-weight: 700; margin-top: -3px; }
+.gx-sat.aviat .gx-bola { opacity: .4; box-shadow: none; }
+.gx-sat.aviat .gx-nom { color: var(--muted); }
+@media (max-width: 360px) { .gx-cercle { --r: 108px; } .gx-centre { width: 104px; height: 104px; } .gx-bola { width: 54px; height: 54px; } }
+/* Capçalera de les micro-apps */
+.sat-cap { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; }
+.sat-cap h1 { margin: 0; font-size: 24px; }
+.sat-torna { border: 0; background: var(--surface-2); color: var(--text); font: inherit; font-weight: 800; padding: 7px 12px; border-radius: 99px; cursor: pointer; }
+.buit { text-align: center; padding: 30px 0 10px; }
+/* Aniversaris */
+.aniv-mes { font-size: 15px; color: var(--muted); margin: 18px 0 8px; text-transform: none; }
+.aniv-llista { display: grid; gap: 8px; }
+.aniv-fila { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; border: 1px solid var(--border); background: var(--surface);
+  border-radius: 14px; padding: 10px 12px; cursor: pointer; color: var(--text); font: inherit; }
+.aniv-dia { width: 44px; height: 44px; flex: none; border-radius: 50%; background: color-mix(in srgb, #E64980 14%, var(--surface)); color: #C2255C;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; }
+.aniv-fila.sant .aniv-dia { background: color-mix(in srgb, #E8590C 14%, var(--surface)); color: #D9480F; }
+.aniv-dia b { font-size: 18px; } .aniv-dia small { font-size: 10.5px; font-weight: 700; }
+.aniv-cos { display: flex; flex-direction: column; min-width: 0; }
+.aniv-cos small { color: var(--muted); font-weight: 600; }
+.aniv-fila.avui { border-color: #E64980; box-shadow: 0 0 0 2px color-mix(in srgb, #E64980 25%, transparent); }
+/* Recordatoris */
+.rec-nou { display: flex; gap: 8px; margin: 10px 0 14px; }
+.rec-nou input { flex: 1; min-width: 0; }
+.rec-llista { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.rec-llista li { display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 8px 12px;
+  transition: opacity .35s, transform .35s; }
+.rec-llista li.fet { opacity: 0; transform: translateX(30px); }
+.rec-check { width: 26px; height: 26px; flex: none; border-radius: 50%; border: 2.5px solid #E8590C; background: none; cursor: pointer; padding: 0; }
+.rec-llista li.fet .rec-check { background: #E8590C; }
+.rec-text { flex: 1; min-width: 0; border: 0; background: none; text-align: left; padding: 4px 0; cursor: pointer; color: var(--text); font: inherit;
+  display: flex; flex-direction: column; }
+.rec-text span { font-weight: 700; overflow-wrap: anywhere; }
+.rec-text small { color: var(--muted); font-weight: 600; font-size: 12px; }
+.gx-centre b small { font-size: 22px; font-weight: 600; }
+.gx-centre b { font-size: 38px; }
+.entrada-galaxia { color: var(--text); }
+.gx-centre .gx-centre-nom { font-family: var(--font-title); font-weight: 600; font-size: 24px; letter-spacing: .4px; margin: 0; }
+.gx-bola { display: flex; align-items: center; justify-content: center; }
+.gx-ini { font-family: var(--font-title); font-weight: 600; font-size: 28px; line-height: 1; color: #fff; }
+.gx-sat.aviat .gx-ini { opacity: .9; }
+/* Llista i Compres */
+.vista-llista { --c: #1C7ED6; } .vista-compres { --c: #2F9E44; } .vista-recordatoris { --c: #E8590C; }
+.rec-check { border-color: var(--c, #E8590C); }
+.rec-llista li.fet .rec-check { background: var(--c, #E8590C); }
+.ll-index { display: grid; gap: 8px; }
+.ll-fila { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; text-align: left; border: 1px solid var(--border);
+  background: var(--surface); border-radius: 14px; padding: 14px 14px; cursor: pointer; color: var(--text); font: inherit; }
+.ll-fila b { font-size: 16px; overflow-wrap: anywhere; }
+.ll-fila small { color: var(--muted); font-weight: 700; white-space: nowrap; }
+.ll-peu { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-top: 22px; }
+.enllac.perill { color: var(--danger); }
+.ll-titol { font-size: 15px; color: var(--muted); margin: 26px 0 2px; }
+.ll-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.ll-chip { border: 1.5px solid color-mix(in srgb, var(--c) 45%, var(--border)); background: var(--surface); color: var(--text); font: inherit; font-weight: 700;
+  padding: 7px 13px; border-radius: 99px; cursor: pointer; }
+.ll-chip:active { background: color-mix(in srgb, var(--c) 15%, var(--surface)); }
+.vista-llista .rec-nou .btn.primary, .vista-compres .rec-nou .btn.primary, .vista-recordatoris .rec-nou .btn.primary { background: var(--c); border-color: var(--c); color: #fff; box-shadow: none; }
+/* Memòria */
+.vista-memoria { --c: #7048E8; }
+.vista-memoria .btn.primary { background: var(--c); border-color: var(--c); color: #fff; box-shadow: none; }
+.mem-barra { display: flex; gap: 8px; margin: 10px 0 14px; }
+.mem-barra input { flex: 1; min-width: 0; }
+.mem-barra .btn { margin-left: auto; }
+.mem-llista { display: grid; gap: 10px; }
+.mem-fitxa { background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--c); border-radius: 14px; padding: 12px 14px; }
+.mem-fitxa[hidden] { display: none; }
+.mem-fitxa b { font-size: 16px; }
+.mem-fitxa p { margin: 6px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; -webkit-user-select: text; user-select: text; }
+.mem-accions { display: flex; gap: 16px; margin-top: 8px; }
+.mem-form { display: grid; gap: 12px; }
+.mem-form label { display: grid; gap: 6px; font-weight: 700; }
+.mem-form textarea { font: inherit; resize: vertical; }
+/* Documents */
+.vista-documents { --c: #E0A800; }
+.vista-documents .btn.primary { background: var(--c); border-color: var(--c); color: #221C18; box-shadow: none; }
+.doc-afegeix { cursor: pointer; }
+.doc-afegeix.ocupat { opacity: .6; pointer-events: none; }
+.doc-graella { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+.doc-fitxa { display: flex; flex-direction: column; gap: 4px; text-align: left; border: 1px solid var(--border); background: var(--surface); border-radius: 14px;
+  padding: 8px; cursor: pointer; color: var(--text); font: inherit; min-width: 0; }
+.doc-fitxa[hidden] { display: none; }
+.doc-mini { display: flex; align-items: center; justify-content: center; aspect-ratio: 3 / 4; border-radius: 10px; overflow: hidden; background: var(--surface-2); }
+.doc-mini img { width: 100%; height: 100%; object-fit: cover; }
+.doc-mini b { font-family: var(--font-title); font-size: 24px; color: var(--c); }
+.doc-nom { font-weight: 800; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.doc-fitxa small { color: var(--muted); font-weight: 600; font-size: 12px; }
+.doc-consell { margin-top: 22px; }
+.doc-visor { position: fixed; inset: 0; z-index: 70; background: var(--bg); display: flex; flex-direction: column;
+  padding: calc(10px + var(--safe-t)) 16px calc(14px + var(--safe-b)); --c: #E0A800; }
+.doc-visor-cap { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; min-width: 0; }
+.doc-visor-cap b { font-size: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.doc-visor-cos { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; overflow: auto; }
+.doc-visor-cos img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; box-shadow: var(--shadow); background: #fff; }
+.doc-pdf { text-align: center; }
+.doc-pdf b { display: inline-flex; align-items: center; justify-content: center; width: 110px; height: 140px; border-radius: 14px; background: var(--surface-2);
+  font-family: var(--font-title); font-size: 30px; color: var(--c); }
+.doc-visor-peu { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; padding-top: 12px; }
+.doc-visor-peu .btn.primary { background: var(--c); border-color: var(--c); color: #221C18; text-decoration: none; }
+.doc-visor-cos { touch-action: none; overflow: hidden; }
+.doc-visor-cos img { transform-origin: center center; will-change: transform; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.doc-zoom { margin: -4px 0 6px; font-size: 12.5px; text-align: center; }
+.gx-sat[data-sat="documents"] .gx-ini { color: #221C18; }
+.gx-centre .gx-centre-n { font-weight: 800; font-size: 15px; line-height: 1; margin-top: 6px; min-width: 26px; padding: 4px 7px; box-sizing: border-box;
+  border-radius: 99px; background: rgba(255, 255, 255, .25); }
+.gx-pindola { max-width: 300px; margin: 44px auto 0; font-style: italic; font-size: 16.5px; line-height: 1.45; color: var(--muted); text-wrap: balance; }
+/* Píndoles */
+.vista-pindoles { --c: #FF4430; }
+button.gx-pindola { display: block; border: 0; background: none; padding: 4px 8px; cursor: pointer; font-family: inherit; }
+.pd-seg { margin: 4px 0 14px; }
+.pd-llista { display: grid; gap: 10px; }
+.pd-fila { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; }
+.pd-fila small { color: var(--muted); font-weight: 700; font-size: 12.5px; }
+.pd-fila p { margin: 4px 0 8px; font-style: italic; font-size: 16px; line-height: 1.45; }
+.pd-fav { border: 1.5px solid var(--border); background: none; color: var(--muted); font: inherit; font-weight: 700; font-size: 13px; padding: 4px 11px; border-radius: 99px; cursor: pointer; }
+.pd-fav.si { background: var(--c); border-color: var(--c); color: #fff; }
+.pd-fila { position: relative; padding-right: 54px; }
+.pd-fila p { margin-bottom: 0; }
+.pd-fav { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%;
+  background: none; display: flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent; }
+.pd-fav.si { background: none; }
+.pd-fav svg { width: 26px; height: 26px; fill: none; stroke: var(--muted); stroke-width: 1.8; stroke-linejoin: round; transition: transform .15s; }
+.pd-fav.si svg { fill: #FF3B5C; stroke: #FF3B5C; }
+.pd-fav:active svg { transform: scale(1.25); }
+/* Entrada de la galàxia: els satèl·lits surten del centre */
+@keyframes gxSurt { from { transform: translate(-50%, -34px) scale(.2); opacity: 0; } }
+@keyframes gxCentre { from { transform: translate(-50%, -50%) scale(.75); opacity: 0; } }
+@keyframes gxApareix { from { opacity: 0; transform: translateY(6px); } }
+.galaxia.entra .gx-centre { animation: gxCentre .7s cubic-bezier(.2, .9, .3, 1.15) backwards; }
+.galaxia.entra .gx-sat { animation: gxSurt 1.2s cubic-bezier(.25, .8, .3, 1.08) backwards; animation-delay: calc(.35s + var(--i) * .18s); }
+.galaxia.entra .gx-orbita { animation: gxApareix 1s ease .2s backwards; }
+.galaxia.entra .gx-pindola { animation: gxApareix .9s ease 2.3s backwards; }
+@media (prefers-reduced-motion: reduce) { .galaxia.entra * { animation: none !important; } }
+/* Compres: famílies */
+.fam-titol { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); margin: 18px 0 8px; }
+.fam-titol::before { content: ''; width: 10px; height: 10px; border-radius: 50%; background: var(--fc); }
+.fam-tria { flex: none; max-width: 30px; width: 30px; height: 30px; padding: 0; border: 1.5px solid var(--border); border-radius: 50%;
+  background: var(--surface-2); color: transparent; font-size: 16px; cursor: pointer; -webkit-appearance: none; appearance: none;
+  background-image: radial-gradient(circle, var(--muted) 1.6px, transparent 2px), radial-gradient(circle, var(--muted) 1.6px, transparent 2px), radial-gradient(circle, var(--muted) 1.6px, transparent 2px);
+  background-size: 6px 6px; background-repeat: no-repeat; background-position: 6px center, center center, 18px center; }
+.fam-tria option { color: initial; }
+.fam-chips { margin-top: 8px; }
+.fam-chips .ll-chip { border-color: color-mix(in srgb, var(--fc) 50%, var(--border)); }
+/* Llista impresa */
+#impressio .full-llista h1 { font-size: 20pt; margin: 0 0 12pt; }
+#impressio .full-llista ul { list-style: none; margin: 0; padding: 0; }
+#impressio .full-llista li { display: flex; align-items: center; gap: 10pt; padding: 7pt 0; border-bottom: 1px solid #ddd; font-size: 14pt; }
+#impressio .full-llista .quadret { width: 13pt; height: 13pt; border: 1.5px solid #000; border-radius: 3pt; flex: none; }
+/* Memòria i Documents impresos */
+#impressio .full-mem .mem-imp { padding: 10pt 0; border-bottom: 1px solid #ccc; break-inside: avoid; }
+#impressio .full-mem h2 { font-size: 15pt; margin: 0 0 4pt; }
+#impressio .full-mem p { margin: 0; white-space: pre-wrap; font-size: 12pt; line-height: 1.4; }
+#impressio .doc-imp img { display: block; max-width: 100%; max-height: 260mm; margin: 0 auto; }
+/* Habituals: els de sempre, ressaltats */
+.ll-chip { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.fam-chips .ll-chip { color: var(--muted); font-weight: 600; border-style: dashed; }
+.fam-chips .ll-chip.sovint { color: var(--text); font-weight: 800; border-style: solid; border-color: var(--fc); background: color-mix(in srgb, var(--fc) 14%, var(--surface)); }
+/* «Ja hi és» */
+.ja-hi-es { margin: -8px 0 12px; padding: 8px 12px; border-radius: 10px; background: var(--warn-bg); color: var(--warn-text); font-weight: 700; font-size: 14px; animation: gxApareix .25s ease; }
+@keyframes ressalta { 0%, 100% { box-shadow: none; } 30%, 70% { box-shadow: 0 0 0 3px var(--c, #2F9E44); } }
+.rec-llista li.ressalta { animation: ressalta 1.2s ease 2; }
+#impressio .full-compra h2 { font-size: 13pt; margin: 14pt 0 2pt; color: #444; break-after: avoid; }
+/* Menú del logo: inici i compte */
+.menu-compte { position: fixed; inset: 0; z-index: 80; background: rgba(0, 0, 0, .25); }
+.mc-caixa { position: absolute; left: 12px; top: calc(56px + var(--safe-t)); width: min(320px, calc(100% - 24px)); background: var(--surface); border-radius: 16px;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, .25); padding: 8px; display: grid; gap: 4px; animation: gxApareix .18s ease; }
+.mc-caixa button { border: 0; background: none; text-align: left; font: inherit; font-weight: 700; color: var(--text); padding: 12px; border-radius: 10px; cursor: pointer; }
+.mc-caixa button:active { background: var(--surface-2); }
+.mc-caixa .mc-qui { margin: 4px 12px 6px; color: var(--muted); font-size: 13.5px; line-height: 1.4; }
+.mc-caixa .mc-qui b { color: var(--text); overflow-wrap: anywhere; }
+.mc-caixa .mc-tanca { color: var(--muted); text-align: center; border-top: 1px solid var(--border); border-radius: 0 0 10px 10px; }
+/* Documents: qualsevol fitxer, cerca i filtres */
+.doc-botons { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 12px; }
+.doc-cerca { width: 100%; margin-bottom: 10px; }
+.doc-filtres { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 8px; -webkit-overflow-scrolling: touch; }
+.doc-filtres button { flex: none; border: 1.5px solid var(--border); background: var(--surface); color: var(--text); font: inherit; font-weight: 700; font-size: 13.5px; padding: 6px 12px; border-radius: 99px; cursor: pointer; }
+.doc-filtres button.on { background: var(--fc, var(--text)); border-color: var(--fc, var(--text)); color: #fff; }
+.doc-filtres button:not([style]).on { background: var(--text); color: var(--bg); }
+.doc-mini b { color: var(--fc, var(--c)); font-size: 22px; letter-spacing: .5px; }
+.doc-pdf b { color: var(--fc, var(--c)); }
+.doc-detall { margin: 12px 0 0; font-weight: 700; overflow-wrap: anywhere; line-height: 1.5; }
+.doc-url { font-weight: 600; color: var(--muted); font-size: 14px; }
+/* Finestreta per escriure un nom */
+.demana { position: fixed; inset: 0; z-index: 90; background: rgba(0, 0, 0, .35); display: flex; align-items: flex-start; justify-content: center; padding: calc(70px + var(--safe-t)) 16px 16px; }
+.demana-caixa { width: min(420px, 100%); background: var(--surface); border-radius: 16px; padding: 16px; box-shadow: 0 14px 40px rgba(0, 0, 0, .3); display: grid; gap: 12px; animation: gxApareix .18s ease; }
+.demana-caixa label { display: grid; gap: 8px; font-weight: 800; }
+.demana-caixa input { width: 100%; font-size: 17px; }
+.demana-caixa .help { margin: -4px 0 0; }
+.demana-caixa .grp { justify-content: flex-end; }
+/* Mode Agenda: sense el cercle de Galàxia */
+.mode-seg { margin-top: 4px; }
+.convidats .mode-convidat { width: auto; padding: 4px 8px; font-size: 13px; margin-left: auto; }
+.gx-cercle.gx-sol { height: 210px; }
+.pd-seg button { white-space: nowrap; }
+.pd-meva { padding-right: 14px; }
+.pd-meva .mem-accions { margin-top: 6px; }
+.pd-seg { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; flex-wrap: nowrap; }
+.pd-seg button { font-size: 13px; padding-left: 4px; padding-right: 4px; }
+/* Capçalera de les micro-apps: el títol ben centrat */
+.sat-cap { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; }
+.sat-cap .sat-torna { justify-self: start; }
+.sat-cap h1 { grid-column: 2; text-align: center; min-width: 0; max-width: calc(100vw - 210px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Frase del dia: més llegible, sense negreta */
+button.gx-pindola, .gx-pindola { color: color-mix(in srgb, var(--text) 82%, var(--bg)); font-weight: 500; }
