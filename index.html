@@ -15,15 +15,16 @@
   <meta name="apple-mobile-web-app-title" content="Galàxia">
   <link rel="apple-touch-icon" href="img/icona-180.png" id="iconaApple">
   <script>
-    // Icona fosca o crua: l'iPhone l'agafa en afegir l'app a la pantalla d'inici
+    // Icona negra, gris perla o blau nit: l'iPhone l'agafa en afegir l'app a la pantalla d'inici
     (function () {
       try {
         var q = new URLSearchParams(location.search).get('icona');
-        if (q === 'crua' || q === 'fosca') localStorage.setItem('qqq-pref-icona', JSON.stringify(q));
+        var tipus = ['fosca', 'perla', 'nit', 'crua'];
+        if (tipus.indexOf(q) >= 0) localStorage.setItem('qqq-pref-icona', JSON.stringify(q));
         var t = JSON.parse(localStorage.getItem('qqq-pref-icona') || '"fosca"');
-        if (t === 'crua') {
-          document.getElementById('iconaApple').href = 'img/icona-crua-180.png';
-          document.getElementById('manifestLink').href = 'manifest-crua.webmanifest';
+        if (t !== 'fosca' && tipus.indexOf(t) >= 0) {
+          document.getElementById('iconaApple').href = 'img/icona-' + t + '-180.png';
+          document.getElementById('manifestLink').href = 'manifest-' + t + '.webmanifest';
         }
       } catch (e) { /* res */ }
     })();

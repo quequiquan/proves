@@ -1057,3 +1057,4 @@ button.gx-pindola, .gx-pindola { color: color-mix(in srgb, var(--text) 82%, var(
 /* Enganxar llistes */
 .enllac.enganxa { display: inline-block; margin: -4px 0 12px; font-size: 14px; }
 .demana-caixa textarea { width: 100%; font: inherit; font-size: 16px; resize: vertical; }
+.icones-tria { flex-wrap: wrap; }
