@@ -1157,7 +1157,7 @@ function vistaInici() {
         ${(modeAgenda() ? [] : SATEL).map((s, i) => `<button class="gx-sat${s.aviat ? ' aviat' : ''}" data-sat="${s.id}" style="--c:${s.color};--a:${i * 60 - 90}deg;--i:${i}">
             <span class="gx-bola"><span class="gx-ini" aria-hidden="true">${esc(s.nom[0])}</span>${comptes[s.id] ? `<i>${comptes[s.id]}</i>` : ''}</span><span class="gx-nom">${esc(s.nom)}</span>${s.aviat ? '<small>aviat</small>' : ''}</button>`).join('')}
       </div>
-      ${typeof pindolaDelDia === 'function' ? `<button class="gx-pindola" data-pindoles>${esc(pindolaDelDia())}</button>` : ''}
+      ${typeof pindolaDelDia === 'function' ? `<button class="gx-pindola" data-pindoles>${esc(pindola())}</button>` : ''}
       ${inv ? `<button class="enllac portada-veure" data-anar="propers">${inv === 1 ? 'Tens 1 invitació per respondre' : `Tens ${inv} invitacions per respondre`}</button>` : ''}
     </div>`;
 }
@@ -1355,9 +1355,28 @@ function filaPindola(text, data) {
   return `<div class="pd-fila">${data ? `<small>${esc(data)}</small>` : ''}<p>${esc(text)}</p>
     <button class="pd-fav${fav ? ' si' : ''}" data-pdfav="${esc(text)}" aria-pressed="${fav}" aria-label="${fav ? 'Treu de preferides' : 'Marca com a preferida'}"><svg viewBox="0 0 24 24"><path d="M12 20.5s-7.5-4.6-9.3-9.2C1.5 8 3.6 4.5 7.2 4.5c2 0 3.6 1.1 4.8 2.8 1.2-1.7 2.8-2.8 4.8-2.8 3.6 0 5.7 3.5 4.5 6.8-1.8 4.6-9.3 9.2-9.3 9.2z"/></svg></button></div>`;
 }
+const frasesMeves = () => (Array.isArray(state.ajustos.frasesMeves) ? state.ajustos.frasesMeves : []);
+function pindola(d = parseYmd(avui())) {
+  const ds = ymd(d), meves = frasesMeves().filter((f) => f.des && f.des <= ds);
+  if (meves.length) {
+    const primera = meves.find((f) => f.des === ds);
+    if (primera) return primera.text;
+    const n = Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000);
+    if (n % 3 === 0) return meves[Math.floor(n / 3) % meves.length].text;
+  }
+  return pindolaDelDia(d);
+}
 function vistaPindoles() {
-  const tab = ui.pindTab === 'pref' ? 'pref' : 'dies';
-  const pestanyes = `<div class="seg pd-seg"><button aria-pressed="${tab === 'dies'}" data-pdtab="dies">Aquests dies</button><button aria-pressed="${tab === 'pref'}" data-pdtab="pref">Preferides${preferides().length ? ' (' + preferides().length + ')' : ''}</button></div>`;
+  const tab = ['pref', 'meves'].includes(ui.pindTab) ? ui.pindTab : 'dies';
+  const pestanyes = `<div class="seg pd-seg"><button aria-pressed="${tab === 'dies'}" data-pdtab="dies">Aquests dies</button><button aria-pressed="${tab === 'pref'}" data-pdtab="pref">Preferides${preferides().length ? ' (' + preferides().length + ')' : ''}</button><button aria-pressed="${tab === 'meves'}" data-pdtab="meves">Les meves${frasesMeves().length ? ' (' + frasesMeves().length + ')' : ''}</button></div>`;
+  if (tab === 'meves') {
+    const llista = frasesMeves().slice().reverse();
+    return capSatel('Píndoles') + pestanyes + `<p class="help">Escriu les frases que t'agradin i sortiran barrejades amb les altres com a frase del dia: la primera vegada, l'endemà d'afegir-la.</p>
+      <form id="formFrase" class="rec-nou" autocomplete="off"><input id="fraseText" placeholder="Escriu una frase…" maxlength="200" enterkeyhint="done"><button class="btn primary">Afegeix</button></form>
+      ${llista.length ? `<div class="pd-llista">${llista.map((f) => `<div class="pd-fila pd-meva"><p>${esc(f.text)}</p>
+        <div class="mem-accions"><button class="enllac" data-frasedita="${esc(f.id)}">Edita</button><button class="enllac perill" data-frasetreu="${esc(f.id)}">Treu</button></div></div>`).join('')}</div>`
+        : '<p class="help buit">Encara no n\'has afegit cap.</p>'}`;
+  }
   if (tab === 'pref') {
     const llista = preferides().slice().reverse();
     return capSatel('Píndoles') + pestanyes + (llista.length ? `<div class="pd-llista">${llista.map((t) => filaPindola(t, '')).join('')}</div>`
@@ -1368,7 +1387,7 @@ function vistaPindoles() {
   let html = '';
   for (let i = 0; i < n; i++) {
     const d = addDays(avuiD, -i);
-    html += filaPindola(pindolaDelDia(d), i === 0 ? 'Avui' : i === 1 ? 'Ahir' : cap(dataLlarga(ymd(d))));
+    html += filaPindola(pindola(d), i === 0 ? 'Avui' : i === 1 ? 'Ahir' : cap(dataLlarga(ymd(d))));
   }
   const queden = Math.round((avuiD - inici) / 86400000) + 1 - n;
   return capSatel('Píndoles') + pestanyes + `<div class="pd-llista">${html}</div>`
@@ -2108,6 +2127,50 @@ $('#main').addEventListener('click', (e) => {
     if (llista.length === preferides().length) llista.push(text);
     state.ajustos.pindoles = llista; save();
     const y = window.scrollY; render(); window.scrollTo(0, y);
+  }
+});
+
+// Frases pròpies: afegir, corregir i treure
+$('#main').addEventListener('submit', (e) => {
+  if (e.target.id !== 'formFrase') return;
+  e.preventDefault();
+  const text = $('#fraseText').value.trim().replace(/\s+/g, ' ');
+  if (!text) { $('#fraseText').focus(); return; }
+  const totes = [...frasesMeves().map((f) => f.text), ...PINDOLES];
+  if (totes.some((t) => normal(t).replace(/[^a-z0-9]/g, '') === normal(text).replace(/[^a-z0-9]/g, ''))) {
+    e.target.parentElement.querySelector('.ja-hi-es')?.remove();
+    e.target.insertAdjacentHTML('afterend', '<p class="ja-hi-es">Aquesta frase ja hi és</p>');
+    const avis = e.target.nextElementSibling; setTimeout(() => avis?.remove(), 2600);
+    $('#fraseText').value = ''; $('#fraseText').focus(); return;
+  }
+  // Surt per primer cop el primer dia lliure a partir de demà
+  const ocupats = new Set(frasesMeves().map((f) => f.des));
+  let d = addDays(parseYmd(avui()), 1);
+  while (ocupats.has(ymd(d))) d = addDays(d, 1);
+  state.ajustos.frasesMeves = [...frasesMeves(), { id: nouId('f'), text: text.slice(0, 200), des: ymd(d) }];
+  save(); render();
+  const dies = Math.round((d - parseYmd(avui())) / 86400000);
+  toast(dies === 1 ? 'Frase afegida: sortirà demà' : `Frase afegida: sortirà per primer cop el ${dataLlarga(ymd(d))}`, 4000);
+  $('#fraseText')?.focus();
+});
+$('#main').addEventListener('click', (e) => {
+  const tr = e.target.closest('[data-frasetreu]');
+  if (tr) {
+    const llista = frasesMeves(), f = llista.find((x) => x.id === tr.dataset.frasetreu);
+    if (!f) return;
+    state.ajustos.frasesMeves = llista.filter((x) => x !== f); save(); render();
+    toastDesfes('Frase treta', () => { state.ajustos.frasesMeves = [...frasesMeves(), f]; save(); render(); });
+    return;
+  }
+  const ed = e.target.closest('[data-frasedita]');
+  if (ed) {
+    const f = frasesMeves().find((x) => x.id === ed.dataset.frasedita);
+    if (!f) return;
+    demanaText('Corregeix la frase', f.text, { max: 200 }).then((nou) => {
+      if (!nou || !nou.trim() || nou.trim() === f.text) return;
+      state.ajustos.frasesMeves = frasesMeves().map((x) => (x.id === f.id ? { ...x, text: nou.trim().slice(0, 200) } : x));
+      save(); render();
+    });
   }
 });
 

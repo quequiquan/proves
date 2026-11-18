@@ -1018,3 +1018,8 @@ button.gx-pindola { display: block; border: 0; background: none; padding: 4px 8p
 .mode-seg { margin-top: 4px; }
 .convidats .mode-convidat { width: auto; padding: 4px 8px; font-size: 13px; margin-left: auto; }
 .gx-cercle.gx-sol { height: 210px; }
+.pd-seg button { white-space: nowrap; }
+.pd-meva { padding-right: 14px; }
+.pd-meva .mem-accions { margin-top: 6px; }
+.pd-seg { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; flex-wrap: nowrap; }
+.pd-seg button { font-size: 13px; padding-left: 4px; padding-right: 4px; }
