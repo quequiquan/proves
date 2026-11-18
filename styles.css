@@ -1007,3 +1007,10 @@ button.gx-pindola { display: block; border: 0; background: none; padding: 4px 8p
 .doc-pdf b { color: var(--fc, var(--c)); }
 .doc-detall { margin: 12px 0 0; font-weight: 700; overflow-wrap: anywhere; line-height: 1.5; }
 .doc-url { font-weight: 600; color: var(--muted); font-size: 14px; }
+/* Finestreta per escriure un nom */
+.demana { position: fixed; inset: 0; z-index: 90; background: rgba(0, 0, 0, .35); display: flex; align-items: flex-start; justify-content: center; padding: calc(70px + var(--safe-t)) 16px 16px; }
+.demana-caixa { width: min(420px, 100%); background: var(--surface); border-radius: 16px; padding: 16px; box-shadow: 0 14px 40px rgba(0, 0, 0, .3); display: grid; gap: 12px; animation: gxApareix .18s ease; }
+.demana-caixa label { display: grid; gap: 8px; font-weight: 800; }
+.demana-caixa input { width: 100%; font-size: 17px; }
+.demana-caixa .help { margin: -4px 0 0; }
+.demana-caixa .grp { justify-content: flex-end; }

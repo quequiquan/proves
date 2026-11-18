@@ -1176,11 +1176,20 @@ function vistaRecordatoris() {
   const llista = pendentsRec().slice().sort((a, b) => String(b.creat || '').localeCompare(String(a.creat || '')));
   return capSatel('Recordatoris') + `<p class="help">Coses pendents sense data que no vols oblidar. Quan en facis una, toca el cercle i desapareix.</p>
     <form id="formRec" class="rec-nou" autocomplete="off"><input id="recText" placeholder="Què has de recordar?" maxlength="300" enterkeyhint="done"><button class="btn primary">Afegeix</button></form>
-    ${llista.length ? `<ul class="rec-llista">${llista.map((r) => `<li data-rec="${esc(r.id)}">
+    ${llista.length > 3 ? '<input id="cercaRec" type="search" class="doc-cerca" placeholder="Cerca un recordatori…" autocomplete="off">' : ''}
+    ${llista.length ? `<ul class="rec-llista">${llista.map((r) => `<li data-rec="${esc(r.id)}" data-reccerca="${esc(normal(r.text))}">
         <button class="rec-check" data-recfet="${esc(r.id)}" aria-label="Fet"></button>
         <button class="rec-text" data-recedita="${esc(r.id)}"><span>${esc(r.text)}</span><small>${esc(fa(r.creat))}</small></button></li>`).join('')}</ul>`
-      : '<p class="help buit">No tens res pendent.</p>'}`;
+      : '<p class="help buit">No tens res pendent.</p>'}
+    <p class="help buit" id="recRes" hidden>No hi ha cap recordatori que hi coincideixi.</p>`;
 }
+$('#main').addEventListener('input', (e) => {
+  if (e.target.id !== 'cercaRec') return;
+  const q = normal(e.target.value.trim());
+  let n = 0;
+  document.querySelectorAll('[data-reccerca]').forEach((el) => { el.hidden = Boolean(q) && !el.dataset.reccerca.includes(q); if (!el.hidden) n++; });
+  const r = document.getElementById('recRes'); if (r) r.hidden = n > 0;
+});
 // Elements d'una llista (Llista i Compres): casella per marcar i text per corregir
 const nouId = (p) => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 function filesItems(items, col, lid) {
@@ -1267,7 +1276,7 @@ function vistaCompres() {
 function vistaMemoria() {
   const ed = ui.memEdita, f = ed && ed !== 'nova' ? state.memoria.find((x) => x.id === ed) : null;
   if (ed) return capSatel('Memòria') + `<form id="formMem" class="mem-form" autocomplete="off">
-      <label>Títol<input name="titol" value="${esc(f?.titol || '')}" placeholder="Pòlissa de la casa" maxlength="80" required></label>
+      <label>Títol<input name="titol" data-triatot value="${esc(f?.titol || '')}" placeholder="Pòlissa de la casa" maxlength="80" required></label>
       <label>Què has de recordar<textarea name="text" rows="6" maxlength="3000" placeholder="Companyia, número, telèfon…">${esc(f?.text || '')}</textarea></label>
       <div class="grp"><button class="btn primary">Desa</button><button type="button" class="btn" data-memcancela>Cancel·la</button>
         ${f ? `<button type="button" class="enllac perill" data-memesborra="${esc(f.id)}">Esborra</button>` : ''}</div>
@@ -1448,8 +1457,7 @@ $('#main').addEventListener('click', (e) => {
   if (pe) { ui.persona = pe.dataset.persona; ui.cercaGent = ''; render(); window.scrollTo(0, 0); return; }
   if (t.id === 'pRenom') {
     const p = pers(ui.persona);
-    const n = prompt('Nom nou:', p.nom);
-    if (n && n.trim()) { p.nom = n.trim(); save(); render(); }
+    demanaText('Nom del contacte', p.nom, { max: 80 }).then((n) => { if (n && n.trim()) { p.nom = n.trim(); save(); render(); } });
     return;
   }
   if (t.id === 'pEsborra') {
@@ -1731,6 +1739,29 @@ $('#main').addEventListener('click', (e) => {
   if (ignoraClic && e.target.closest('[data-pla]')) { e.stopImmediatePropagation(); e.preventDefault(); }
 }, true);
 
+/* ---------- Finestreta per escriure o canviar un nom (el text surt seleccionat: el que escrius el substitueix) ---------- */
+function demanaText(titol, valor = '', opcions = {}) {
+  document.querySelector('.demana')?.remove();
+  return new Promise((resol) => {
+    const d = document.createElement('div');
+    d.className = 'demana';
+    d.innerHTML = '<form class="demana-caixa" autocomplete="off"><label>' + esc(titol)
+      + '<input name="v" type="' + (opcions.tipus || 'text') + '" maxlength="' + (opcions.max || 300) + '" placeholder="' + esc(opcions.placeholder || '') + '" enterkeyhint="done" autocapitalize="sentences"></label>'
+      + (opcions.ajuda ? '<p class="help">' + esc(opcions.ajuda) + '</p>' : '')
+      + '<div class="grp"><button type="button" class="btn" data-dm-no>Cancel·la</button><button class="btn primary">Desa</button></div></form>';
+    document.body.appendChild(d);
+    const inp = d.querySelector('input');
+    inp.value = valor;
+    const acaba = (v) => { d.remove(); resol(v); };
+    d.querySelector('form').addEventListener('submit', (e) => { e.preventDefault(); acaba(inp.value); });
+    d.addEventListener('click', (e) => { if (e.target === d || e.target.closest('[data-dm-no]')) acaba(null); });
+    inp.addEventListener('keydown', (e) => { if (e.key === 'Escape') acaba(null); });
+    inp.focus();
+    try { inp.setSelectionRange(0, inp.value.length); } catch (x) { inp.select(); }
+    setTimeout(() => { try { inp.setSelectionRange(0, inp.value.length); } catch (x) { /* res */ } }, 40);
+  });
+}
+
 /* ---------- Galàxia: botons del cercle, aniversaris i recordatoris ---------- */
 let gxPrem = null, gxLlarg = false;
 const VISTES_AGENDA = ['propers', 'calendari', 'gent', 'ajustos'];
@@ -1772,9 +1803,10 @@ $('#main').addEventListener('click', (e) => {
   if (ed) {
     const r = state.recordatoris.find((x) => x.id === ed.dataset.recedita);
     if (!r) return;
-    const nou = prompt('Edita el recordatori:', r.text);
-    if (nou === null || !nou.trim() || nou.trim() === r.text) return;
-    r.text = nou.trim().slice(0, 300); save(); render();
+    demanaText('Corregeix el recordatori', r.text).then((nou) => {
+      if (nou === null || !nou.trim() || nou.trim() === r.text) return;
+      r.text = nou.trim().slice(0, 300); save(); render();
+    });
   }
 });
 $('#main').addEventListener('submit', (e) => {
@@ -1782,6 +1814,17 @@ $('#main').addEventListener('submit', (e) => {
   e.preventDefault();
   const text = $('#recText').value.trim();
   if (!text) { $('#recText').focus(); return; }
+  const igual = pendentsRec().find((x) => normal(x.text) === normal(text));
+  if (igual) {
+    $('#recText').value = '';
+    e.target.parentElement.querySelector('.ja-hi-es')?.remove();
+    e.target.insertAdjacentHTML('afterend', `<p class="ja-hi-es">«${esc(igual.text)}» ja és als recordatoris</p>`);
+    const avis = e.target.nextElementSibling; setTimeout(() => avis?.remove(), 2600);
+    const li = document.querySelector(`li[data-rec="${CSS.escape(igual.id)}"]`);
+    if (li) { li.classList.remove('ressalta'); void li.offsetWidth; li.classList.add('ressalta'); }
+    $('#recText').focus();
+    return;
+  }
   state.recordatoris.push({ id: 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), text: text.slice(0, 300), creat: new Date().toISOString() });
   save(); render();
   $('#recText')?.focus();
@@ -1844,15 +1887,17 @@ $('#main').addEventListener('click', (e) => {
     const [col, lid, iid] = ed.dataset.itedita.split('|');
     const llista = itemsDe(col, lid), it = llista?.find((x) => x.id === iid);
     if (!it) return;
-    const nou = prompt('Corregeix-ho (deixa-ho buit per treure-ho):', it.text);
-    if (nou === null || nou.trim() === it.text) return;
-    if (!nou.trim()) {
-      const lloc = llista.indexOf(it), copia = { ...it };
-      llista.splice(lloc, 1); save(); render();
-      toastDesfes(`Tret: ${it.text}`, () => { itemsDe(col, lid)?.splice(lloc, 0, copia); save(); render(); });
-      return;
-    }
-    it.text = nou.trim().slice(0, 200); save(); render(); return;
+    demanaText('Corregeix-ho', it.text, { max: 200, ajuda: 'Deixa-ho buit per treure-ho de la llista.' }).then((nou) => {
+      if (nou === null || nou.trim() === it.text) return;
+      if (!nou.trim()) {
+        const lloc = llista.indexOf(it), copia = { ...it };
+        llista.splice(lloc, 1); save(); render();
+        toastDesfes(`Tret: ${it.text}`, () => { itemsDe(col, lid)?.splice(lloc, 0, copia); save(); render(); });
+        return;
+      }
+      it.text = nou.trim().slice(0, 200); save(); render();
+    });
+    return;
   }
   const tr = t.closest('[data-torna]');
   if (tr && chipLlarg) { chipLlarg = false; return; }
@@ -1903,8 +1948,7 @@ $('#main').addEventListener('click', (e) => {
   const nm = t.closest('[data-llistanom]');
   if (nm) {
     const l = state.llistes.find((x) => x.id === nm.dataset.llistanom);
-    const nou = l && prompt('Nom de la llista:', l.nom);
-    if (nou && nou.trim()) { l.nom = nou.trim().slice(0, 60); save(); render(); }
+    if (l) demanaText('Nom de la llista', l.nom, { max: 60 }).then((nou) => { if (nou && nou.trim()) { l.nom = nou.trim().slice(0, 60); save(); render(); } });
     return;
   }
   const es = t.closest('[data-llistaesborra]');
@@ -1972,7 +2016,12 @@ $('#main').addEventListener('click', async (e) => {
   const t = e.target;
   if (t.closest('[data-memnova]')) { ui.memEdita = 'nova'; render(); window.scrollTo(0, 0); $('#formMem input')?.focus(); return; }
   const ed = t.closest('[data-memedita]');
-  if (ed) { ui.memEdita = ed.dataset.memedita; render(); window.scrollTo(0, 0); return; }
+  if (ed) {
+    ui.memEdita = ed.dataset.memedita; render(); window.scrollTo(0, 0);
+    const ti = $('#formMem input');
+    if (ti) { ti.focus(); try { ti.setSelectionRange(0, ti.value.length); } catch (x) { /* res */ } }
+    return;
+  }
   if (t.closest('[data-memcancela]')) { ui.memEdita = ''; render(); return; }
   const es = t.closest('[data-memesborra]');
   if (es) {
@@ -2071,7 +2120,7 @@ $('#main').addEventListener('change', async (e) => {
   const esFoto = /^image\/(jpeg|png|webp|heic|heif|gif)$/.test(file.type) || /^(jpe?g|png|webp|heic|heif)$/.test(ext);
   const nomNet = file.name.replace(/\.[a-z0-9]{1,8}$/i, '');
   const perDefecte = esFoto && /^(image|img|photo|foto|dsc|pxl)[\s_-]?\d*/i.test(nomNet) ? 'Document ' + new Date().toLocaleDateString('ca-ES') : nomNet || 'Document';
-  const titol = prompt('Nom del document:', perDefecte);
+  const titol = await demanaText('Nom del document', perDefecte, { max: 80 });
   if (titol === null) return;
   ui.docPujant = true; render();
   try {
@@ -2096,13 +2145,13 @@ $('#main').addEventListener('change', async (e) => {
   ui.docPujant = false; render();
 });
 // Enllaç a una pàgina web: no es puja cap fitxer, només es guarda l'adreça
-$('#main').addEventListener('click', (e) => {
+$('#main').addEventListener('click', async (e) => {
   if (!e.target.closest('[data-docenllac]')) return;
-  let url = (prompt('Enganxa l\'adreça de la pàgina web:') || '').trim();
+  let url = ((await demanaText("Adreça de la pàgina web", '', { tipus: 'url', max: 2000, placeholder: 'Enganxa-la aquí' })) || '').trim();
   if (!url) return;
   if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
   if (!/^https?:\/\/[^\s.]+\.[^\s]+$/i.test(url)) { toast('Aquesta adreça no sembla correcta.'); return; }
-  const titol = prompt('Nom del document:', domini(url));
+  const titol = await demanaText('Nom del document', domini(url), { max: 80 });
   if (titol === null) return;
   state.documents.push({ id: nouId('d'), titol: (titol.trim() || domini(url)).slice(0, 80), tipus: 'enllac', url: url.slice(0, 2000), creat: new Date().toISOString() });
   save(); render(); toast('Enllaç desat');
@@ -2200,7 +2249,7 @@ async function obreVisor(doc) {
       return;
     }
     if (acc === 'nom') {
-      const nou = prompt('Nom del document:', doc.titol);
+      const nou = await demanaText('Nom del document', doc.titol, { max: 80 });
       if (nou && nou.trim()) { doc.titol = nou.trim().slice(0, 80); save(); render(); v.querySelector('.doc-visor-cap b').textContent = doc.titol; }
       return;
     }
@@ -2520,7 +2569,7 @@ $('#main').addEventListener('click', (e) => {
 // Caselles de data: en tocar-ne una, se selecciona el que hi ha i el que escriguis ho substitueix
 $('#main').addEventListener('focusin', (e) => {
   const t = e.target;
-  if (!t.dataset?.dm) return;
+  if (!t.dataset?.dm && !(t.dataset && 'triatot' in t.dataset)) return;
   const tria = () => { try { t.setSelectionRange(0, t.value.length); } catch (x) { t.select?.(); } };
   tria(); setTimeout(tria, 30);
 });
