@@ -973,3 +973,8 @@ button.gx-pindola { display: block; border: 0; background: none; padding: 4px 8p
 #impressio .full-llista ul { list-style: none; margin: 0; padding: 0; }
 #impressio .full-llista li { display: flex; align-items: center; gap: 10pt; padding: 7pt 0; border-bottom: 1px solid #ddd; font-size: 14pt; }
 #impressio .full-llista .quadret { width: 13pt; height: 13pt; border: 1.5px solid #000; border-radius: 3pt; flex: none; }
+/* Memòria i Documents impresos */
+#impressio .full-mem .mem-imp { padding: 10pt 0; border-bottom: 1px solid #ccc; break-inside: avoid; }
+#impressio .full-mem h2 { font-size: 15pt; margin: 0 0 4pt; }
+#impressio .full-mem p { margin: 0; white-space: pre-wrap; font-size: 12pt; line-height: 1.4; }
+#impressio .doc-imp img { display: block; max-width: 100%; max-height: 260mm; margin: 0 auto; }

@@ -1276,8 +1276,9 @@ function vistaMemoria() {
     <div class="mem-barra">${fitxes.length > 3 ? '<input id="cercaMem" type="search" placeholder="Cerca…" autocomplete="off">' : ''}<button class="btn primary" data-memnova>Nova fitxa</button></div>
     ${fitxes.length ? `<div class="mem-llista">${fitxes.map((x) => `<div class="mem-fitxa" data-memcerca="${esc(normal(x.titol + ' ' + x.text))}">
         <b>${esc(x.titol)}</b>${x.text ? `<p>${esc(x.text)}</p>` : ''}
-        <div class="mem-accions"><button class="enllac" data-memcomparteix="${esc(x.id)}">Comparteix</button>${x.text ? `<button class="enllac" data-memcopia="${esc(x.id)}">Copia</button>` : ''}<button class="enllac" data-memedita="${esc(x.id)}">Edita</button></div>
-      </div>`).join('')}</div><p class="help buit" id="memRes" hidden>No hi ha cap fitxa que hi coincideixi.</p>`
+        <div class="mem-accions"><button class="enllac" data-memcomparteix="${esc(x.id)}">Comparteix</button>${x.text ? `<button class="enllac" data-memcopia="${esc(x.id)}">Copia</button>` : ''}<button class="enllac" data-memimprimeix="${esc(x.id)}">Imprimeix</button><button class="enllac" data-memedita="${esc(x.id)}">Edita</button></div>
+      </div>`).join('')}</div><p class="help buit" id="memRes" hidden>No hi ha cap fitxa que hi coincideixi.</p>
+      ${fitxes.length > 1 ? '<div class="grp centre"><button class="btn" data-memimprimeix="totes">Imprimeix totes les fitxes</button></div>' : ''}`
       : '<p class="help buit">Encara no tens cap fitxa.</p>'}`;
 }
 // Documents: fotos i PDF al núvol privat de cada persona (a l'app només hi ha el nom i una miniatura)
@@ -1848,6 +1849,22 @@ $('#main').addEventListener('submit', (e) => {
   document.querySelector(`[data-formitem="${f.dataset.formitem}"] input`)?.focus();
 });
 
+/* ---------- Imprimir un full (Llista, Memòria, Documents) ---------- */
+function imprimeixFull(html) {
+  const full = $('#impressio');
+  full.innerHTML = html;
+  const imgs = [...full.querySelectorAll('img')];
+  const ves = () => {
+    document.body.classList.add('imprimint');
+    setTimeout(() => { window.print(); setTimeout(() => document.body.classList.remove('imprimint'), 500); }, 100);
+  };
+  if (!imgs.length) { ves(); return; }
+  let falten = imgs.length;
+  const una = () => { if (--falten === 0) ves(); };
+  imgs.forEach((im) => { if (im.complete) una(); else { im.onload = una; im.onerror = una; } });
+}
+const htmlFitxa = (f) => `<div class="mem-imp"><h2>${esc(f.titol)}</h2>${f.text ? `<p>${esc(f.text)}</p>` : ''}</div>`;
+
 /* ---------- Memòria ---------- */
 $('#main').addEventListener('click', async (e) => {
   const t = e.target;
@@ -1862,6 +1879,14 @@ $('#main').addEventListener('click', async (e) => {
     const lloc = state.memoria.indexOf(f), copia = { ...f };
     state.memoria.splice(lloc, 1); ui.memEdita = ''; save(); render();
     toastDesfes(`Esborrada: ${f.titol}`, () => { state.memoria.splice(lloc, 0, copia); save(); render(); });
+    return;
+  }
+  const ip = t.closest('[data-memimprimeix]');
+  if (ip) {
+    const totes = ip.dataset.memimprimeix === 'totes';
+    const llista = totes ? state.memoria.slice().sort((a, b) => a.titol.localeCompare(b.titol, 'ca')) : state.memoria.filter((x) => x.id === ip.dataset.memimprimeix);
+    if (!llista.length) return;
+    imprimeixFull(`<div class="llista-full imprès full-mem"><p class="ll-app">Galàxia · Memòria</p>${llista.map(htmlFitxa).join('')}</div>`);
     return;
   }
   const sh = t.closest('[data-memcomparteix]');
@@ -2020,6 +2045,7 @@ async function obreVisor(doc) {
   v.innerHTML = `<div class="doc-visor-cap"><button type="button" class="sat-torna" data-visor="tanca">‹ Tanca</button><b>${esc(doc.titol)}</b></div>
     <div class="doc-visor-cos"><p class="help">Carregant…</p></div>
     <div class="doc-visor-peu"><a class="btn primary" data-visor="obre" target="_blank" rel="noopener" hidden>Obre / Comparteix</a>
+      <button type="button" class="btn" data-visor="imprimeix" hidden>Imprimeix</button>
       <button type="button" class="enllac" data-visor="nom">Canvia el nom</button><button type="button" class="enllac perill" data-visor="esborra">Esborra</button></div>`;
   document.body.appendChild(v);
   v.addEventListener('click', async (e) => {
@@ -2027,6 +2053,17 @@ async function obreVisor(doc) {
     if (!b) return;
     const acc = b.dataset.visor;
     if (acc === 'tanca') { tancaVisor(); return; }
+    if (acc === 'imprimeix') {
+      const url = v.querySelector('[data-visor="obre"]').href;
+      if (!url) return;
+      if (doc.tipus === 'application/pdf') {   // un PDF s'imprimeix des del visor de l'iPhone
+        window.open(url, '_blank', 'noopener');
+        toast("Al PDF, toca Compartir i després Imprimir", 5000);
+        return;
+      }
+      imprimeixFull(`<div class="doc-imp"><img src="${esc(url)}" alt=""></div>`);
+      return;
+    }
     if (acc === 'nom') {
       const nou = prompt('Nom del document:', doc.titol);
       if (nou && nou.trim()) { doc.titol = nou.trim().slice(0, 80); save(); render(); v.querySelector('.doc-visor-cap b').textContent = doc.titol; }
@@ -2045,7 +2082,7 @@ async function obreVisor(doc) {
     const url = await sync().urlDoc(doc.cami);
     if (!document.body.contains(v)) return;
     const cos = v.querySelector('.doc-visor-cos'), obre = v.querySelector('[data-visor="obre"]');
-    obre.href = url; obre.hidden = false;
+    obre.href = url; obre.hidden = false; v.querySelector('[data-visor="imprimeix"]').hidden = false;
     cos.innerHTML = doc.tipus === 'application/pdf'
       ? `<div class="doc-pdf"><b>PDF</b><p class="help">Toca «Obre / Comparteix» per veure'l sencer.</p></div>`
       : `<img src="${esc(url)}" alt="${esc(doc.titol)}" draggable="false">`;
