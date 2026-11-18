@@ -1085,3 +1085,8 @@ button.gx-pindola, .gx-pindola { color: color-mix(in srgb, var(--text) 82%, var(
 .rec-afoto { justify-self: start; cursor: pointer; }
 .rec-afoto.ocupat { opacity: .6; pointer-events: none; }
 .sat-torna { white-space: nowrap; }
+.rec-quan { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.rec-quan input[type="date"] { flex: 1 1 150px; min-width: 0; }
+.rec-quan input[type="time"] { flex: 0 1 110px; min-width: 0; }
+.rec-avis { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-weight: 600; font-size: 14px; }
+.rec-avis select { width: auto; }

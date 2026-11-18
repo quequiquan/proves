@@ -361,10 +361,18 @@ async function actualitzaExterns(avisa = false) {
   if ((canvi || avisa) && !document.querySelector('#dlg[open]')) render();
 }
 const finsRepeticions = () => `${Math.max(...anysAniv())}-12-31`;
+// Recordatoris amb data: a l'agenda surten com un pla de l'etiqueta «Recordatoris» (en tocar-lo s'obre la seva fitxa)
+const recsAmbData = () => {
+  const tr = tipusRecord();
+  return (state.recordatoris || []).filter((r) => !r.fet && /^\d{4}-\d{2}-\d{2}$/.test(r.data || '')).map((r) => ({
+    id: 'rc|' + r.id, recordatori: r, data: r.data, hora: r.hora || '', horaFi: '', totElDia: !r.hora, estat: 'confirmat',
+    titol: r.text, lloc: '', qui: [], _amb: [], _t: { nom: tr ? tr.nom : 'Recordatoris', color: tr ? tr.color : '#E8590C' },
+  }));
+};
 const totsPlans = (ambAniv = true) => {
   const fins = finsRepeticions();
   return [...[...state.plans, ...rebuts().filter((p) => p.rebut.resposta === 'si')].flatMap((p) => instancies(p, fins)),
-    ...plansExterns(), ...(ambAniv ? aniversaris(anysAniv()) : [])];
+    ...plansExterns(), ...(ambAniv ? aniversaris(anysAniv()) : []), ...recsAmbData()];
 };
 const trobaPla = (id) => state.plans.find((p) => p.id === id) || rebuts().find((p) => p.id === id) || plansExterns().find((p) => p.id === id)
   || (/^(an|sa)\|/.test(id) ? aniversaris([Number(id.split('|')[2])]).find((p) => p.id === id) : null)
@@ -651,7 +659,7 @@ function targeta(p, ambData = false) {
     ${env}${estat}
   </button>`;
   // Els plans propis es poden lliscar cap a l'esquerra: Confirma (si està per confirmar) i Esborra
-  if (p.rebut || p.aniversari || p.extern) return boto;
+  if (p.rebut || p.aniversari || p.extern || p.recordatori) return boto;
   const base = p.base || p;
   return `<div class="pla-mur" data-mur="${esc(p.id)}">
     <div class="pla-accions">${base.estat === 'pendent' ? `<button type="button" class="acc-confirma" data-acc="confirma" data-accpla="${esc(p.id)}">Confirma</button>` : ''}<button type="button" class="acc-esborra" data-acc="esborra" data-accpla="${esc(p.id)}">Esborra</button></div>
@@ -1207,6 +1215,7 @@ function vistaRecordatoris() {
   const llista = pendentsRec().slice().sort((a, b) => (Boolean(b.important) - Boolean(a.important)) || String(b.creat || '').localeCompare(String(a.creat || '')));
   const indicadors = (r) => {
     const subs = r.subtasques || [], n = (r.imatges || []).length, out = [];
+    if (r.data) out.push(dataCurta(r.data) + (r.hora ? ' ' + r.hora : ''));
     if (subs.length) out.push(`${subs.filter((x) => x.fet).length}/${subs.length}`);
     if (n) out.push(n === 1 ? '1 foto' : n + ' fotos');
     if (r.notes) out.push('Notes');
@@ -1437,7 +1446,7 @@ function aplicaTema() {
 function render() {
   aplicaTema();
   if (!VISTES[ui.view]) ui.view = 'propers';
-  if (modeAgenda() && SATEL.some((x) => x.id === ui.view) && ui.view !== 'aniversaris') ui.view = 'inici';
+  if (modeAgenda() && SATEL.some((x) => x.id === ui.view) && ui.view !== 'aniversaris' && !(ui.view === 'recordatoris' && ui.recObert)) ui.view = 'inici';
   document.body.classList.toggle('mode-agenda', modeAgenda());
   if (ui.view === 'entrada' && !sync()?.disponible) ui.view = 'propers';
   document.body.classList.toggle('mode-entrada', ui.view === 'entrada');
@@ -1787,7 +1796,7 @@ function eliminaPla(p) {
 let premut = null, ignoraClic = false;
 $('#main').addEventListener('touchstart', (e) => {
   const c = e.target.closest('[data-pla]');
-  if (!c || e.touches.length !== 1) return;
+  if (!c || e.touches.length !== 1 || c.dataset.pla.startsWith('rc|')) return;
   const x = e.touches[0].clientX, y = e.touches[0].clientY;
   clearTimeout(premut?.t);
   premut = {
@@ -1811,10 +1820,17 @@ $('#main').addEventListener('contextmenu', (e) => {
   const c = e.target.closest('[data-pla]');
   if (!c) return;
   e.preventDefault();
+  if (c.dataset.pla.startsWith('rc|')) return;
   if (!('ontouchstart' in window)) eliminaPla(trobaPla(c.dataset.pla));
 });
 $('#main').addEventListener('click', (e) => {
-  if (ignoraClic && e.target.closest('[data-pla]')) { e.stopImmediatePropagation(); e.preventDefault(); }
+  if (ignoraClic && e.target.closest('[data-pla]')) { e.stopImmediatePropagation(); e.preventDefault(); return; }
+  // Un recordatori a l'agenda: s'obre la seva fitxa i, en tornar, es torna on eres
+  const rc = e.target.closest('[data-pla^="rc|"]');
+  if (rc) {
+    e.stopImmediatePropagation(); e.preventDefault();
+    ui.recTorna = ui.view; ui.view = 'recordatoris'; ui.recObert = rc.dataset.pla.slice(3); render(); window.scrollTo(0, 0);
+  }
 }, true);
 
 /* ---------- Finestreta per escriure o canviar un nom (el text surt seleccionat: el que escrius el substitueix) ---------- */
@@ -1883,7 +1899,7 @@ $('#main').addEventListener('click', (e) => {
   if (s) {
     const sat = SATEL.find((x) => x.id === s.dataset.sat);
     if (sat?.aviat) { toast(`${sat.nom}: aviat`); return; }
-    ui.view = s.dataset.sat; ui.llista = ''; ui.memEdita = ''; ui.recObert = ''; render(); window.scrollTo(0, 0); return;
+    ui.view = s.dataset.sat; ui.llista = ''; ui.memEdita = ''; ui.recObert = ''; ui.recTorna = ''; render(); window.scrollTo(0, 0); return;
   }
   const f = e.target.closest('[data-fitxa]');
   if (f) { ui.tornaA = ui.view === 'aniversaris' ? 'aniversaris' : ''; ui.view = 'gent'; ui.persona = f.dataset.fitxa; render(); window.scrollTo(0, 0); return; }
@@ -1980,6 +1996,11 @@ function vistaRecFitxa(r) {
     <div class="rec-fitxa">
       <textarea class="rec-titol" data-reccamp="text" rows="2" maxlength="300" placeholder="Què has de recordar?">${esc(r.text)}</textarea>
       <button class="rec-imp${r.important ? ' si' : ''}" data-recimp aria-pressed="${Boolean(r.important)}"><span class="rec-bandera"></span>${r.important ? 'Important' : 'Marca com a important'}</button>
+      <div class="rec-bloc"><span>Quan (opcional)</span>
+        <div class="rec-quan"><input type="date" data-reccamp="data" value="${esc(r.data || '')}" aria-label="Dia"><input type="time" data-reccamp="hora" value="${esc(r.hora || '')}" aria-label="Hora" ${r.data ? '' : 'disabled'}>${r.data ? '<button class="enllac" data-rectreudata>Treu</button>' : ''}</div>
+        ${r.data ? `<label class="rec-avis">Avís al calendari de l'iPhone <select data-reccamp="avis">${AVISOS_REC.map(([k, n]) => `<option value="${k}"${(r.avis || 'hora') === k ? ' selected' : ''}>${esc(n(r))}</option>`).join('')}</select></label>
+          <p class="help">Surt a l'agenda i al calendari de l'iPhone (a l'etiqueta Recordatoris), on t'avisarà.</p>` : '<p class="help">Si hi poses dia, sortirà a l\'agenda i el calendari de l\'iPhone t\'avisarà.</p>'}
+      </div>
       <label class="rec-bloc"><span>Notes</span><textarea data-reccamp="notes" rows="4" maxlength="3000" placeholder="Detalls, telèfons, el que calgui…">${esc(r.notes || '')}</textarea></label>
       <label class="rec-bloc"><span>Enllaç</span><div class="rec-url"><input data-reccamp="url" type="url" inputmode="url" maxlength="2000" placeholder="https://…" value="${esc(r.url || '')}">${r.url ? `<a class="btn" href="${esc(r.url)}" target="_blank" rel="noopener">Obre</a>` : ''}</div></label>
       <div class="rec-bloc"><span>Subtasques${subs.length ? ` · ${subs.filter((s) => s.fet).length}/${subs.length}` : ''}</span>
@@ -1994,6 +2015,13 @@ function vistaRecFitxa(r) {
       <div class="ll-peu"><button class="btn primary" data-recfitxafet>Fet</button><button class="enllac perill" data-recesborra>Esborra</button></div>
     </div>`;
 }
+const AVISOS_REC = [
+  ['hora', (r) => (r.hora ? "A l'hora" : 'A les 9 del matí')],
+  ['15', () => '15 minuts abans'],
+  ['60', () => '1 hora abans'],
+  ['1440', (r) => (r.hora ? '1 dia abans' : "El dia abans a les 9")],
+  ['cap', () => 'Sense avís'],
+];
 const recObert = () => state.recordatoris.find((x) => x.id === ui.recObert && !x.fet);
 // Treu del núvol les fotos d'un recordatori que ja no hi és (passat el temps de Desfés)
 function netejaFotosRec(r) {
@@ -2018,8 +2046,10 @@ $('#main').addEventListener('change', async (e) => {
     if (k === 'text' && !v) { t.value = r.text; return; }
     if (k === 'url' && v && !/^https?:\/\//i.test(v)) v = 'https://' + v;
     if ((r[k] || '') === v) return;
-    r[k] = v.slice(0, k === 'notes' ? 3000 : k === 'url' ? 2000 : 300); save();
-    if (k === 'url') render();
+    r[k] = v.slice(0, k === 'notes' ? 3000 : k === 'url' ? 2000 : 300);
+    if (k === 'data' && !v) { r.hora = ''; }
+    save();
+    if (['url', 'data', 'hora'].includes(k)) render();
     return;
   }
   if (t.id === 'recFoto') {
@@ -2051,10 +2081,15 @@ $('#main').addEventListener('submit', (e) => {
 });
 $('#main').addEventListener('click', async (e) => {
   const t = e.target;
-  if (t.closest('[data-rectorna]')) { document.activeElement?.blur?.(); ui.recObert = ''; render(); window.scrollTo(0, 0); return; }
+  if (t.closest('[data-rectorna]')) {
+    document.activeElement?.blur?.(); ui.recObert = '';
+    if (ui.recTorna) { ui.view = ui.recTorna; ui.recTorna = ''; }
+    render(); window.scrollTo(0, 0); return;
+  }
   const r = recObert();
   if (!r) return;
   if (t.closest('[data-recimp]')) { r.important = !r.important; save(); render(); return; }
+  if (t.closest('[data-rectreudata]')) { r.data = ''; r.hora = ''; save(); render(); return; }
   const sf = t.closest('[data-subfet]');
   if (sf) { const s = (r.subtasques || []).find((x) => x.id === sf.dataset.subfet); if (s) { s.fet = !s.fet; save(); render(); } return; }
   const se = t.closest('[data-subedita]');
