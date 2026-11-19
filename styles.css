@@ -1165,3 +1165,8 @@ button.gx-pindola, .gx-pindola { color: color-mix(in srgb, var(--text) 82%, var(
 .icones-tria { flex-wrap: nowrap; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; padding: 4px 2px 10px; margin-inline: -4px; scrollbar-width: thin; }
 .icones-tria .icona-opcio { flex: 0 0 auto; scroll-snap-align: start; width: 96px; }
 .icones-tria .icona-opcio span { font-size: 13px; text-align: center; line-height: 1.2; }
+/* Carpetes a Llista i Documents */
+.cf-peu { margin-top: 14px; }
+.cf-mou { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; color: var(--muted); }
+.cf-mou select { font: inherit; font-weight: 700; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 6px 10px; }
+.doc-visor-peu .cf-mou { flex-basis: 100%; justify-content: center; }

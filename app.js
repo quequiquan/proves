@@ -1281,16 +1281,23 @@ const formItem = (col, lid, ph) => `<form class="rec-nou" data-formitem="${col}|
 function vistaLlista() {
   const l = state.llistes.find((x) => x.id === ui.llista);
   if (!l) {
-    const llistes = state.llistes.slice().sort((a, b) => String(b.creat || '').localeCompare(String(a.creat || '')));
-    return capSatel('Llista') + `<p class="help">Llistes per a un moment concret: el que t'has d'endur de viatge, els encàrrecs d'avui…</p>
+    const cid = carpetaOberta('llista');
+    if (cid === null) {
+      return capSatel('Llista') + `<p class="help">Llistes per a un moment concret, ordenades en carpetes: el que t'has d'endur de viatge, els encàrrecs d'avui…</p>
+        ${graellaCarpetes('llista', ['llista', 'llistes'])}`;
+    }
+    const llistes = state.llistes.filter((x) => carpetaItem('llista', x) === cid).sort((a, b) => String(b.creat || '').localeCompare(String(a.creat || '')));
+    return `<div class="sat-cap"><button class="sat-torna" data-cftorna="llista" aria-label="Torna a les carpetes">‹ Carpetes</button><h1>${esc(nomCarpeta('llista', cid))}</h1></div>
       <form id="formLlistaNova" class="rec-nou" autocomplete="off"><input id="llistaNom" placeholder="Nom de la llista nova" maxlength="60" enterkeyhint="done"><button class="btn primary">Crea</button></form>
       ${llistes.length ? `<div class="ll-index">${llistes.map((x) => {
         const n = x.items.filter((i) => !i.fet).length;
         return `<button class="ll-fila" data-obrellista="${esc(x.id)}"><b>${esc(x.nom)}</b><small>${n ? (n === 1 ? '1 pendent' : n + ' pendents') : x.items.length ? 'Feta' : 'Buida'}</small></button>`;
-      }).join('')}</div>` : '<p class="help buit">Encara no tens cap llista.</p>'}`;
+      }).join('')}</div>` : '<p class="help buit">Aquesta carpeta encara és buida.</p>'}
+      ${peuCarpeta('llista')}`;
   }
   const pend = l.items.filter((i) => !i.fet), fets = l.items.length - pend.length;
-  return `<div class="sat-cap"><button class="sat-torna" data-llistes aria-label="Torna a les llistes">‹ Llistes</button><h1>${esc(l.nom)}</h1></div>
+  const tornaA = carpetaOberta('llista') === null ? 'Carpetes' : nomCarpeta('llista', carpetaOberta('llista'));
+  return `<div class="sat-cap"><button class="sat-torna" data-llistes aria-label="Torna">‹ ${esc(tornaA)}</button><h1>${esc(l.nom)}</h1></div>
     ${formItem('llista', l.id, 'Afegeix a la llista')}
     <button class="enllac enganxa" data-enganxa="llista|${esc(l.id)}">Enganxa una llista d'una altra app</button>
     ${pend.length ? filesItems(pend, 'llista', l.id) : `<p class="help buit">${fets ? 'Llista feta.' : 'La llista és buida.'}</p>`}
@@ -1299,8 +1306,92 @@ function vistaLlista() {
       ${l.items.length ? `<button class="btn" data-llistacomparteix="${esc(l.id)}">Comparteix</button><button class="btn" data-llistaimprimeix="${esc(l.id)}">Imprimeix</button>` : ''}
       <button class="enllac" data-llistanom="${esc(l.id)}">Canvia el nom</button>
       <button class="enllac perill" data-llistaesborra="${esc(l.id)}">Esborra la llista</button>
-    </div>`;
+    </div>
+    <div class="cf-peu">${triaCarpeta('llista', l)}</div>`;
 }
+// Carpetes de colors per a Llista i Documents (igual que les de Memòria).
+// Les inicials tenen un id fix perquè siguin les mateixes a tots els aparells.
+const CARPETES_INICIALS = {
+  llista: [['Avui', '#E8590C'], ['Escapada', '#2F9E44'], ['Vacances', '#1C7ED6'], ['Urgent', '#E03131']],
+  docs: [['Personals', '#7048E8'], ['Salut', '#2F9E44'], ['Assegurances', '#1C7ED6'], ['Laborals', '#E8590C']],
+};
+const UI_CARP = { llista: 'llCarpeta', docs: 'docCarpeta' };
+const colCarp = (k) => (k === 'llista' ? state.llistes : state.documents);
+function carpetesDe(k) {
+  const camp = 'carpetes_' + k;
+  if (!Array.isArray(state.ajustos[camp])) {
+    state.ajustos[camp] = CARPETES_INICIALS[k].map(([nom, color]) => ({ id: k + '-' + normal(nom).replace(/[^a-z0-9]+/g, ''), nom, color }));
+    save();
+  }
+  return state.ajustos[camp];
+}
+const carpetaItem = (k, x) => (carpetesDe(k).some((c) => c.id === x.carpeta) ? x.carpeta : '');
+// null = a l'inici (es veuen les carpetes); '' = General (els que no tenen carpeta); si no, l'id de la carpeta
+const carpetaOberta = (k) => { const v = ui[UI_CARP[k]]; return v === 'g' ? '' : carpetesDe(k).some((c) => c.id === v) ? v : null; };
+const nomCarpeta = (k, id) => carpetesDe(k).find((c) => c.id === id)?.nom || 'General';
+function graellaCarpetes(k, unitat) {
+  const compta = (id) => colCarp(k).filter((x) => carpetaItem(k, x) === id).length;
+  const totes = [...carpetesDe(k), ...(compta('') ? [{ id: 'g', nom: 'General', color: '#868E96' }] : [])];
+  return `<div class="mem-carpetes" id="carp-${k}">${totes.map((c) => {
+    const n = compta(c.id === 'g' ? '' : c.id);
+    return `<button class="mem-carpeta" data-cfobre="${k}|${esc(c.id)}" style="--c:${esc(c.color)}"><b>${esc(c.nom)}</b><small>${n === 1 ? '1 ' + unitat[0] : n + ' ' + unitat[1]}</small></button>`;
+  }).join('')}
+    <button class="mem-carpeta nova" data-cfnova="${k}"><b>+ Nova carpeta</b></button></div>`;
+}
+function peuCarpeta(k) {
+  const c = carpetesDe(k).find((x) => x.id === carpetaOberta(k));
+  return c ? `<div class="ll-peu"><button class="enllac" data-cfnom="${k}">Canvia el nom</button><button class="enllac" data-cfcolor="${k}">Canvia el color</button><button class="enllac perill" data-cfesborra="${k}">Esborra la carpeta</button></div>` : '';
+}
+// Desplegable per moure una llista o un document a una altra carpeta
+const triaCarpeta = (k, x) => `<label class="cf-mou">Carpeta <select data-cfmou="${k}|${esc(x.id)}"><option value="">General</option>${carpetesDe(k).map((c) => `<option value="${esc(c.id)}"${c.id === carpetaItem(k, x) ? ' selected' : ''}>${esc(c.nom)}</option>`).join('')}</select></label>`;
+document.addEventListener('change', (e) => {
+  const s = e.target.closest('[data-cfmou]');
+  if (!s) return;
+  const [k, id] = s.dataset.cfmou.split('|');
+  const x = colCarp(k).find((y) => y.id === id);
+  if (!x) return;
+  x.carpeta = s.value; save();
+  ui[UI_CARP[k]] = s.value || 'g';
+  render(); toast(`Ara és a ${nomCarpeta(k, s.value)}`);
+});
+$('#main').addEventListener('click', async (e) => {
+  const t = e.target;
+  const ob = t.closest('[data-cfobre]');
+  if (ob) { const [k, id] = ob.dataset.cfobre.split('|'); ui[UI_CARP[k]] = id; if (k === 'docs') { ui.docFiltre = ''; ui.docCerca = ''; } render(); window.scrollTo(0, 0); return; }
+  const tr = t.closest('[data-cftorna]');
+  if (tr) { ui[UI_CARP[tr.dataset.cftorna]] = null; ui.docCerca = ''; render(); window.scrollTo(0, 0); return; }
+  const nv = t.closest('[data-cfnova]');
+  if (nv) {
+    const k = nv.dataset.cfnova;
+    const nom = await demanaText('Nom de la carpeta nova', '', { max: 40, placeholder: k === 'llista' ? 'Festa, Casa, Feina…' : 'Cotxe, Casa, Banc…' });
+    if (!nom || !nom.trim()) return;
+    const ja = carpetesDe(k).find((c) => normal(c.nom) === normal(nom.trim()));
+    if (ja) { ui[UI_CARP[k]] = ja.id; render(); return; }
+    const c = { id: nouId('c' + k[0]), nom: nom.trim().slice(0, 40), color: COLORS_CARPETA[carpetesDe(k).length % COLORS_CARPETA.length] };
+    state.ajustos['carpetes_' + k] = [...carpetesDe(k), c]; save(); ui[UI_CARP[k]] = c.id; render(); window.scrollTo(0, 0);
+    return;
+  }
+  const el = t.closest('[data-cfnom],[data-cfcolor],[data-cfesborra]');
+  if (!el) return;
+  const k = el.dataset.cfnom || el.dataset.cfcolor || el.dataset.cfesborra, camp = 'carpetes_' + k;
+  const c = carpetesDe(k).find((x) => x.id === carpetaOberta(k));
+  if (!c) return;
+  if (el.dataset.cfnom) {
+    const nom = await demanaText('Nom de la carpeta', c.nom, { max: 40 });
+    if (nom && nom.trim()) { state.ajustos[camp] = carpetesDe(k).map((x) => (x.id === c.id ? { ...x, nom: nom.trim().slice(0, 40) } : x)); save(); render(); }
+    return;
+  }
+  if (el.dataset.cfcolor) {
+    const i = COLORS_CARPETA.indexOf(c.color);
+    state.ajustos[camp] = carpetesDe(k).map((x) => (x.id === c.id ? { ...x, color: COLORS_CARPETA[(i + 1) % COLORS_CARPETA.length] } : x)); save(); render();
+    return;
+  }
+  const n = colCarp(k).filter((x) => x.carpeta === c.id).length;
+  if (el.dataset.segur !== '1') { el.dataset.segur = '1'; el.textContent = n ? `Segur? ${n === 1 ? 'Passarà' : `Els ${n} passaran`} a General` : "Segur? Toca'l un altre cop"; return; }
+  colCarp(k).forEach((x) => { if (x.carpeta === c.id) x.carpeta = ''; });
+  state.ajustos[camp] = carpetesDe(k).filter((x) => x.id !== c.id); save();
+  ui[UI_CARP[k]] = null; render(); toast('Carpeta esborrada');
+});
 // Famílies de la compra: cada producte es classifica sol per paraules clau (i es pot canviar a mà)
 const FAMILIES = [
   { id: 'verdura', nom: 'Verdura', c: '#2F9E44', p: 'verdura,enciam,lletuga,tomaquet,tomate,ceba,ceba tendra,all,pebrot,carbasso,carbassa,albergina,pastanaga,patata,broquil,coliflor,espinac,mongeta tendra,mongeta,cogombre,porro,api,carxofa,bolet,xampinyo,col,julivert,rucula,canonges,remolatxa,nap,amanida' },
@@ -1510,28 +1601,41 @@ function catDoc(d) {
 const midaText = (b) => (!b ? '' : b < 1024 * 1024 ? Math.max(1, Math.round(b / 1024)) + ' kB' : (b / 1024 / 1024).toFixed(1).replace('.', ',') + ' MB');
 const etiquetaDoc = (d) => (d.tipus === 'enllac' ? 'WEB' : extDoc(d).toUpperCase().slice(0, 4) || 'DOC');
 const domini = (u) => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return u; } };
+const graellaDocs = (docs, q) => `<div class="doc-graella">${docs.map((x) => {
+  const cat = CATS_DOC.find((c) => c.id === catDoc(x)), cerca = normal([x.titol, x.nomFitxer, x.url, cat.nom, etiquetaDoc(x), nomCarpeta('docs', carpetaItem('docs', x))].filter(Boolean).join(' '));
+  return `<button class="doc-fitxa" data-docobre="${esc(x.id)}" data-doccerca="${esc(cerca)}"${q && !cerca.includes(q) ? ' hidden' : ''}>
+        <span class="doc-mini" style="--fc:${cat.c}">${x.mini ? `<img src="${esc(x.mini)}" alt="">` : `<b>${esc(etiquetaDoc(x))}</b>`}</span>
+        <span class="doc-nom">${esc(x.titol)}</span><small>${esc(x.tipus === 'enllac' ? domini(x.url) : [dataDoc(x.creat), midaText(x.mida)].filter(Boolean).join(' · '))}</small></button>`;
+}).join('')}</div>`;
 function vistaDocuments() {
   const entrat = Boolean(usuari());
   const tots = state.documents.slice().sort((a, b) => String(b.creat || '').localeCompare(String(a.creat || '')));
-  const presents = CATS_DOC.filter((c) => tots.some((d) => catDoc(d) === c.id));
-  const filtre = presents.some((c) => c.id === ui.docFiltre) ? ui.docFiltre : '';
-  const docs = filtre ? tots.filter((d) => catDoc(d) === filtre) : tots;
   const q = normal((ui.docCerca || '').trim());
-  return capSatel('Documents') + `<p class="help">Guarda qualsevol document: fotos, PDF, contractes en Word, pressupostos en Excel, enllaços a pàgines web… Es guarden al teu núvol privat: només tu els pots veure.</p>
+  const cid = carpetaOberta('docs');
+  if (cid === null) {
+    // Inici: les carpetes i un cercador que busca a totes
+    return capSatel('Documents') + `<p class="help">Guarda qualsevol document en carpetes: fotos, PDF, contractes, pressupostos, enllaços a pàgines web… Es guarden al teu núvol privat: només tu els pots veure.</p>
+      ${!entrat ? '<p class="help avis-doc">Per guardar documents cal haver entrat amb el teu correu (toca el logo de Galàxia, a dalt).</p>' : ''}
+      ${tots.length > 1 ? `<input id="cercaDoc" type="search" class="doc-cerca" placeholder="Cerca a totes les carpetes…" autocomplete="off" value="${esc(ui.docCerca || '')}">` : ''}
+      <div id="docInici"${q ? ' hidden' : ''}>${graellaCarpetes('docs', ['document', 'documents'])}</div>
+      <div id="docTots"${q ? '' : ' hidden'}>${graellaDocs(tots, q)}</div><p class="help buit" id="docRes" hidden>No hi ha cap document que hi coincideixi.</p>`;
+  }
+  const delaCarpeta = tots.filter((d) => carpetaItem('docs', d) === cid);
+  const presents = CATS_DOC.filter((c) => delaCarpeta.some((d) => catDoc(d) === c.id));
+  const filtre = presents.some((c) => c.id === ui.docFiltre) ? ui.docFiltre : '';
+  const docs = filtre ? delaCarpeta.filter((d) => catDoc(d) === filtre) : delaCarpeta;
+  return `<div class="sat-cap"><button class="sat-torna" data-cftorna="docs" aria-label="Torna a les carpetes">‹ Carpetes</button><h1>${esc(nomCarpeta('docs', cid))}</h1></div>
     ${entrat ? `<div class="doc-botons">
-        <label class="btn primary doc-afegeix${ui.docPujant ? ' ocupat' : ''}"><input type="file" id="docFitxer" multiple hidden ${ui.docPujant ? 'disabled' : ''}>${ui.docPujant ? 'Pujant…' : 'Afegeix fitxers'}</label>
+        <label class="btn primary doc-afegeix${ui.docPujant ? ' ocupat' : ''}"><input type="file" id="docFoto" accept="image/*" capture="environment" hidden ${ui.docPujant ? 'disabled' : ''}>${ui.docPujant ? 'Pujant…' : 'Fes una foto'}</label>
+        <label class="btn${ui.docPujant ? ' ocupat' : ''}"><input type="file" id="docFitxer" multiple hidden ${ui.docPujant ? 'disabled' : ''}>Afegeix fitxers</label>
         <button class="btn" data-docenllac ${ui.docPujant ? 'disabled' : ''}>Afegeix un enllaç</button></div>
-      ${tots.length > 1 ? `<input id="cercaDoc" type="search" class="doc-cerca" placeholder="Cerca un document…" autocomplete="off" value="${esc(ui.docCerca || '')}">` : ''}
+      ${delaCarpeta.length > 3 ? `<input id="cercaDoc" type="search" class="doc-cerca" placeholder="Cerca en aquesta carpeta…" autocomplete="off" value="${esc(ui.docCerca || '')}">` : ''}
       ${presents.length > 1 ? `<div class="doc-filtres"><button class="${!filtre ? 'on' : ''}" data-docfiltre="">Tots</button>${presents.map((c) => `<button class="${filtre === c.id ? 'on' : ''}" data-docfiltre="${c.id}" style="--fc:${c.c}">${esc(c.nom)}</button>`).join('')}</div>` : ''}`
       : '<p class="help avis-doc">Per guardar documents cal haver entrat amb el teu correu (toca el logo de Galàxia, a dalt).</p>'}
-    ${docs.length ? `<div class="doc-graella">${docs.map((x) => {
-        const cat = CATS_DOC.find((c) => c.id === catDoc(x)), cerca = normal([x.titol, x.nomFitxer, x.url, cat.nom, etiquetaDoc(x)].filter(Boolean).join(' '));
-        return `<button class="doc-fitxa" data-docobre="${esc(x.id)}" data-doccerca="${esc(cerca)}"${q && !cerca.includes(q) ? ' hidden' : ''}>
-        <span class="doc-mini" style="--fc:${cat.c}">${x.mini ? `<img src="${esc(x.mini)}" alt="">` : `<b>${esc(etiquetaDoc(x))}</b>`}</span>
-        <span class="doc-nom">${esc(x.titol)}</span><small>${esc(x.tipus === 'enllac' ? domini(x.url) : [dataDoc(x.creat), midaText(x.mida)].filter(Boolean).join(' · '))}</small></button>`;
-      }).join('')}</div><p class="help buit" id="docRes" hidden>No hi ha cap document que hi coincideixi.</p>`
-      : entrat ? '<p class="help buit">Encara no tens cap document.</p>' : ''}
-    ${entrat ? '<p class="help doc-consell">Mida màxima de cada fitxer: 50 MB. Per escanejar diverses pàgines en un sol PDF: a l\'app <b>Arxius</b> de l\'iPhone, toca <b>···</b> → <b>Escanejar documents</b>, desa\'l i després tria\'l aquí.</p>' : ''}`;
+    ${docs.length ? graellaDocs(docs, q) + '<p class="help buit" id="docRes" hidden>No hi ha cap document que hi coincideixi.</p>'
+      : '<p class="help buit">Aquesta carpeta encara és buida.</p>'}
+    ${entrat ? '<p class="help doc-consell"><b>Fes una foto</b> obre la càmera: ideal per a receptes, tiquets, informes o targetes. Mida màxima de cada fitxer: 50 MB. Per escanejar diverses pàgines en un sol PDF: a l\'app <b>Arxius</b> de l\'iPhone, toca <b>···</b> → <b>Escanejar documents</b>, desa\'l i després tria\'l amb «Afegeix fitxers».</p>' : ''}
+    ${peuCarpeta('docs')}`;
 }
 
 // Píndoles: la d'avui i les dels dies anteriors, i les preferides (guardades a Ajustos, es sincronitzen)
@@ -2045,7 +2149,7 @@ $('#main').addEventListener('click', (e) => {
   if (s) {
     const sat = SATEL.find((x) => x.id === s.dataset.sat);
     if (sat?.aviat) { toast(`${sat.nom}: aviat`); return; }
-    ui.view = s.dataset.sat; ui.llista = ''; ui.memEdita = ''; ui.recObert = ''; ui.recTorna = ''; ui.memCarpeta = null; render(); window.scrollTo(0, 0); return;
+    ui.view = s.dataset.sat; ui.llista = ''; ui.memEdita = ''; ui.recObert = ''; ui.recTorna = ''; ui.memCarpeta = null; ui.llCarpeta = null; ui.docCarpeta = null; ui.docCerca = ''; render(); window.scrollTo(0, 0); return;
   }
   const f = e.target.closest('[data-fitxa]');
   if (f) { ui.tornaA = ui.view === 'aniversaris' ? 'aniversaris' : ''; ui.view = 'gent'; ui.persona = f.dataset.fitxa; render(); window.scrollTo(0, 0); return; }
@@ -2752,7 +2856,7 @@ $('#main').addEventListener('submit', (e) => {
     e.preventDefault();
     const nom = $('#llistaNom').value.trim();
     if (!nom) { $('#llistaNom').focus(); return; }
-    const l = { id: nouId('l'), nom: nom.slice(0, 60), creat: new Date().toISOString(), items: [] };
+    const l = { id: nouId('l'), nom: nom.slice(0, 60), creat: new Date().toISOString(), items: [], carpeta: carpetaOberta('llista') || '' };
     state.llistes.push(l); ui.llista = l.id; save(); render();
     document.querySelector('[data-formitem] input')?.focus();
     return;
@@ -3026,7 +3130,7 @@ async function pujaUnDocument(file, titol) {
     } catch (x) { blob = file; }
   }
   const cami = await sync().pujaDoc(id, blob, tipus, extFinal);
-  state.documents.push({ id, titol: titol.slice(0, 80), tipus, cami, nomFitxer: file.name.slice(0, 120), mida: blob.size, mini, creat: new Date().toISOString() });
+  state.documents.push({ id, titol: titol.slice(0, 80), tipus, cami, nomFitxer: file.name.slice(0, 120), mida: blob.size, mini, carpeta: carpetaOberta('docs') || '', creat: new Date().toISOString() });
   save();
 }
 const nomPerDefecte = (file) => {
@@ -3034,7 +3138,7 @@ const nomPerDefecte = (file) => {
   return /^(image|img|photo|foto|dsc|pxl)[\s_-]?\d*/i.test(nomNet) ? 'Document ' + new Date().toLocaleDateString('ca-ES') : nomNet || 'Document';
 };
 $('#main').addEventListener('change', async (e) => {
-  if (e.target.id !== 'docFitxer') return;
+  if (e.target.id !== 'docFitxer' && e.target.id !== 'docFoto') return;
   const tots = [...(e.target.files || [])];
   e.target.value = '';
   if (!tots.length) return;
@@ -3067,7 +3171,7 @@ $('#main').addEventListener('click', async (e) => {
   if (!/^https?:\/\/[^\s.]+\.[^\s]+$/i.test(url)) { toast('Aquesta adreça no sembla correcta.'); return; }
   const titol = await demanaText('Nom del document', domini(url), { max: 80 });
   if (titol === null) return;
-  state.documents.push({ id: nouId('d'), titol: (titol.trim() || domini(url)).slice(0, 80), tipus: 'enllac', url: url.slice(0, 2000), creat: new Date().toISOString() });
+  state.documents.push({ id: nouId('d'), titol: (titol.trim() || domini(url)).slice(0, 80), tipus: 'enllac', url: url.slice(0, 2000), carpeta: carpetaOberta('docs') || '', creat: new Date().toISOString() });
   save(); render(); toast('Enllaç desat');
 });
 $('#main').addEventListener('click', (e) => {
@@ -3079,6 +3183,9 @@ $('#main').addEventListener('input', (e) => {
   if (e.target.id !== 'cercaDoc') return;
   ui.docCerca = e.target.value;
   const q = normal(e.target.value.trim());
+  const ini = document.getElementById('docInici'), totsD = document.getElementById('docTots');
+  if (ini) ini.hidden = Boolean(q);
+  if (totsD) totsD.hidden = !q;
   let n = 0;
   document.querySelectorAll('[data-doccerca]').forEach((el) => { el.hidden = Boolean(q) && !el.dataset.doccerca.includes(q); if (!el.hidden) n++; });
   const r = document.getElementById('docRes'); if (r) r.hidden = n > 0;
@@ -3139,7 +3246,7 @@ async function obreVisor(doc) {
     <div class="doc-visor-cos"><p class="help">Carregant…</p></div>
     <div class="doc-visor-peu"><a class="btn primary" data-visor="obre" target="_blank" rel="noopener" hidden>${esEnllac ? 'Obre la pàgina' : 'Obre / Comparteix'}</a>
       ${esEnllac ? '<button type="button" class="btn" data-visor="comparteix">Comparteix</button>' : '<button type="button" class="btn" data-visor="imprimeix" hidden>Imprimeix</button>'}
-      <button type="button" class="enllac" data-visor="nom">Canvia el nom</button><button type="button" class="enllac perill" data-visor="esborra">Esborra</button></div>`;
+      ${triaCarpeta('docs', doc)}<button type="button" class="enllac" data-visor="nom">Canvia el nom</button><button type="button" class="enllac perill" data-visor="esborra">Esborra</button></div>`;
   document.body.appendChild(v);
   v.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-visor]');
