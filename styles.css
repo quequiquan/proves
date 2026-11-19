@@ -1104,3 +1104,31 @@ button.gx-pindola, .gx-pindola { color: color-mix(in srgb, var(--text) 82%, var(
 .mem-fitxa .mem-de { display: block; color: var(--c, var(--muted)); font-weight: 800; font-size: 12px; margin-bottom: 2px; }
 .mem-form select { width: 100%; }
 .mem-fitxa p a { color: var(--accent); font-weight: 700; overflow-wrap: anywhere; }
+/* Memòria: lliscar per esborrar */
+.mur-mem { position: relative; border-radius: 14px; overflow: hidden; }
+.mur-mem[hidden] { display: none; }
+.mur-mem > .mem-fitxa { position: relative; z-index: 1; touch-action: pan-y; transition: transform .2s ease; }
+.mur-mem.mou > .mem-fitxa { transition: none; }
+.mur-mem > .mur-accions { position: absolute; inset: 0 0 0 auto; display: flex; }
+.mur-mem > .mur-accions button { border: 0; color: #fff; font: inherit; font-weight: 800; font-size: 14px; padding: 0 20px; min-width: 92px; cursor: pointer; }
+.mur-mem:not(.obert):not(.mou) > .mur-accions { visibility: hidden; }
+.mem-web { display: flex; flex-wrap: wrap; gap: 8px; margin-top: -4px; }
+.mem-web .btn { font-size: 14px; padding: 8px 12px; }
+.mem-web-ajuda { margin-top: -6px; }
+/* Recordatoris: barra ràpida */
+.rec-barra { display: flex; align-items: center; gap: 8px; margin: -6px 0 12px; flex-wrap: wrap; }
+.rb { width: 42px; height: 42px; border-radius: 50%; border: 1.5px solid var(--border); background: var(--surface); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text); padding: 0; }
+.rb svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.rb.on { background: #E8590C; border-color: #E8590C; color: #fff; }
+.rb-xips { font-weight: 700; font-size: 13px; color: var(--muted); }
+.rb-quan { margin: -4px 0 12px; }
+/* PDF per imprimir des de l'iPhone */
+.pdf-full { position: fixed; left: -10000px; top: 0; width: 720px; padding: 24px; background: #fff; color: #000; font-family: system-ui, sans-serif; }
+.pdf-full h1 { font-size: 26px; margin: 0 0 14px; } .pdf-full h2 { font-size: 19px; margin: 14px 0 4px; }
+.pdf-full p { white-space: pre-wrap; font-size: 15px; line-height: 1.45; margin: 0; }
+.pdf-full .ll-app { color: #777; font-size: 13px; margin: 0 0 8px; }
+.pdf-full ul { list-style: none; margin: 0; padding: 0; }
+.pdf-full li { display: flex; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid #ddd; font-size: 17px; }
+.pdf-full .quadret { width: 16px; height: 16px; border: 2px solid #000; border-radius: 3px; flex: none; }
+.pdf-full .mem-imp { padding: 10px 0; border-bottom: 1px solid #ccc; }
+.pdf-full img { max-width: 100%; }

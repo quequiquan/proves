@@ -1223,7 +1223,8 @@ function vistaRecordatoris() {
     return out;
   };
   return capSatel('Recordatoris') + `<p class="help">Coses pendents que no vols oblidar. Toca un recordatori per afegir-hi notes, fotos, un enllaç o passos; quan el facis, toca el cercle i desapareix.</p>
-    <form id="formRec" class="rec-nou" autocomplete="off"><input id="recText" placeholder="Què has de recordar?" maxlength="300" enterkeyhint="done"><button class="btn primary">Afegeix</button></form>
+    <form id="formRec" class="rec-nou" autocomplete="off"><input id="recText" placeholder="Què has de recordar?" maxlength="300" enterkeyhint="done" value="${esc(ui.recNouText || '')}"><button class="btn primary">Afegeix</button></form>
+    ${barraRecNou()}
     <button class="enllac enganxa" data-enganxa="recordatoris">Enganxa una llista d'una altra app</button>
     ${llista.length > 3 ? '<input id="cercaRec" type="search" class="doc-cerca" placeholder="Cerca un recordatori…" autocomplete="off">' : ''}
     ${llista.length ? `<ul class="rec-llista">${llista.map((r) => `<li data-rec="${esc(r.id)}" data-reccerca="${esc(normal([r.text, r.notes, ...(r.subtasques || []).map((x) => x.text)].filter(Boolean).join(' ')))}"${r.important ? ' class="important"' : ''}>
@@ -1352,11 +1353,11 @@ function preparaCarpetes() {
 const ambEnllacos = (t) => esc(t).replace(/https?:\/\/[^\s<]+/g, (u) => `<a href="${u}" target="_blank" rel="noopener">${u.replace(/^https?:\/\/(www\.)?/, '').slice(0, 40)}${u.length > 48 ? '…' : ''}</a>`);
 function filaFitxa(x, ambCarpeta) {
   const c = ambCarpeta ? carpetesMem().find((k) => k.id === carpetaDe(x)) : null;
-  return `<div class="mem-fitxa" data-memcerca="${esc(normal(x.titol + ' ' + x.text))}"${c ? ` style="--c:${esc(c.color)}"` : ''}>
+  return `<div class="mur-mem" data-memcerca="${esc(normal(x.titol + ' ' + x.text))}"><div class="mur-accions"><button type="button" class="acc-esborra" data-memtreu="${esc(x.id)}">Esborra</button></div><div class="mem-fitxa"${c ? ` style="--c:${esc(c.color)}"` : ''}>
         ${ambCarpeta ? `<small class="mem-de">${esc(c ? c.nom : 'General')}</small>` : ''}<b>${esc(x.titol)}</b>${x.text ? `<p>${ambEnllacos(x.text)}</p>` : ''}
         ${(x.imatges || []).length ? `<div class="mem-imgs">${x.imatges.map((im) => `<button class="rec-img" data-memimg="${esc(x.id)}|${esc(im.id)}"><img src="${esc(im.mini)}" alt=""></button>`).join('')}</div>` : ''}
         <div class="mem-accions"><button class="enllac" data-memcomparteix="${esc(x.id)}">Comparteix</button>${x.text ? `<button class="enllac" data-memcopia="${esc(x.id)}">Copia</button>` : ''}<button class="enllac" data-memimprimeix="${esc(x.id)}">Imprimeix</button><button class="enllac" data-memedita="${esc(x.id)}">Edita</button></div>
-      </div>`;
+      </div></div>`;
 }
 function vistaMemoria() {
   preparaCarpetes();
@@ -1364,8 +1365,13 @@ function vistaMemoria() {
   const perOrdre = (a, b) => a.titol.localeCompare(b.titol, 'ca');
   if (ed) {
     const cSel = f ? carpetaDe(f) : (carpetaActual() || '');
-    return capSatel('Memòria') + `<form id="formMem" class="mem-form" autocomplete="off">
-      <label>Títol<input name="titol" data-triatot value="${esc(f?.titol || '')}" placeholder="Pòlissa de la casa" maxlength="80" required></label>
+    const cOn = carpetaActual() === null ? null : carpetesMem().find((c) => c.id === carpetaActual());
+    const torna = carpetaActual() === null ? 'Carpetes' : cOn ? cOn.nom : 'General';
+    return `<div class="sat-cap"><button class="sat-torna" data-memcancela aria-label="Torna">‹ ${esc(torna)}</button><h1>${f ? 'Fitxa' : 'Fitxa nova'}</h1></div>
+    <form id="formMem" class="mem-form" autocomplete="off">
+      <label>Títol<input name="titol" data-triatot value="${esc(f?.titol || '')}" placeholder="Nom del restaurant, del vi, de la pòlissa…" maxlength="80" required></label>
+      <div class="mem-web"><button type="button" class="btn" data-memcerca-web="google">Cerca a Google</button><button type="button" class="btn" data-memcerca-web="maps">Cerca a Maps</button><button type="button" class="btn" data-memenganxa>Enganxa les dades</button></div>
+      <p class="help mem-web-ajuda">Busca el nom a Google o a Maps, copia l'adreça, el telèfon o la web (a Maps: Compartir → Copiar) i torna aquí a prémer «Enganxa les dades».</p>
       <label>Carpeta<select name="carpeta"><option value="">General</option>${carpetesMem().map((c) => `<option value="${esc(c.id)}"${c.id === cSel ? ' selected' : ''}>${esc(c.nom)}</option>`).join('')}</select></label>
       <label>Què has de recordar<textarea name="text" rows="6" maxlength="3000" placeholder="Adreça, telèfon, enllaç, el que calgui…">${esc(f?.text || '')}</textarea></label>
       <div class="rec-bloc"><span>Fotos</span>
@@ -2047,9 +2053,14 @@ $('#main').addEventListener('submit', (e) => {
     $('#recText').focus();
     return;
   }
-  state.recordatoris.push({ id: 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), text: text.slice(0, 300), creat: new Date().toISOString() });
+  const n = recNou(), id = 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  state.recordatoris.push({ id, text: text.slice(0, 300), creat: new Date().toISOString(),
+    ...(n.data ? { data: n.data, hora: n.hora || '' } : {}), ...(n.important ? { important: true } : {}), ...(n.url ? { url: n.url } : {}) });
+  const fotos = n.fotos.slice();
+  ui.recNou = null; ui.recNouData = false; ui.recNouText = '';
   save(); render();
   $('#recText')?.focus();
+  if (fotos.length) pujaFotosRecNou(id, fotos);
 });
 
 /* ---------- Enganxar llistes d'altres apps ---------- */
@@ -2336,6 +2347,143 @@ async function obreFotoRec(r, im) {
   } catch (err) { /* es queda la miniatura */ }
 }
 
+// Recordatoris: barra ràpida en afegir-ne un (com a l'iPhone): dia, ubicació, important i foto
+const SVG_REC = {
+  data: '<svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/><circle cx="8.5" cy="14" r=".6"/><circle cx="12" cy="14" r=".6"/><circle cx="15.5" cy="14" r=".6"/></svg>',
+  lloc: '<svg viewBox="0 0 24 24"><path d="M20.5 3.5 3.5 10.5l7 2.5 2.5 7z"/></svg>',
+  imp: '<svg viewBox="0 0 24 24"><path d="M6 21V4M6 4h11l-2.5 4.5L17 13H6"/></svg>',
+  foto: '<svg viewBox="0 0 24 24"><path d="M4 8.5h3l1.6-2.5h6.8L17 8.5h3v10.5H4z"/><circle cx="12" cy="13.5" r="3.3"/></svg>',
+};
+const recNou = () => (ui.recNou ||= { data: '', hora: '', important: false, url: '', fotos: [] });
+function barraRecNou() {
+  const n = recNou();
+  const xips = [n.data ? `${dataCurta(n.data)}${n.hora ? ' ' + n.hora : ''}` : '', n.url ? 'Ubicació' : '', n.important ? 'Important' : '', n.fotos.length ? (n.fotos.length === 1 ? '1 foto' : n.fotos.length + ' fotos') : ''].filter(Boolean);
+  return `<div class="rec-barra">
+      <button type="button" class="rb${n.data ? ' on' : ''}" data-rb="data" aria-label="Dia i hora">${SVG_REC.data}</button>
+      <button type="button" class="rb${n.url ? ' on' : ''}" data-rb="lloc" aria-label="On soc ara">${SVG_REC.lloc}</button>
+      <button type="button" class="rb${n.important ? ' on' : ''}" data-rb="imp" aria-label="Important">${SVG_REC.imp}</button>
+      <label class="rb${n.fotos.length ? ' on' : ''}" aria-label="Foto">${SVG_REC.foto}<input type="file" id="recNouFoto" accept="image/*" multiple hidden></label>
+      ${xips.length ? `<span class="rb-xips">${esc(xips.join(' · '))}</span><button type="button" class="enllac rb-treu" data-rb="treu">Treu</button>` : ''}
+    </div>
+    ${ui.recNouData ? `<div class="rec-quan rb-quan"><input type="date" id="rbData" value="${esc(n.data)}" aria-label="Dia"><input type="time" id="rbHora" value="${esc(n.hora)}" aria-label="Hora"><button type="button" class="btn" data-rb="dataok">D'acord</button></div>` : ''}`;
+}
+// Es manté el que hi ha escrit a la casella quan es torna a pintar la pantalla
+const desaTextRecNou = () => { const i = document.getElementById('recText'); if (i) ui.recNouText = i.value; };
+$('#main').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-rb]');
+  if (!b) return;
+  const n = recNou(), acc = b.dataset.rb;
+  desaTextRecNou();
+  if (acc === 'data') { ui.recNouData = !ui.recNouData; if (!n.data) n.data = avui(); }
+  else if (acc === 'dataok') { n.data = $('#rbData')?.value || ''; n.hora = n.data ? ($('#rbHora')?.value || '') : ''; ui.recNouData = false; }
+  else if (acc === 'imp') n.important = !n.important;
+  else if (acc === 'treu') { ui.recNou = null; ui.recNouData = false; }
+  else if (acc === 'lloc') {
+    if (n.url) { n.url = ''; }
+    else {
+      if (!navigator.geolocation) { toast('Aquest aparell no pot dir on ets.'); return; }
+      toast('Buscant on ets…', 2000);
+      navigator.geolocation.getCurrentPosition((p) => {
+        recNou().url = `https://maps.google.com/?q=${p.coords.latitude.toFixed(6)},${p.coords.longitude.toFixed(6)}`;
+        desaTextRecNou(); render(); toast("S'hi afegirà on ets ara");
+      }, () => toast("No s'ha pogut saber on ets. Mira que l'app tingui permís d'ubicació."), { enableHighAccuracy: true, timeout: 12000 });
+      return;
+    }
+  }
+  render();
+  const i = document.getElementById('recText'); if (i) { i.value = ui.recNouText || ''; i.focus(); }
+});
+$('#main').addEventListener('change', (e) => {
+  if (e.target.id === 'rbData' || e.target.id === 'rbHora') { const n = recNou(); n.data = $('#rbData').value || ''; n.hora = n.data ? $('#rbHora').value || '' : ''; return; }
+  if (e.target.id !== 'recNouFoto') return;
+  desaTextRecNou();
+  recNou().fotos.push(...[...(e.target.files || [])]);
+  render();
+  const i = document.getElementById('recText'); if (i) { i.value = ui.recNouText || ''; i.focus(); }
+});
+// Puja les fotos triades a la barra al recordatori que s'acaba de crear
+async function pujaFotosRecNou(id, fotos) {
+  for (const f of fotos) {
+    try {
+      const im = await carregaImg(f);
+      const blob = await new Promise((ok) => redueix(im, 2000).toBlob(ok, 'image/jpeg', 0.82));
+      const fid = nouId('ri'), cami = await sync().pujaDoc(fid, blob, 'image/jpeg', 'jpg');
+      const r = state.recordatoris.find((x) => x.id === id);
+      if (r) { r.imatges = [...(r.imatges || []), { id: fid, cami, mini: redueix(im, 240).toDataURL('image/jpeg', 0.6) }]; save(); }
+    } catch (err) { toast(navigator.onLine ? "Alguna foto no s'ha pogut pujar." : 'Cal connexió a internet per pujar fotos.', 4500); break; }
+  }
+  if (ui.view === 'recordatoris') render();
+}
+
+// Memòria: lliscar una fitxa cap a l'esquerra per esborrar-la (amb Desfés)
+let lliscM = null, murMObert = null;
+const tancaMurM = (m = murMObert) => { if (!m) return; m.querySelector('.mem-fitxa').style.transform = ''; m.classList.remove('obert'); if (murMObert === m) murMObert = null; };
+const ampleM = (m) => m.querySelector('.mur-accions').offsetWidth;
+$('#main').addEventListener('touchstart', (e) => {
+  const m = e.target.closest('.mur-mem');
+  if (murMObert && murMObert !== m) tancaMurM();
+  if (!m || e.target.closest('.mur-accions') || e.target.closest('a, .rec-img') || e.touches.length !== 1) { lliscM = null; return; }
+  lliscM = { m, x: e.touches[0].clientX, y: e.touches[0].clientY, ini: m.classList.contains('obert') ? -ampleM(m) : 0, mou: false };
+}, { passive: true });
+$('#main').addEventListener('touchmove', (e) => {
+  if (!lliscM) return;
+  const dx = e.touches[0].clientX - lliscM.x, dy = e.touches[0].clientY - lliscM.y;
+  if (!lliscM.mou) {
+    if (Math.abs(dx) < 10 || Math.abs(dx) < Math.abs(dy) * 1.2) { if (Math.abs(dy) > 10) lliscM = null; return; }
+    lliscM.mou = true; lliscM.m.classList.add('mou');
+  }
+  lliscM.m.querySelector('.mem-fitxa').style.transform = `translateX(${Math.max(-ampleM(lliscM.m) - 30, Math.min(0, lliscM.ini + dx))}px)`;
+}, { passive: true });
+$('#main').addEventListener('touchend', (e) => {
+  if (!lliscM) return;
+  const { m, mou, ini, x } = lliscM; lliscM = null;
+  if (!mou) return;
+  m.classList.remove('mou');
+  const dx = e.changedTouches[0].clientX - x;
+  if (ini + dx < -ampleM(m) / 2) { m.classList.add('obert'); m.querySelector('.mem-fitxa').style.transform = `translateX(-${ampleM(m)}px)`; murMObert = m; }
+  else tancaMurM(m);
+}, { passive: true });
+function esborraFitxaMem(f) {
+  const lloc = state.memoria.indexOf(f), copia = { ...f };
+  state.memoria.splice(lloc, 1); ui.memEdita = ''; save(); render();
+  toastDesfes(`Esborrada: ${f.titol}`, () => { state.memoria.splice(Math.max(0, lloc), 0, copia); save(); render(); });
+  setTimeout(() => { if (!state.memoria.some((x) => x.id === copia.id)) (copia.imatges || []).forEach((im) => sync()?.esborraDoc(im.cami).catch(() => {})); }, 7000);
+}
+$('#main').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-memtreu]');
+  if (b) { const f = state.memoria.find((x) => x.id === b.dataset.memtreu); if (f) esborraFitxaMem(f); return; }
+  if (murMObert && e.target.closest('.mur-mem') === murMObert) { e.preventDefault(); e.stopPropagation(); tancaMurM(); }
+}, true);
+// Memòria: buscar a Google o a Maps el que hi ha al títol, i enganxar les dades copiades
+$('#main').addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-memcerca-web]');
+  if (b) {
+    const form = document.getElementById('formMem');
+    const titol = form?.elements.titol.value.trim() || '';
+    if (!titol) { toast('Escriu primer el nom al títol (p. ex. el restaurant)'); form?.elements.titol.focus(); return; }
+    const carp = carpetesMem().find((c) => c.id === form.elements.carpeta.value);
+    const q = encodeURIComponent(titol + (carp && !normal(titol).includes(normal(carp.nom)) && /restaurant|vins?|bars?|botigu|hotel/i.test(carp.nom) ? ' ' + carp.nom.replace(/s$/, '') : ''));
+    window.open(b.dataset.memcercaWeb === 'maps' ? `https://www.google.com/maps/search/?api=1&query=${q}` : `https://www.google.com/search?q=${q}`, '_blank', 'noopener');
+    return;
+  }
+  if (e.target.closest('[data-memenganxa]')) {
+    const form = document.getElementById('formMem');
+    let text = '';
+    try { text = await navigator.clipboard.readText(); } catch (x) { /* l'iPhone no ho ha permès */ }
+    if (!text) text = (await enganxaText('Enganxa aquí les dades', 'Mantén el dit dins del requadre i toca «Enganxar». Després prem «Afegeix-ho».')) || '';
+    text = text.trim();
+    if (!text || !form) return;
+    const ta = form.elements.text;
+    if (!form.elements.titol.value.trim()) {   // sense títol: la primera línia fa de títol (p. ex. el nom que copia Maps)
+      const ls = text.split(/\r?\n/);
+      form.elements.titol.value = ls.shift().trim().slice(0, 80);
+      text = ls.join('\n').trim();
+    }
+    ta.value = [ta.value.trim(), text].filter(Boolean).join('\n').slice(0, 3000);
+    toast('Dades afegides a la fitxa. Recorda prémer Desa.', 3500);
+  }
+});
+
 /* ---------- Llista i Compres ---------- */
 // Avís «Ja hi és» al costat de la casella (a baix de tot no es veu quan el teclat és obert) i l'element parpelleja
 function jaHiEs(form, it) {
@@ -2445,10 +2593,8 @@ $('#main').addEventListener('click', (e) => {
     const l = state.llistes.find((x) => x.id === im.dataset.llistaimprimeix);
     if (!l) return;
     const pend = l.items.filter((i) => !i.fet), items = pend.length ? pend : l.items;
-    $('#impressio').innerHTML = `<div class="llista-full imprès full-llista"><p class="ll-app">Galàxia</p><h1>${esc(l.nom)}</h1>
-      <ul>${items.map((i) => `<li><span class="quadret"></span>${esc(i.text)}</li>`).join('')}</ul></div>`;
-    document.body.classList.add('imprimint');
-    setTimeout(() => { window.print(); setTimeout(() => document.body.classList.remove('imprimint'), 500); }, 100);
+    imprimeixFull(`<div class="llista-full imprès full-llista"><p class="ll-app">Galàxia</p><h1>${esc(l.nom)}</h1>
+      <ul>${items.map((i) => `<li><span class="quadret"></span>${esc(i.text)}</li>`).join('')}</ul></div>`, l.nom + '.pdf');
     return;
   }
   const nm = t.closest('[data-llistanom]');
@@ -2502,11 +2648,59 @@ $('#main').addEventListener('submit', (e) => {
 });
 
 /* ---------- Imprimir un full (Llista, Memòria, Documents) ---------- */
-function imprimeixFull(html) {
+// A l'app instal·lada a l'iPhone, «imprimir» no fa res (l'iPhone no ho permet): es fa un PDF i s'obre el menú de compartir,
+// on hi ha «Imprimir», «Desar a Arxius», WhatsApp…
+const appInstallada = () => window.navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
+const esIOS = () => /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+let llibresPdf = null;
+function carregaScript(src) {
+  return new Promise((ok, ko) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = ko; document.head.appendChild(s); });
+}
+async function fullAPdf(el, nom) {
+  if (!llibresPdf) llibresPdf = Promise.all([
+    carregaScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'),
+    carregaScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'),
+  ]);
+  await llibresPdf;
+  // Es dibuixa el full (amb fons blanc) i es reparteix en pàgines A4
+  const caixa = document.createElement('div');
+  caixa.className = 'pdf-full';
+  caixa.innerHTML = el.innerHTML;
+  document.body.appendChild(caixa);
+  try {
+    const canvas = await window.html2canvas(caixa, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
+    const ampleMm = 190, altPagMm = 277, mmPerPx = ampleMm / canvas.width, altPagPx = Math.floor(altPagMm / mmPerPx);
+    for (let y = 0, p = 0; y < canvas.height; y += altPagPx, p++) {
+      const tros = document.createElement('canvas');
+      tros.width = canvas.width; tros.height = Math.min(altPagPx, canvas.height - y);
+      tros.getContext('2d').drawImage(canvas, 0, y, canvas.width, tros.height, 0, 0, canvas.width, tros.height);
+      if (p) pdf.addPage();
+      pdf.addImage(tros.toDataURL('image/jpeg', 0.92), 'JPEG', 10, 10, ampleMm, tros.height * mmPerPx);
+    }
+    return new File([pdf.output('blob')], nom, { type: 'application/pdf' });
+  } finally { caixa.remove(); }
+}
+async function imprimeixAlMobil(nom) {
+  toast('Preparant el PDF…', 2500);
+  try {
+    const f = await fullAPdf($('#impressio'), nom);
+    if (navigator.canShare && navigator.canShare({ files: [f] })) {
+      try { await navigator.share({ files: [f], title: nom.replace(/\.pdf$/, '') }); } catch (x) { /* ha cancel·lat */ }
+      return;
+    }
+    window.open(URL.createObjectURL(f), '_blank');
+  } catch (err) {
+    toast(navigator.onLine ? "No s'ha pogut preparar el PDF." : 'Cal connexió a internet per preparar el PDF.', 4500);
+  }
+}
+function imprimeixFull(html, nom = 'Galàxia.pdf') {
   const full = $('#impressio');
   full.innerHTML = html;
   const imgs = [...full.querySelectorAll('img')];
   const ves = () => {
+    if (esIOS() && appInstallada()) { imprimeixAlMobil(nom); return; }
     document.body.classList.add('imprimint');
     setTimeout(() => { window.print(); setTimeout(() => document.body.classList.remove('imprimint'), 500); }, 100);
   };
