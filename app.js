@@ -1323,11 +1323,49 @@ function vistaCompres() {
       ${FAMILIES.map((f) => { const seus = habituals.filter((r) => familiaDe(r) === f.id); return seus.length ? `<div class="ll-chips fam-chips" style="--fc:${f.c}">${seus.map((r) => `<button class="ll-chip${vegades(r) >= 3 ? ' sovint' : ''}" data-torna="${esc(r.id)}">${esc(r.text)}</button>`).join('')}</div>` : ''; }).join('')}` : '');
 }
 // Memòria: fitxes amb informació per consultar (no contrasenyes)
+// Memòria en carpetes (Restaurants, Vins, Filosofia…). «General» és la carpeta de les fitxes sense carpeta.
+const COLORS_CARPETA = ['#7048E8', '#E8590C', '#A61E4D', '#2F9E44', '#1C7ED6', '#E64980', '#C2A100', '#0B7285', '#5C677D'];
+const carpetesMem = () => (Array.isArray(state.ajustos.carpetesMem) ? state.ajustos.carpetesMem : []);
+const carpetaDe = (f) => (carpetesMem().some((c) => c.id === f.carpeta) ? f.carpeta : '');
+const carpetaActual = () => (ui.memCarpeta === 'g' ? '' : carpetesMem().some((c) => c.id === ui.memCarpeta) ? ui.memCarpeta : null);
+// Un sol cop: es creen les carpetes inicials i les fitxes «Filosofia · …» passen a la carpeta Filosofia
+function preparaCarpetes() {
+  if (state.ajustos.carpetesFetes) return;
+  const llista = [...carpetesMem()];
+  const troba = (nom, color) => {
+    let c = llista.find((x) => normal(x.nom) === normal(nom));
+    if (!c) { c = { id: nouId('cm'), nom, color }; llista.push(c); }
+    return c;
+  };
+  troba('Restaurants', '#E8590C'); troba('Vins', '#A61E4D');
+  if (state.memoria.some((f) => /^filosofia\s*·/i.test(f.titol))) {
+    const fc = troba('Filosofia', '#7048E8');
+    state.memoria.forEach((f) => {
+      const m = f.titol.match(/^filosofia\s*·\s*(.+)$/i);
+      if (m) { f.titol = m[1].trim(); f.carpeta = fc.id; }
+      else if (normal(f.titol) === normal('Missatges per a la Mamen')) f.carpeta = fc.id;
+    });
+  }
+  state.ajustos.carpetesMem = llista; state.ajustos.carpetesFetes = true; save();
+}
+function filaFitxa(x, ambCarpeta) {
+  const c = ambCarpeta ? carpetesMem().find((k) => k.id === carpetaDe(x)) : null;
+  return `<div class="mem-fitxa" data-memcerca="${esc(normal(x.titol + ' ' + x.text))}"${c ? ` style="--c:${esc(c.color)}"` : ''}>
+        ${ambCarpeta ? `<small class="mem-de">${esc(c ? c.nom : 'General')}</small>` : ''}<b>${esc(x.titol)}</b>${x.text ? `<p>${esc(x.text)}</p>` : ''}
+        ${(x.imatges || []).length ? `<div class="mem-imgs">${x.imatges.map((im) => `<button class="rec-img" data-memimg="${esc(x.id)}|${esc(im.id)}"><img src="${esc(im.mini)}" alt=""></button>`).join('')}</div>` : ''}
+        <div class="mem-accions"><button class="enllac" data-memcomparteix="${esc(x.id)}">Comparteix</button>${x.text ? `<button class="enllac" data-memcopia="${esc(x.id)}">Copia</button>` : ''}<button class="enllac" data-memimprimeix="${esc(x.id)}">Imprimeix</button><button class="enllac" data-memedita="${esc(x.id)}">Edita</button></div>
+      </div>`;
+}
 function vistaMemoria() {
+  preparaCarpetes();
   const ed = ui.memEdita, f = ed && ed !== 'nova' ? state.memoria.find((x) => x.id === ed) : null;
-  if (ed) return capSatel('Memòria') + `<form id="formMem" class="mem-form" autocomplete="off">
+  const perOrdre = (a, b) => a.titol.localeCompare(b.titol, 'ca');
+  if (ed) {
+    const cSel = f ? carpetaDe(f) : (carpetaActual() || '');
+    return capSatel('Memòria') + `<form id="formMem" class="mem-form" autocomplete="off">
       <label>Títol<input name="titol" data-triatot value="${esc(f?.titol || '')}" placeholder="Pòlissa de la casa" maxlength="80" required></label>
-      <label>Què has de recordar<textarea name="text" rows="6" maxlength="3000" placeholder="Companyia, número, telèfon…">${esc(f?.text || '')}</textarea></label>
+      <label>Carpeta<select name="carpeta"><option value="">General</option>${carpetesMem().map((c) => `<option value="${esc(c.id)}"${c.id === cSel ? ' selected' : ''}>${esc(c.nom)}</option>`).join('')}</select></label>
+      <label>Què has de recordar<textarea name="text" rows="6" maxlength="3000" placeholder="Adreça, telèfon, enllaç, el que calgui…">${esc(f?.text || '')}</textarea></label>
       <div class="rec-bloc"><span>Fotos</span>
         ${f && (f.imatges || []).length ? `<div class="rec-imgs">${f.imatges.map((im) => `<button type="button" class="rec-img" data-memimg="${esc(f.id)}|${esc(im.id)}"><img src="${esc(im.mini)}" alt=""></button>`).join('')}</div>` : ''}
         ${!f ? '<p class="help">Desa la fitxa i després, amb «Edita», hi podràs afegir fotos.</p>'
@@ -1337,17 +1375,76 @@ function vistaMemoria() {
       <div class="grp"><button class="btn primary">Desa</button><button type="button" class="btn" data-memcancela>Cancel·la</button>
         ${f ? `<button type="button" class="enllac perill" data-memesborra="${esc(f.id)}">Esborra</button>` : ''}</div>
     </form>`;
-  const fitxes = state.memoria.slice().sort((a, b) => a.titol.localeCompare(b.titol, 'ca'));
-  return capSatel('Memòria') + `<p class="help">Coses importants per consultar: pòlisses, telèfons, la Wi-Fi… Les contrasenyes, millor a l'app Contrasenyes de l'iPhone.</p>
+  }
+  const cid = carpetaActual();
+  if (cid === null) {
+    // Inici de Memòria: les carpetes i un cercador que busca a totes
+    const totes = [{ id: 'g', nom: 'General', color: '#868E96' }, ...carpetesMem()];
+    const compta = (c) => state.memoria.filter((x) => carpetaDe(x) === (c.id === 'g' ? '' : c.id)).length;
+    return capSatel('Memòria') + `<p class="help">Les teves coses per consultar, ordenades en carpetes. Les contrasenyes, millor a l'app Contrasenyes de l'iPhone.</p>
+      ${state.memoria.length ? '<input id="cercaMemG" type="search" class="doc-cerca" placeholder="Cerca a totes les carpetes…" autocomplete="off">' : ''}
+      <div class="mem-carpetes" id="memCarpetes">${totes.map((c) => `<button class="mem-carpeta" data-memcarpeta="${esc(c.id)}" style="--c:${esc(c.color)}"><b>${esc(c.nom)}</b><small>${compta(c) === 1 ? '1 fitxa' : compta(c) + ' fitxes'}</small></button>`).join('')}
+        <button class="mem-carpeta nova" data-memnovacarpeta><b>+ Nova carpeta</b></button></div>
+      <div class="mem-llista" id="memResultats" hidden>${state.memoria.slice().sort(perOrdre).map((x) => filaFitxa(x, true)).join('')}</div>
+      <p class="help buit" id="memRes" hidden>No hi ha cap fitxa que hi coincideixi.</p>`;
+  }
+  // Dins d'una carpeta
+  const c = carpetesMem().find((k) => k.id === cid);
+  const fitxes = state.memoria.filter((x) => carpetaDe(x) === cid).sort(perOrdre);
+  return `<div class="sat-cap"><button class="sat-torna" data-memcarpetes aria-label="Torna a les carpetes">‹ Carpetes</button><h1>${esc(c ? c.nom : 'General')}</h1></div>
     <div class="mem-barra">${fitxes.length > 3 ? '<input id="cercaMem" type="search" placeholder="Cerca…" autocomplete="off">' : ''}<button class="btn primary" data-memnova>Nova fitxa</button></div><div><button class="enllac enganxa" data-enganxa="memoria">Enganxa notes d'una altra app</button></div>
-    ${fitxes.length ? `<div class="mem-llista">${fitxes.map((x) => `<div class="mem-fitxa" data-memcerca="${esc(normal(x.titol + ' ' + x.text))}">
-        <b>${esc(x.titol)}</b>${x.text ? `<p>${esc(x.text)}</p>` : ''}
-        ${(x.imatges || []).length ? `<div class="mem-imgs">${x.imatges.map((im) => `<button class="rec-img" data-memimg="${esc(x.id)}|${esc(im.id)}"><img src="${esc(im.mini)}" alt=""></button>`).join('')}</div>` : ''}
-        <div class="mem-accions"><button class="enllac" data-memcomparteix="${esc(x.id)}">Comparteix</button>${x.text ? `<button class="enllac" data-memcopia="${esc(x.id)}">Copia</button>` : ''}<button class="enllac" data-memimprimeix="${esc(x.id)}">Imprimeix</button><button class="enllac" data-memedita="${esc(x.id)}">Edita</button></div>
-      </div>`).join('')}</div><p class="help buit" id="memRes" hidden>No hi ha cap fitxa que hi coincideixi.</p>
+    ${fitxes.length ? `<div class="mem-llista">${fitxes.map((x) => filaFitxa(x, false)).join('')}</div><p class="help buit" id="memRes" hidden>No hi ha cap fitxa que hi coincideixi.</p>
       ${fitxes.length > 1 ? '<div class="grp centre"><button class="btn" data-memimprimeix="totes">Imprimeix totes les fitxes</button></div>' : ''}`
-      : '<p class="help buit">Encara no tens cap fitxa.</p>'}`;
+      : '<p class="help buit">Aquesta carpeta encara és buida.</p>'}
+    ${c ? `<div class="ll-peu"><button class="enllac" data-memcarpnom>Canvia el nom</button><button class="enllac" data-memcarpcolor>Canvia el color</button><button class="enllac perill" data-memcarpesborra>Esborra la carpeta</button></div>` : ''}`;
 }
+// Navegació i gestió de carpetes
+$('#main').addEventListener('click', async (e) => {
+  const t = e.target;
+  const cb = t.closest('[data-memcarpeta]');
+  if (cb) { ui.memCarpeta = cb.dataset.memcarpeta; render(); window.scrollTo(0, 0); return; }
+  if (t.closest('[data-memcarpetes]')) { ui.memCarpeta = null; render(); window.scrollTo(0, 0); return; }
+  if (t.closest('[data-memnovacarpeta]')) {
+    const nom = await demanaText('Nom de la carpeta nova', '', { max: 40, placeholder: 'Restaurants, Vins, Receptes…' });
+    if (!nom || !nom.trim()) return;
+    const ja = carpetesMem().find((c) => normal(c.nom) === normal(nom.trim()));
+    if (ja) { ui.memCarpeta = ja.id; render(); return; }
+    const c = { id: nouId('cm'), nom: nom.trim().slice(0, 40), color: COLORS_CARPETA[carpetesMem().length % COLORS_CARPETA.length] };
+    state.ajustos.carpetesMem = [...carpetesMem(), c]; save(); ui.memCarpeta = c.id; render(); window.scrollTo(0, 0);
+    return;
+  }
+  const c = carpetesMem().find((k) => k.id === ui.memCarpeta);
+  if (!c) return;
+  if (t.closest('[data-memcarpnom]')) {
+    const nom = await demanaText('Nom de la carpeta', c.nom, { max: 40 });
+    if (nom && nom.trim()) { state.ajustos.carpetesMem = carpetesMem().map((k) => (k.id === c.id ? { ...k, nom: nom.trim().slice(0, 40) } : k)); save(); render(); }
+    return;
+  }
+  if (t.closest('[data-memcarpcolor]')) {
+    const i = COLORS_CARPETA.indexOf(c.color);
+    state.ajustos.carpetesMem = carpetesMem().map((k) => (k.id === c.id ? { ...k, color: COLORS_CARPETA[(i + 1) % COLORS_CARPETA.length] } : k)); save(); render();
+    return;
+  }
+  const es = t.closest('[data-memcarpesborra]');
+  if (es) {
+    const n = state.memoria.filter((x) => carpetaDe(x) === c.id).length;
+    if (es.dataset.segur !== '1') { es.dataset.segur = '1'; es.textContent = n ? `Segur? Les ${n} fitxes passaran a General` : "Segur? Toca'l un altre cop"; return; }
+    state.memoria.forEach((x) => { if (x.carpeta === c.id) x.carpeta = ''; });
+    state.ajustos.carpetesMem = carpetesMem().filter((k) => k.id !== c.id); save();
+    ui.memCarpeta = null; render(); toast('Carpeta esborrada');
+  }
+});
+// Cercador de l'inici: busca a totes les carpetes
+$('#main').addEventListener('input', (e) => {
+  if (e.target.id !== 'cercaMemG') return;
+  const q = normal(e.target.value.trim());
+  const res = document.getElementById('memResultats'), carp = document.getElementById('memCarpetes');
+  if (carp) carp.hidden = Boolean(q);
+  if (res) res.hidden = !q;
+  let n = 0;
+  document.querySelectorAll('#memResultats [data-memcerca]').forEach((el) => { const si = Boolean(q) && el.dataset.memcerca.includes(q); el.hidden = !si; if (si) n++; });
+  const r = document.getElementById('memRes'); if (r) r.hidden = !q || n > 0;
+});
 // Documents: qualsevol fitxer (fotos, PDF, Word, Excel…) al núvol privat de cada persona, i enllaços a pàgines web.
 // A l'app només hi ha el nom, el tipus i, a les fotos, una miniatura.
 const dataDoc = (iso) => { const d = new Date(iso); return isNaN(d) ? '' : `${d.getDate()} ${MESOS[d.getMonth()].slice(0, 3)}. ${d.getFullYear()}`; };
@@ -1907,7 +2004,7 @@ $('#main').addEventListener('click', (e) => {
   if (s) {
     const sat = SATEL.find((x) => x.id === s.dataset.sat);
     if (sat?.aviat) { toast(`${sat.nom}: aviat`); return; }
-    ui.view = s.dataset.sat; ui.llista = ''; ui.memEdita = ''; ui.recObert = ''; ui.recTorna = ''; render(); window.scrollTo(0, 0); return;
+    ui.view = s.dataset.sat; ui.llista = ''; ui.memEdita = ''; ui.recObert = ''; ui.recTorna = ''; ui.memCarpeta = null; render(); window.scrollTo(0, 0); return;
   }
   const f = e.target.closest('[data-fitxa]');
   if (f) { ui.tornaA = ui.view === 'aniversaris' ? 'aniversaris' : ''; ui.view = 'gent'; ui.persona = f.dataset.fitxa; render(); window.scrollTo(0, 0); return; }
@@ -1965,8 +2062,9 @@ $('#main').addEventListener('click', async (e) => {
     let n = 0;
     blocs.forEach((ls) => {
       const titol = ls[0].replace(/^[-•*#\s]+/, '').slice(0, 80);
-      if (!titol || state.memoria.some((f) => normal(f.titol) === normal(titol))) return;
-      state.memoria.push({ id: nouId('m'), titol, text: ls.slice(1).join('\n').slice(0, 3000), creat: new Date().toISOString() }); n++;
+      const carp = carpetaActual() || '';
+      if (!titol || state.memoria.some((f) => carpetaDe(f) === carp && normal(f.titol) === normal(titol))) return;
+      state.memoria.push({ id: nouId('m'), titol, text: ls.slice(1).join('\n').slice(0, 3000), carpeta: carp, creat: new Date().toISOString() }); n++;
     });
     save(); render();
     toast(n ? (n === 1 ? '1 fitxa afegida' : `${n} fitxes afegides`) + (blocs.length > n ? ` (${blocs.length - n} ja hi eren)` : '') : 'Ja les tenies totes', 4000);
@@ -2410,7 +2508,7 @@ $('#main').addEventListener('click', async (e) => {
   const ip = t.closest('[data-memimprimeix]');
   if (ip) {
     const totes = ip.dataset.memimprimeix === 'totes';
-    const llista = totes ? state.memoria.slice().sort((a, b) => a.titol.localeCompare(b.titol, 'ca')) : state.memoria.filter((x) => x.id === ip.dataset.memimprimeix);
+    const llista = totes ? state.memoria.filter((x) => carpetaDe(x) === (carpetaActual() || '')).sort((a, b) => a.titol.localeCompare(b.titol, 'ca')) : state.memoria.filter((x) => x.id === ip.dataset.memimprimeix);
     if (!llista.length) return;
     imprimeixFull(`<div class="llista-full imprès full-mem"><p class="ll-app">Galàxia · Memòria</p>${llista.map(htmlFitxa).join('')}</div>`);
     return;
@@ -2464,9 +2562,11 @@ $('#main').addEventListener('submit', (e) => {
   const titol = e.target.elements.titol.value.trim().slice(0, 80), text = e.target.elements.text.value.trim().slice(0, 3000);
   if (!titol) { e.target.elements.titol.focus(); return; }
   const ara = new Date().toISOString();
+  const carpeta = carpetesMem().some((c) => c.id === e.target.elements.carpeta?.value) ? e.target.elements.carpeta.value : '';
   const f = state.memoria.find((x) => x.id === ui.memEdita);
-  if (f) Object.assign(f, { titol, text, modificat: ara });
-  else state.memoria.push({ id: nouId('m'), titol, text, creat: ara });
+  if (f) Object.assign(f, { titol, text, carpeta, modificat: ara });
+  else state.memoria.push({ id: nouId('m'), titol, text, carpeta, creat: ara });
+  if (carpetaActual() !== null && carpetaActual() !== carpeta) ui.memCarpeta = carpeta || 'g';
   ui.memEdita = ''; save(); render();
   toast(/contrasenya|password|\bpw\b|\bpin\b/i.test(titol + ' ' + text) ? "Desat. Recorda: les contrasenyes, millor a l'app Contrasenyes de l'iPhone." : 'Desat', 4500);
 });

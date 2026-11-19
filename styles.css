@@ -1092,3 +1092,14 @@ button.gx-pindola, .gx-pindola { color: color-mix(in srgb, var(--text) 82%, var(
 .rec-avis select { width: auto; }
 .mem-imgs { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; margin-top: 8px; max-width: 360px; }
 .mem-form .rec-bloc > span { font-weight: 700; color: var(--text); font-size: inherit; }
+/* Memòria en carpetes */
+.mem-carpetes { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.mem-carpetes[hidden] { display: none; }
+.mem-carpeta { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-height: 92px; padding: 14px; text-align: left; cursor: pointer; font: inherit; color: var(--text);
+  background: var(--surface); border: 1px solid var(--border); border-left: 6px solid var(--c, var(--border)); border-radius: 16px; }
+.mem-carpeta b { font-size: 17px; }
+.mem-carpeta small { color: var(--muted); font-weight: 700; }
+.mem-carpeta.nova { border-style: dashed; border-left-width: 1px; justify-content: center; align-items: center; color: var(--muted); }
+.mem-carpeta.nova b { font-size: 15px; }
+.mem-fitxa .mem-de { display: block; color: var(--c, var(--muted)); font-weight: 800; font-size: 12px; margin-bottom: 2px; }
+.mem-form select { width: 100%; }
