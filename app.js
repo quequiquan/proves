@@ -1645,7 +1645,7 @@ function preparaCarpetes() {
 const ambEnllacos = (t) => esc(t).replace(/https?:\/\/[^\s<]+/g, (u) => `<a href="${u}" target="_blank" rel="noopener">${u.replace(/^https?:\/\/(www\.)?/, '').slice(0, 40)}${u.length > 48 ? '…' : ''}</a>`);
 function filaFitxa(x, ambCarpeta) {
   const c = ambCarpeta ? carpetesMem().find((k) => k.id === carpetaDe(x)) : null;
-  return `<div class="mur-mem" data-memcerca="${esc(normal(x.titol + ' ' + x.text))}"><div class="mur-accions"><button type="button" class="acc-esborra" data-memtreu="${esc(x.id)}">Esborra</button></div><div class="mem-fitxa" data-memobre="${esc(x.id)}"${c ? ` style="--c:${esc(c.color)}"` : ''}>
+  return `<div class="mur-mem" data-memcerca="${esc(normal(x.titol + ' ' + x.text))}"><div class="mur-accions"><button type="button" class="acc-esborra" data-memtreu="${esc(x.id)}">Esborra</button></div><div class="mem-fitxa${ui.memSel ? ' triant' + (ui.memSel.includes(x.id) ? ' triada' : '') : ''}" data-memobre="${esc(x.id)}"${c ? ` style="--c:${esc(c.color)}"` : ''}>
         ${ambCarpeta ? `<small class="mem-de">${esc(c ? c.nom : 'General')}</small>` : ''}<b>${esc(x.titol)}</b>${x.text ? `<p>${ambEnllacos(x.text)}</p>` : ''}
         ${(x.imatges || []).length ? `<div class="mem-imgs">${x.imatges.map((im) => `<button class="rec-img" data-memimg="${esc(x.id)}|${esc(im.id)}"><img src="${esc(im.mini)}" alt=""></button>`).join('')}</div>` : ''}
         <div class="mem-accions"><button class="enllac" data-memcomparteix="${esc(x.id)}">Comparteix</button>${x.text ? `<button class="enllac" data-memcopia="${esc(x.id)}">Copia</button>` : ''}<button class="enllac" data-memimprimeix="${esc(x.id)}">Imprimeix</button><button class="enllac" data-memedita="${esc(x.id)}">Edita</button></div>
@@ -1653,6 +1653,7 @@ function filaFitxa(x, ambCarpeta) {
 }
 function vistaMemoria() {
   preparaCarpetes();
+  if (ui.memEdita) ui.memSel = null;
   const ed = ui.memEdita, f = ed && ed !== 'nova' ? state.memoria.find((x) => x.id === ed) : null;
   const perOrdre = (a, b) => a.titol.localeCompare(b.titol, 'ca');
   if (ed) {
@@ -1677,6 +1678,7 @@ function vistaMemoria() {
     </form>`;
   }
   const cid = carpetaActual();
+  if (cid === null) ui.memSel = null;
   if (cid === null) {
     // Inici de Memòria: les carpetes i un cercador que busca a totes
     const totes = [{ id: 'g', nom: 'General', color: '#868E96' }, ...carpetesMem()];
@@ -1692,7 +1694,10 @@ function vistaMemoria() {
   const c = carpetesMem().find((k) => k.id === cid);
   const fitxes = state.memoria.filter((x) => carpetaDe(x) === cid).sort(perOrdre);
   return `<div class="sat-cap"><button class="sat-torna" data-memcarpetes aria-label="Torna a les carpetes">‹ Carpetes</button><h1>${esc(c ? c.nom : 'General')}</h1></div>
-    <div class="mem-barra">${fitxes.length > 3 ? '<input id="cercaMem" type="search" placeholder="Cerca…" autocomplete="off">' : ''}<button class="btn primary" data-memnova>Nova fitxa</button></div><div><button class="enllac enganxa" data-enganxa="memoria">Enganxa notes d'una altra app</button></div>
+    ${ui.memSel ? `<div class="mem-sel-barra"><b id="memSelN">${memSelN(ui.memSel.length)}</b><button class="btn" data-memsel="totes">${ui.memSel.length && ui.memSel.length >= fitxes.length ? 'Desmarca-les totes' : 'Selecciona-les totes'}</button>
+      <button class="btn mem-sel-esborra" data-memsel="esborra"${ui.memSel.length ? '' : ' disabled'}>Esborra${ui.memSel.length ? ' (' + ui.memSel.length + ')' : ''}</button><button class="enllac" data-memsel="surt">Fet</button></div>
+      <p class="help">Toca les fitxes que vulguis esborrar.</p>`
+    : `<div class="mem-barra">${fitxes.length > 3 ? '<input id="cercaMem" type="search" placeholder="Cerca…" autocomplete="off">' : ''}<button class="btn primary" data-memnova>Nova fitxa</button></div><div class="mem-sota-barra"><button class="enllac enganxa" data-enganxa="memoria">Enganxa notes d'una altra app</button>${fitxes.length > 1 ? '<button class="enllac" data-memsel="entra">Selecciona per esborrar</button>' : ''}</div>`}
     ${fitxes.length ? `<div class="mem-llista">${fitxes.map((x) => filaFitxa(x, false)).join('')}</div><p class="help buit" id="memRes" hidden>No hi ha cap fitxa que hi coincideixi.</p>
       ${fitxes.length > 1 ? '<div class="grp centre"><button class="btn" data-memimprimeix="totes">Imprimeix totes les fitxes</button></div>' : ''}`
       : '<p class="help buit">Aquesta carpeta encara és buida.</p>'}
@@ -2317,7 +2322,7 @@ $('#main').addEventListener('click', (e) => {
   if (s) {
     const sat = SATEL.find((x) => x.id === s.dataset.sat);
     if (sat?.aviat) { toast(`${sat.nom}: aviat`); return; }
-    ui.view = s.dataset.sat; ui.llista = ''; ui.memEdita = ''; ui.recObert = ''; ui.recTorna = ''; ui.memCarpeta = null; ui.llCarpeta = null; ui.docCarpeta = null; ui.compCarpeta = null; ui.docCerca = ''; render(); window.scrollTo(0, 0); return;
+    ui.view = s.dataset.sat; ui.llista = ''; ui.memEdita = ''; ui.recObert = ''; ui.recTorna = ''; ui.memCarpeta = null; ui.memSel = null; ui.llCarpeta = null; ui.docCarpeta = null; ui.compCarpeta = null; ui.docCerca = ''; render(); window.scrollTo(0, 0); return;
   }
   const f = e.target.closest('[data-fitxa]');
   if (f) { ui.tornaA = ui.view === 'aniversaris' ? 'aniversaris' : ''; ui.view = 'gent'; ui.persona = f.dataset.fitxa; render(); window.scrollTo(0, 0); return; }
@@ -2761,6 +2766,51 @@ $('#main').addEventListener('touchend', (e) => {
   if (ini + dx < -ampleM(m) / 2) { m.classList.add('obert'); m.querySelector('.mem-fitxa').style.transform = `translateX(-${ampleM(m)}px)`; murMObert = m; }
   else tancaMurM(m);
 }, { passive: true });
+// Memòria: seleccionar diverses fitxes (o totes) per esborrar-les de cop
+const memSelN = (n) => (n === 1 ? '1 seleccionada' : `${n} seleccionades`);
+function actualitzaMemSel() {
+  const n = (ui.memSel || []).length, totes = document.querySelectorAll('.mur-mem:not([hidden]) [data-memobre]').length;
+  const t = document.getElementById('memSelN'); if (t) t.textContent = memSelN(n);
+  const b = document.querySelector('[data-memsel="totes"]'); if (b) b.textContent = n && n >= totes ? 'Desmarca-les totes' : 'Selecciona-les totes';
+  const es = document.querySelector('[data-memsel="esborra"]'); if (es) { es.disabled = !n; es.dataset.segur = ''; es.textContent = n ? `Esborra (${n})` : 'Esborra'; }
+}
+$('#main').addEventListener('click', (e) => {
+  if (!ui.memSel || ui.view !== 'memoria') return;
+  const f = e.target.closest('[data-memobre]');
+  if (!f) return;
+  // En mode de selecció, tocar una fitxa la marca o la desmarca (no l'obre)
+  e.preventDefault(); e.stopImmediatePropagation();
+  const id = f.dataset.memobre, i = ui.memSel.indexOf(id);
+  if (i >= 0) ui.memSel.splice(i, 1); else ui.memSel.push(id);
+  f.classList.toggle('triada', i < 0);
+  actualitzaMemSel();
+}, true);
+$('#main').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-memsel]');
+  if (!b) return;
+  const acc = b.dataset.memsel;
+  if (acc === 'entra') { ui.memSel = []; render(); return; }
+  if (acc === 'surt') { ui.memSel = null; render(); return; }
+  if (acc === 'totes') {
+    const visibles = [...document.querySelectorAll('.mur-mem:not([hidden]) [data-memobre]')];
+    const totes = ui.memSel.length >= visibles.length;
+    ui.memSel = totes ? [] : visibles.map((el) => el.dataset.memobre);
+    visibles.forEach((el) => el.classList.toggle('triada', !totes));
+    actualitzaMemSel();
+    return;
+  }
+  if (acc === 'esborra') {
+    const ids = ui.memSel || [];
+    if (!ids.length) return;
+    if (b.dataset.segur !== '1') { b.dataset.segur = '1'; b.textContent = `Segur? Esborra ${ids.length === 1 ? 'la fitxa' : 'les ' + ids.length + ' fitxes'}`; return; }
+    const abans = state.memoria.slice(), treure = state.memoria.filter((x) => ids.includes(x.id));
+    state.memoria = state.memoria.filter((x) => !ids.includes(x.id));
+    ui.memSel = null; save(); render();
+    toastDesfes(treure.length === 1 ? `Esborrada: ${treure[0].titol}` : `${treure.length} fitxes esborrades`, () => { state.memoria = abans; save(); render(); });
+    // Les fotos s'esborren del núvol quan ja no es pot desfer
+    setTimeout(() => treure.forEach((f) => { if (!state.memoria.some((x) => x.id === f.id)) (f.imatges || []).forEach((im) => sync()?.esborraDoc(im.cami).catch(() => {})); }), 7000);
+  }
+});
 function esborraFitxaMem(f) {
   const lloc = state.memoria.indexOf(f), copia = { ...f };
   state.memoria.splice(lloc, 1); ui.memEdita = ''; save(); render();
