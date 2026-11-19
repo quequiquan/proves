@@ -2094,10 +2094,32 @@ $('#main').addEventListener('click', async (e) => {
   const linies = liniesNetes(text);
   let n = 0, rep = 0;
   if (on === 'recordatoris') {
+    // Cada línia pot portar enllaços («Títol | https://…»): el títol va al recordatori i l'enllaç al camp Enllaç.
+    // Si el recordatori ja existeix, no es repeteix: s'hi afegeix l'enllaç (i les notes) que li falti.
+    let act = 0, ultim = null;
     linies.forEach((l) => {
-      if (pendentsRec().some((x) => normal(x.text) === normal(l))) { rep++; return; }
-      state.recordatoris.push({ id: nouId('r'), text: l.slice(0, 300), creat: new Date().toISOString() }); n++;
+      const urls = l.match(/https?:\/\/[^\s|]+/gi) || [];
+      const parts = l.replace(/https?:\/\/[^\s|]+/gi, ' ').split(/\s*\|\s*/).map((x) => x.trim()).filter(Boolean);
+      const titol = (parts[0] || '').slice(0, 300), notes = parts.slice(1).join('\n').slice(0, 3000), url = urls[0] || '';
+      if (!titol) {   // una línia només amb l'enllaç: és del recordatori d'abans
+        if (ultim && url && !ultim.url) { ultim.url = url; act++; }
+        return;
+      }
+      const ja = pendentsRec().find((x) => normal(x.text) === normal(titol));
+      if (ja) {
+        let canvi = false;
+        if (url && !ja.url) { ja.url = url; canvi = true; }
+        if (notes && !ja.notes) { ja.notes = notes; canvi = true; }
+        if (canvi) act++; else rep++;
+        ultim = ja; return;
+      }
+      ultim = { id: nouId('r'), text: titol, url, notes, creat: new Date().toISOString() };
+      state.recordatoris.push(ultim); n++;
     });
+    save(); render();
+    const tros = [n ? (n === 1 ? '1 afegit' : `${n} afegits`) : '', act ? (act === 1 ? '1 completat amb enllaç' : `${act} completats amb enllaç`) : '', rep ? `${rep} ja hi eren` : ''].filter(Boolean);
+    toast(tros.length ? tros.join(' · ') : 'No hi havia res de nou', 5000);
+    return;
   } else {
     const llista = itemsDe(on, lid);
     if (!llista) return;
