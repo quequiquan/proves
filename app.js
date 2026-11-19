@@ -1291,7 +1291,7 @@ function vistaLlista() {
       <form id="formLlistaNova" class="rec-nou" autocomplete="off"><input id="llistaNom" placeholder="Nom de la llista nova" maxlength="60" enterkeyhint="done"><button class="btn primary">Crea</button></form>
       ${llistes.length ? `<div class="ll-index">${llistes.map((x) => {
         const n = x.items.filter((i) => !i.fet).length;
-        return `<button class="ll-fila" data-obrellista="${esc(x.id)}"><b>${esc(x.nom)}</b><small>${n ? (n === 1 ? '1 pendent' : n + ' pendents') : x.items.length ? 'Feta' : 'Buida'}</small></button>`;
+        return `<div class="mur-g"><div class="mur-accions"><button type="button" class="acc-esborra" data-lltreu="${esc(x.id)}">Esborra</button></div><button class="mur-cos ll-fila" data-obrellista="${esc(x.id)}"><b>${esc(x.nom)}</b><small>${n ? (n === 1 ? '1 pendent' : n + ' pendents') : x.items.length ? 'Feta' : 'Buida'}</small></button></div>`;
       }).join('')}</div>` : '<p class="help buit">Aquesta carpeta encara és buida.</p>'}
       ${peuCarpeta('llista')}`;
   }
@@ -1334,9 +1334,9 @@ function graellaCarpetes(k, unitat) {
   const totes = [...carpetesDe(k), ...(compta('') ? [{ id: 'g', nom: 'General', color: '#868E96' }] : [])];
   return `<div class="mem-carpetes" id="carp-${k}">${totes.map((c) => {
     const n = compta(c.id === 'g' ? '' : c.id);
-    return `<button class="mem-carpeta" data-cfobre="${k}|${esc(c.id)}" style="--c:${esc(c.color)}"><b>${esc(c.nom)}</b><small>${n === 1 ? '1 ' + unitat[0] : n + ' ' + unitat[1]}</small></button>`;
+    return murCarpeta(c.id === 'g' ? '' : k, c.id, `<button class="mem-carpeta" data-cfobre="${k}|${esc(c.id)}" style="--c:${esc(c.color)}"><b>${esc(c.nom)}</b><small>${n === 1 ? '1 ' + unitat[0] : n + ' ' + unitat[1]}</small></button>`);
   }).join('')}
-    <button class="mem-carpeta nova" data-cfnova="${k}"><b>+ Nova carpeta</b></button></div>`;
+    <button class="mem-carpeta nova" data-cfnova="${k}"><b>+ Nova carpeta</b></button></div>${AJUDA_CARPETES}`;
 }
 function peuCarpeta(k) {
   const c = carpetesDe(k).find((x) => x.id === carpetaOberta(k));
@@ -1392,6 +1392,155 @@ $('#main').addEventListener('click', async (e) => {
   state.ajustos[camp] = carpetesDe(k).filter((x) => x.id !== c.id); save();
   ui[UI_CARP[k]] = null; render(); toast('Carpeta esborrada');
 });
+// ---------- Carpetes i llistes: lliscar per esborrar, mantenir premut per moure o canviar el color ----------
+// k: 'mem' (Memòria), 'llista' o 'docs'
+const carpsDe = (k) => (k === 'mem' ? carpetesReals() : carpetesDe(k));
+const posaCarps = (k, arr) => { state.ajustos[k === 'mem' ? 'carpetesMem' : 'carpetes_' + k] = arr; save(); };
+const itemsCarp = (k) => (k === 'mem' ? state.memoria : colCarp(k));
+// Embolcall d'una carpeta de veritat (no General ni Per classificar): es pot lliscar i arrossegar
+const murCarpeta = (k, id, html) => (!k ? html
+  : `<div class="mur-g cf-mur" data-cfreal="${k}|${esc(id)}"><div class="mur-accions"><button type="button" class="acc-esborra" data-cftreu="${k}|${esc(id)}">Esborra</button></div>${html.replace('class="mem-carpeta', 'class="mur-cos mem-carpeta')}</div>`);
+const AJUDA_CARPETES = '<p class="help cf-ajuda">Mantén premuda una carpeta per moure-la de lloc o canviar-ne el color. Llisca-la cap a l\'esquerra per esborrar-la.</p>';
+function esborraCarpeta(k, id) {
+  const arr = carpsDe(k), lloc = arr.findIndex((c) => c.id === id);
+  if (lloc < 0) return;
+  const c = arr[lloc], moguts = itemsCarp(k).filter((x) => x.carpeta === id);
+  moguts.forEach((x) => { x.carpeta = ''; });
+  posaCarps(k, arr.filter((x) => x.id !== id));
+  if (k === 'mem' && ui.memCarpeta === id) ui.memCarpeta = null;
+  if (k !== 'mem' && ui[UI_CARP[k]] === id) ui[UI_CARP[k]] = null;
+  render();
+  toastDesfes(`Carpeta esborrada: ${c.nom}`, () => {
+    const ara = [...carpsDe(k)]; ara.splice(Math.min(lloc, ara.length), 0, c); posaCarps(k, ara);
+    moguts.forEach((x) => { x.carpeta = id; }); save(); render();
+  });
+}
+function menuCarpeta(k, id) {
+  const c = carpsDe(k).find((x) => x.id === id);
+  if (!c) return;
+  document.querySelector('.demana')?.remove();
+  const d = document.createElement('div');
+  d.className = 'demana';
+  d.innerHTML = `<div class="demana-caixa cf-menu"><b>${esc(c.nom)}</b><span class="cf-menu-t">Color</span>
+    <div class="cf-colors">${COLORS_CARPETA.map((col) => `<button type="button" class="cf-color${col === c.color ? ' on' : ''}" data-col="${col}" style="--c:${col}" aria-label="Color"></button>`).join('')}</div>
+    <button type="button" class="btn" data-op="nom">Canvia el nom</button>
+    <button type="button" class="btn cf-perill" data-op="esborra">Esborra la carpeta</button>
+    <p class="help">Per canviar-la de lloc, mantén-la premuda i arrossega-la on vulguis.</p>
+    <button type="button" class="enllac" data-op="">Fet</button></div>`;
+  document.body.appendChild(d);
+  d.addEventListener('click', async (e) => {
+    const col = e.target.closest('[data-col]');
+    if (col) {
+      posaCarps(k, carpsDe(k).map((x) => (x.id === id ? { ...x, color: col.dataset.col } : x)));
+      d.querySelectorAll('.cf-color').forEach((b) => b.classList.toggle('on', b === col));
+      render();
+      return;
+    }
+    const b = e.target.closest('[data-op]');
+    if (!b && e.target !== d) return;
+    d.remove();
+    if (b?.dataset.op === 'nom') {
+      const nom = await demanaText('Nom de la carpeta', c.nom, { max: 40 });
+      if (nom && nom.trim()) { posaCarps(k, carpsDe(k).map((x) => (x.id === id ? { ...x, nom: nom.trim().slice(0, 40) } : x))); render(); }
+    }
+    if (b?.dataset.op === 'esborra') esborraCarpeta(k, id);
+  });
+}
+let gG = null, murGObert = null, ignoraClicG = false, darrerToc = 0;
+const tancaMurG = (m = murGObert) => { if (!m) return; const c = m.querySelector(':scope > .mur-cos'); if (c) c.style.transform = ''; m.classList.remove('obert'); if (murGObert === m) murGObert = null; };
+const ampleG = (m) => m.querySelector(':scope > .mur-accions').offsetWidth;
+function iniciGest(m, x, y, tactil) {
+  if (murGObert && murGObert !== m) tancaMurG();
+  gG = { m, x, y, ini: m.classList.contains('obert') ? -ampleG(m) : 0, mou: false, drag: false, moguda: false, tactil };
+  if (m.dataset.cfreal) {
+    gG.timer = setTimeout(() => {
+      if (!gG || gG.m !== m || gG.mou) return;
+      gG.drag = true; tancaMurG(m);
+      m.classList.add('arrossega'); m.parentNode.classList.add('ordenant');
+    }, 450);
+  }
+}
+function mouGest(x, y, ev) {
+  if (!gG) return;
+  const dx = x - gG.x, dy = y - gG.y;
+  if (gG.drag) {
+    if (ev && ev.cancelable) ev.preventDefault();   // mentre s'arrossega, la pantalla no es desplaça
+    if (Math.hypot(dx, dy) > 6) gG.moguda = true;
+    gG.m.style.pointerEvents = 'none';
+    const sota = document.elementFromPoint(x, y)?.closest('[data-cfreal]');
+    gG.m.style.pointerEvents = '';
+    if (sota && sota !== gG.m && sota.parentNode === gG.m.parentNode) {
+      const endavant = sota.compareDocumentPosition(gG.m) & Node.DOCUMENT_POSITION_PRECEDING;
+      sota.parentNode.insertBefore(gG.m, endavant ? sota.nextSibling : sota);
+    }
+    return;
+  }
+  if (!gG.mou) {
+    if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+    clearTimeout(gG.timer);
+    if (!gG.tactil || Math.abs(dx) < Math.abs(dy) * 1.2) { gG = null; return; }
+    gG.mou = true; gG.m.classList.add('mou');
+  }
+  gG.m.querySelector(':scope > .mur-cos').style.transform = `translateX(${Math.max(-ampleG(gG.m) - 30, Math.min(0, gG.ini + dx))}px)`;
+}
+function fiGest(x) {
+  if (!gG) return;
+  const g = gG; gG = null; clearTimeout(g.timer);
+  if (g.drag) {
+    g.m.classList.remove('arrossega'); g.m.parentNode.classList.remove('ordenant');
+    ignoraClicG = true; setTimeout(() => { ignoraClicG = false; }, 450);
+    const [k, id] = g.m.dataset.cfreal.split('|');
+    if (g.moguda) {
+      const ordre = [...g.m.parentNode.querySelectorAll(':scope > [data-cfreal]')].map((el) => el.dataset.cfreal.split('|')[1]);
+      const arr = carpsDe(k);
+      posaCarps(k, [...ordre.map((i) => arr.find((c) => c.id === i)).filter(Boolean), ...arr.filter((c) => !ordre.includes(c.id))]);
+      toast('Ordre desat');
+    } else menuCarpeta(k, id);
+    return;
+  }
+  if (!g.mou) return;
+  g.m.classList.remove('mou');
+  ignoraClicG = true; setTimeout(() => { ignoraClicG = false; }, 350);
+  if (g.ini + (x - g.x) < -ampleG(g.m) / 2) {
+    g.m.classList.add('obert'); g.m.querySelector(':scope > .mur-cos').style.transform = `translateX(-${ampleG(g.m)}px)`; murGObert = g.m;
+  } else tancaMurG(g.m);
+}
+$('#main').addEventListener('touchstart', (e) => {
+  darrerToc = Date.now();
+  const m = e.target.closest('.mur-g');
+  if (murGObert && murGObert !== m) tancaMurG();
+  if (!m || e.target.closest('.mur-accions') || e.touches.length !== 1) { gG = null; return; }
+  iniciGest(m, e.touches[0].clientX, e.touches[0].clientY, true);
+}, { passive: true });
+$('#main').addEventListener('touchmove', (e) => { if (gG && gG.tactil) mouGest(e.touches[0].clientX, e.touches[0].clientY, e); }, { passive: false });
+$('#main').addEventListener('touchend', (e) => { if (gG && gG.tactil) fiGest(e.changedTouches[0].clientX); }, { passive: true });
+$('#main').addEventListener('touchcancel', () => { if (gG?.drag) fiGest(gG.x); else gG = null; });
+// Amb el ratolí (ordinador): mantenir premut el botó per arrossegar una carpeta
+$('#main').addEventListener('mousedown', (e) => {
+  if (e.button !== 0 || Date.now() - darrerToc < 1000) return;
+  const m = e.target.closest('.mur-g[data-cfreal]');
+  if (m && !e.target.closest('.mur-accions')) iniciGest(m, e.clientX, e.clientY, false);
+});
+document.addEventListener('mousemove', (e) => { if (gG && !gG.tactil) mouGest(e.clientX, e.clientY, e); });
+document.addEventListener('mouseup', (e) => { if (gG && !gG.tactil) fiGest(e.clientX); });
+$('#main').addEventListener('contextmenu', (e) => { if (e.target.closest('.mur-g[data-cfreal]')) e.preventDefault(); });
+$('#main').addEventListener('click', (e) => {
+  if (ignoraClicG && e.target.closest('.mur-g')) { e.stopImmediatePropagation(); e.preventDefault(); return; }
+  const tc = e.target.closest('[data-cftreu]');
+  if (tc) { e.stopImmediatePropagation(); const [k, id] = tc.dataset.cftreu.split('|'); murGObert = null; esborraCarpeta(k, id); return; }
+  const tl = e.target.closest('[data-lltreu]');
+  if (tl) {
+    e.stopImmediatePropagation(); murGObert = null;
+    const l = state.llistes.find((x) => x.id === tl.dataset.lltreu);
+    if (!l) return;
+    const lloc = state.llistes.indexOf(l), copia = JSON.parse(JSON.stringify(l));
+    state.llistes.splice(lloc, 1); save(); render();
+    toastDesfes(`Esborrada: ${l.nom}`, () => { state.llistes.splice(lloc, 0, copia); save(); render(); });
+    return;
+  }
+  // Tocar una fila oberta la tanca (no l'obre)
+  if (murGObert && e.target.closest('.mur-g') === murGObert) { e.stopImmediatePropagation(); e.preventDefault(); tancaMurG(); }
+}, true);
 // Famílies de la compra: cada producte es classifica sol per paraules clau (i es pot canviar a mà)
 const FAMILIES = [
   { id: 'verdura', nom: 'Verdura', c: '#2F9E44', p: 'verdura,enciam,lletuga,tomaquet,tomate,ceba,ceba tendra,all,pebrot,carbasso,carbassa,albergina,pastanaga,patata,broquil,coliflor,espinac,mongeta tendra,mongeta,cogombre,porro,api,carxofa,bolet,xampinyo,col,julivert,rucula,canonges,remolatxa,nap,amanida' },
@@ -1446,7 +1595,7 @@ function vistaCompres() {
 }
 // Memòria: fitxes amb informació per consultar (no contrasenyes)
 // Memòria en carpetes (Restaurants, Vins, Filosofia…). «General» és la carpeta de les fitxes sense carpeta.
-const COLORS_CARPETA = ['#7048E8', '#E8590C', '#A61E4D', '#2F9E44', '#1C7ED6', '#E64980', '#C2A100', '#0B7285', '#5C677D'];
+const COLORS_CARPETA = ['#E03131', '#E8590C', '#F59F00', '#C2A100', '#2F9E44', '#12B886', '#0B7285', '#1C7ED6', '#3B5BDB', '#7048E8', '#A61E4D', '#E64980', '#8B5E3C', '#5C677D', '#212529'];
 const carpetesReals = () => (Array.isArray(state.ajustos.carpetesMem) ? state.ajustos.carpetesMem : []);
 // «Per classificar»: on arriben les fitxes que es desen des del menú Compartir de l'iPhone (només surt si en té alguna)
 const PER_CLASSIFICAR = { id: 'perclass', nom: 'Per classificar', color: '#F59F00', virtual: true };
@@ -1515,8 +1664,8 @@ function vistaMemoria() {
     const compta = (c) => state.memoria.filter((x) => carpetaDe(x) === (c.id === 'g' ? '' : c.id)).length;
     return capSatel('Memòria') + `<p class="help">Les teves coses per consultar, ordenades en carpetes. Les contrasenyes, millor a l'app Contrasenyes de l'iPhone.</p>
       ${state.memoria.length ? '<input id="cercaMemG" type="search" class="doc-cerca" placeholder="Cerca a totes les carpetes…" autocomplete="off">' : ''}
-      <div class="mem-carpetes" id="memCarpetes">${totes.map((c) => `<button class="mem-carpeta" data-memcarpeta="${esc(c.id)}" style="--c:${esc(c.color)}"><b>${esc(c.nom)}</b><small>${compta(c) === 1 ? '1 fitxa' : compta(c) + ' fitxes'}</small></button>`).join('')}
-        <button class="mem-carpeta nova" data-memnovacarpeta><b>+ Nova carpeta</b></button></div>
+      <div id="memCarpetes"><div class="mem-carpetes">${totes.map((c) => murCarpeta(c.id === 'g' || c.virtual ? '' : 'mem', c.id, `<button class="mem-carpeta" data-memcarpeta="${esc(c.id)}" style="--c:${esc(c.color)}"><b>${esc(c.nom)}</b><small>${compta(c) === 1 ? '1 fitxa' : compta(c) + ' fitxes'}</small></button>`)).join('')}
+        <button class="mem-carpeta nova" data-memnovacarpeta><b>+ Nova carpeta</b></button></div>${AJUDA_CARPETES}</div>
       <div class="mem-llista" id="memResultats" hidden>${state.memoria.slice().sort(perOrdre).map((x) => filaFitxa(x, true)).join('')}</div>
       <p class="help buit" id="memRes" hidden>No hi ha cap fitxa que hi coincideixi.</p>`;
   }

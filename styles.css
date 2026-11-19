@@ -1170,3 +1170,21 @@ button.gx-pindola, .gx-pindola { color: color-mix(in srgb, var(--text) 82%, var(
 .cf-mou { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; color: var(--muted); }
 .cf-mou select { font: inherit; font-weight: 700; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 6px 10px; }
 .doc-visor-peu .cf-mou { flex-basis: 100%; justify-content: center; }
+/* Lliscar i arrossegar carpetes i llistes */
+.mur-g { position: relative; overflow: hidden; border-radius: 16px; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.ll-index .mur-g { border-radius: 14px; }
+.mur-g > .mur-cos { position: relative; z-index: 1; width: 100%; touch-action: pan-y; transition: transform .2s ease; }
+.mur-g.mou > .mur-cos { transition: none; }
+.mur-g > .mur-accions { position: absolute; inset: 0 0 0 auto; display: flex; }
+.mur-g > .mur-accions button { border: 0; color: #fff; font: inherit; font-weight: 800; font-size: 14px; padding: 0 18px; min-width: 88px; cursor: pointer; }
+.mur-g:not(.obert):not(.mou) > .mur-accions { visibility: hidden; }
+.cf-mur > .mem-carpeta { height: 100%; }
+.cf-mur.arrossega { transform: scale(1.06); box-shadow: 0 12px 30px rgba(0, 0, 0, .28); z-index: 5; transition: transform .15s ease; }
+.ordenant > .cf-mur:not(.arrossega) { animation: cf-tremola .25s ease-in-out infinite alternate; }
+@keyframes cf-tremola { from { transform: rotate(-1.2deg); } to { transform: rotate(1.2deg); } }
+.cf-ajuda { margin-top: 10px; font-size: 13px; }
+.cf-menu-t { font-weight: 700; color: var(--muted); font-size: 14px; }
+.cf-colors { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin: 2px 0 6px; }
+.cf-color { aspect-ratio: 1; border-radius: 50%; border: 3px solid var(--surface); outline: 2px solid transparent; background: var(--c); cursor: pointer; padding: 0; }
+.cf-color.on { outline-color: var(--text); }
+.cf-menu .cf-perill { color: #E03131; }
