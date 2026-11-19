@@ -2311,12 +2311,22 @@ $('#main').addEventListener('pointerdown', (e) => {
 });
 ['pointerup', 'pointercancel', 'pointerleave'].forEach((ev) => $('#main').addEventListener(ev, () => clearTimeout(gxPrem), true));
 $('#main').addEventListener('contextmenu', (e) => { if (e.target.closest('#gxAgenda')) e.preventDefault(); });
+function obreAgendaMes() {
+  ui.view = 'calendari'; ui.calMode = 'mes'; desaPref('calMode', 'mes');
+  ui.diaSel = avui(); ui.cursor = new Date(); ui.persona = '';
+  render(); window.scrollTo(0, 0);
+}
+// Si l'app torna a primer pla després d'una estona (més de 10 minuts) amb el calendari, torna al mes d'avui
+let amagadaDes = 0;
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') { amagadaDes = Date.now(); return; }
+  if (amagadaDes && Date.now() - amagadaDes > 10 * 60 * 1000 && ui.view === 'calendari' && !document.querySelector('#dlg[open]')) obreAgendaMes();
+});
 $('#main').addEventListener('click', (e) => {
   if (e.target.closest('#gxAgenda')) {
     if (gxLlarg) { gxLlarg = false; return; }
-    // L'Agenda s'obre sempre al calendari, situat en el dia d'avui
-    ui.view = 'calendari'; ui.diaSel = avui(); ui.cursor = new Date(); ui.persona = '';
-    render(); window.scrollTo(0, 0); return;
+    // L'Agenda s'obre sempre al calendari en vista de mes, situat en el dia d'avui
+    obreAgendaMes(); return;
   }
   const s = e.target.closest('[data-sat]');
   if (s) {
