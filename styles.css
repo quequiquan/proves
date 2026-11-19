@@ -1205,3 +1205,22 @@ button.gx-pindola, .gx-pindola { color: color-mix(in srgb, var(--text) 82%, var(
 .mem-fitxa.triant::before { content: ''; position: absolute; left: 14px; top: 16px; width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border); background: var(--surface); }
 .mem-fitxa.triada { outline: 2px solid #E03131; }
 .mem-fitxa.triada::before { background: #E03131; border-color: #E03131; box-shadow: inset 0 0 0 3px var(--surface); }
+/* Notes de veu */
+.veu-grava { display: flex; flex-direction: column; align-items: center; gap: 10px; margin: 14px 0 18px; }
+.veu-boto { width: 112px; height: 112px; border-radius: 50%; border: 0; background: #0B7285; color: #fff; cursor: pointer; display: grid; place-items: center;
+  box-shadow: 0 10px 28px color-mix(in srgb, #0B7285 40%, transparent); -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: none; transition: transform .15s; }
+.veu-boto:active { transform: scale(.94); }
+.veu-boto svg { width: 50px; height: 50px; fill: currentColor; }
+.veu-boto.grava { background: #E03131; box-shadow: 0 0 0 0 rgba(224, 49, 49, .5); animation: veu-pols 1.3s ease-out infinite; }
+@keyframes veu-pols { to { box-shadow: 0 0 0 26px rgba(224, 49, 49, 0); } }
+.veu-estat { margin: 0; text-align: center; color: var(--muted); font-weight: 600; max-width: 300px; }
+.veu-temps { color: #E03131; font-size: 20px; font-variant-numeric: tabular-nums; margin-right: 6px; }
+.veu-llista { display: grid; gap: 10px; margin-top: 8px; }
+.veu-nota { background: var(--surface); border: 1px solid var(--border); border-left: 5px solid #0B7285; border-radius: 14px; padding: 12px 14px; }
+.veu-nota p { margin: 4px 0 8px; overflow-wrap: anywhere; white-space: pre-wrap; }
+.veu-de { color: var(--muted); font-weight: 700; font-size: 12.5px; }
+.veu-sense { color: var(--muted); font-style: italic; }
+.veu-audio { margin: 4px 0 10px; }
+.veu-audio audio { width: 100%; }
+.veu-nota .mem-accions { align-items: center; }
+.veu-drecera { margin-top: 18px; }

@@ -143,7 +143,7 @@ const llistaNoms = (n) => (n.length < 2 ? n.join('') : n.slice(0, -1).join(', ')
 
 /* ---------- Dades ---------- */
 function seed() {
-  return { tipus: ambPrincipals(TIPUS_INICIALS), persones: [], plans: [], recordatoris: [], llistes: [], compres: [], memoria: [], documents: [], ajustos: { nom: '', categories: VERSIO_CATEGORIES, principals: VERSIO_PRINCIPALS } };
+  return { tipus: ambPrincipals(TIPUS_INICIALS), persones: [], plans: [], recordatoris: [], llistes: [], compres: [], memoria: [], documents: [], notesveu: [], ajustos: { nom: '', categories: VERSIO_CATEGORIES, principals: VERSIO_PRINCIPALS } };
 }
 function normalize(d) {
   const arr = (x) => (Array.isArray(x) ? x : []);
@@ -156,6 +156,7 @@ function normalize(d) {
     compres: arr(d.compres).filter((r) => r && r.id),
     memoria: arr(d.memoria).filter((r) => r && r.id),
     documents: arr(d.documents).filter((r) => r && r.id && (r.cami || r.url)),
+    notesveu: arr(d.notesveu).filter((r) => r && r.id),
     ajustos: d.ajustos && typeof d.ajustos === 'object' ? { nom: '', ...d.ajustos } : { nom: '' },
   };
 }
@@ -1140,10 +1141,11 @@ const SATEL = [
   { id: 'llista', nom: 'Llista', color: '#1C7ED6' },
   { id: 'compres', nom: 'Compres', color: '#2F9E44' },
   { id: 'documents', nom: 'Documents', color: '#FFC300' },
+  { id: 'veu', nom: 'Veu', color: '#0B7285' },
 ];
 let gxAnimat = false;
 const modeAgenda = () => state.ajustos.mode === 'agenda';   // l'animació d'entrada només es fa el primer cop que s'obre l'app
-const VISTES_GALAXIA = ['inici', 'aniversaris', 'recordatoris', 'llista', 'compres', 'memoria', 'documents', 'pindoles'];
+const VISTES_GALAXIA = ['inici', 'aniversaris', 'recordatoris', 'llista', 'compres', 'memoria', 'documents', 'veu', 'pindoles'];
 const pendentsRec = () => state.recordatoris.filter((r) => !r.fet);
 // Propers aniversaris i sants dels contactes (els dels pròxims 12 mesos, el primer avui)
 function propersAniv() {
@@ -1172,7 +1174,7 @@ function vistaInici() {
   const aviatAniv = propersAniv().filter((x) => x.falten === 0).length;
   const inv = rebuts().filter((p) => p.rebut.resposta === 'pendent' && p.data >= avui()).length;
   const comptes = { recordatoris: nRec, aniversaris: aviatAniv, compres: state.compres.filter((r) => !r.fet).length,
-    llista: state.llistes.reduce((n, l) => n + l.items.filter((i) => !i.fet).length, 0) };
+    llista: state.llistes.reduce((n, l) => n + l.items.filter((i) => !i.fet).length, 0), veu: state.notesveu.length };
   const entra = !gxAnimat; gxAnimat = true;
   return `<div class="galaxia${entra ? ' entra' : ''}">
       <div class="gx-salut"><h1>${esc(salut)}${nom ? ', ' + esc(nom) : ''}</h1>
@@ -1182,7 +1184,7 @@ function vistaInici() {
         ${modeAgenda() ? '' : '<div class="gx-orbita" aria-hidden="true"></div>'}
         <button class="gx-centre" id="gxAgenda" aria-label="Agenda (mantén premut per a un pla nou)">
           <span class="gx-centre-nom">Agenda</span>${nPlans ? `<small class="gx-centre-n" aria-label="${nPlans} plans avui">${nPlans}</small>` : ''}</button>
-        ${(modeAgenda() ? [] : SATEL).map((s, i) => `<button class="gx-sat${s.aviat ? ' aviat' : ''}" data-sat="${s.id}" style="--c:${s.color};--a:${i * 60 - 90}deg;--i:${i}">
+        ${(modeAgenda() ? [] : SATEL).map((s, i) => `<button class="gx-sat${s.aviat ? ' aviat' : ''}" data-sat="${s.id}" style="--c:${s.color};--a:${i * (360 / SATEL.length) - 90}deg;--i:${i}">
             <span class="gx-bola"><span class="gx-ini" aria-hidden="true">${esc(s.nom[0])}</span>${comptes[s.id] ? `<i>${comptes[s.id]}</i>` : ''}</span><span class="gx-nom">${esc(s.nom)}</span>${s.aviat ? '<small>aviat</small>' : ''}</button>`).join('')}
       </div>
       ${typeof pindolaDelDia === 'function' ? `<button class="gx-pindola" data-pindoles>${esc(pindola())}</button>` : ''}
@@ -1811,6 +1813,171 @@ function vistaDocuments() {
     ${peuCarpeta('docs')}`;
 }
 
+// ---------- Notes de veu: safata amb el que es dicta (doble toc al darrere) o es grava aquí ----------
+const durText = (s) => { s = Math.round(s || 0); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+const quanNota = (iso) => { const d = new Date(iso); return isNaN(d) ? '' : `${d.getDate()} ${MESOS[d.getMonth()].slice(0, 3)}. · ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+function vistaVeu() {
+  const notes = state.notesveu.slice().sort((a, b) => String(b.creat || '').localeCompare(String(a.creat || '')));
+  const grava = ui.grava;
+  return capSatel('Notes de veu') + `<p class="help">Apunta el que se t'acudi sense haver d'escriure: després ho envies a Recordatoris, a una llista, a Compres o a Memòria.</p>
+    ${usuari() ? `<div class="veu-grava">
+        <button type="button" class="veu-boto${grava ? ' grava' : ''}" id="veuBoto" aria-label="${grava ? 'Atura i desa' : 'Grava una nota de veu'}">
+          <svg viewBox="0 0 24 24" aria-hidden="true">${grava ? '<rect x="7" y="7" width="10" height="10" rx="2"/>' : '<path d="M12 15a3.5 3.5 0 0 0 3.5-3.5v-5a3.5 3.5 0 0 0-7 0v5A3.5 3.5 0 0 0 12 15zm6-3.5a6 6 0 0 1-12 0H4.5a7.5 7.5 0 0 0 6.75 7.46V21h1.5v-2.04a7.5 7.5 0 0 0 6.75-7.46z"/>'}</svg></button>
+        <p class="veu-estat" id="veuEstat">${grava ? `<b class="veu-temps" id="veuTemps">${durText((Date.now() - grava.inici) / 1000)}</b> Gravant… toca per acabar` : ui.veuPujant ? 'Desant l\'àudio…' : '<b>Toca per gravar</b> i torna a tocar per acabar. També pots mantenir-lo premut mentre parles.'}</p>
+      </div>` : '<p class="help avis-doc">Per gravar àudios cal haver entrat amb el teu correu (toca el logo de Galàxia, a dalt).</p>'}
+    <form id="formNotaVeu" class="rec-nou" autocomplete="off"><input id="notaVeuText" placeholder="O escriu-la o dicta-la amb el teclat" maxlength="2000" enterkeyhint="done"><button class="btn primary">Apunta</button></form>
+    ${notes.length ? `<div class="veu-llista">${notes.map((n) => `<div class="veu-nota" data-nota="${esc(n.id)}">
+        <small class="veu-de">${n.audio ? 'Àudio' : n.origen === 'dictat' ? 'Dictat' : 'Escrit'} · ${esc(quanNota(n.creat))}${n.audio ? ' · ' + durText(n.audio.durada) : ''}</small>
+        ${n.text ? `<p>${ambEnllacos(n.text)}</p>` : '<p class="veu-sense">Sense text: escolta-la i escriu què diu per poder-la enviar.</p>'}
+        ${n.audio ? `<div class="veu-audio" id="veuAudio-${esc(n.id)}"><button type="button" class="btn" data-notaescolta="${esc(n.id)}">▶ Escolta</button></div>` : ''}
+        <div class="mem-accions"><button class="btn primary" data-notaenvia="${esc(n.id)}">Envia a…</button><button class="enllac" data-notaedita="${esc(n.id)}">${n.text ? 'Corregeix' : 'Escriu què diu'}</button><button class="enllac perill" data-notatreu="${esc(n.id)}">Esborra</button></div>
+      </div>`).join('')}</div>` : '<p class="help buit">No tens cap nota de veu. Les que dictis amb el doble toc al darrere del mòbil també arribaran aquí.</p>'}
+    ${usuari() ? `<details class="ajuda veu-drecera"><summary>Dictar amb el doble toc al darrere del mòbil</summary>
+      <p>Prepara una drecera a l'app <b>Dreceres</b> que escolti en català i enviï el que diguis aquí. Necessitaràs aquest enllaç:</p>
+      <div class="grp"><button class="btn" id="veuNota">Copia l'enllaç per a Notes de veu</button></div></details>` : ''}`;
+}
+// Gravació amb el micròfon (MediaRecorder): un toc comença i un altre acaba; si es manté premut, acaba en deixar-lo anar
+let veuRec = null, veuTros = [], veuRellotge = null, veuPremut = 0;
+async function comencaGravacio() {
+  if (ui.grava || ui.veuPujant) return;
+  if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) { toast('Aquest aparell no pot gravar des de l\'app.'); return; }
+  let flux;
+  try { flux = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+  catch (x) { toast("Cal donar permís al micròfon. Si no surt la pregunta, mira Ajustos de l'iPhone → Safari → Micròfon.", 6000); return; }
+  const tipus = ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm'].find((t) => MediaRecorder.isTypeSupported?.(t)) || '';
+  veuRec = new MediaRecorder(flux, tipus ? { mimeType: tipus } : undefined);
+  veuTros = [];
+  veuRec.ondataavailable = (e) => { if (e.data && e.data.size) veuTros.push(e.data); };
+  veuRec.onstop = () => desaGravacio(flux);
+  veuRec.start(1000);
+  ui.grava = { inici: Date.now() };
+  render();
+  veuRellotge = setInterval(() => { const t = document.getElementById('veuTemps'); if (t && ui.grava) t.textContent = durText((Date.now() - ui.grava.inici) / 1000); if (ui.grava && Date.now() - ui.grava.inici > 10 * 60 * 1000) aturaGravacio(); }, 500);
+}
+function aturaGravacio() {
+  clearInterval(veuRellotge);
+  if (veuRec && veuRec.state !== 'inactive') veuRec.stop();
+}
+async function desaGravacio(flux) {
+  flux.getTracks().forEach((t) => t.stop());
+  const durada = ui.grava ? (Date.now() - ui.grava.inici) / 1000 : 0;
+  const tipus = (veuRec?.mimeType || 'audio/mp4').split(';')[0];
+  ui.grava = null; veuRec = null;
+  const blob = new Blob(veuTros, { type: tipus }); veuTros = [];
+  if (durada < 1 || !blob.size) { render(); toast('Massa curta: no s\'ha desat'); return; }
+  ui.veuPujant = true; render();
+  const id = nouId('nv');
+  try {
+    const cami = await sync().pujaDoc(id, blob, tipus, tipus.includes('webm') ? 'webm' : 'm4a');
+    state.notesveu.push({ id, text: '', origen: 'gravat', audio: { cami, tipus, durada: Math.round(durada) }, creat: new Date().toISOString() });
+    save(); toast('Nota de veu desada');
+  } catch (x) {
+    toast(navigator.onLine ? "No s'ha pogut desar l'àudio. Torna-ho a provar." : "Cal connexió a internet per desar l'àudio.", 5000);
+  }
+  ui.veuPujant = false; render();
+}
+$('#main').addEventListener('pointerdown', (e) => {
+  if (!e.target.closest('#veuBoto')) return;
+  veuPremut = Date.now();
+  if (!ui.grava) comencaGravacio();
+});
+$('#main').addEventListener('pointerup', (e) => {
+  if (!e.target.closest('#veuBoto') || !veuPremut) return;
+  const llarg = Date.now() - veuPremut > 900; veuPremut = 0;
+  // Mantingut premut: s'acaba en deixar-lo anar. Un toc curt: segueix gravant fins al proper toc.
+  if (ui.grava && (llarg || Date.now() - ui.grava.inici > 900)) aturaGravacio();
+});
+$('#main').addEventListener('contextmenu', (e) => { if (e.target.closest('#veuBoto')) e.preventDefault(); });
+// Escriure una nota
+$('#main').addEventListener('submit', (e) => {
+  if (e.target.id !== 'formNotaVeu') return;
+  e.preventDefault();
+  const i = document.getElementById('notaVeuText'), text = i.value.trim();
+  if (!text) { i.focus(); return; }
+  state.notesveu.push({ id: nouId('nv'), text: text.slice(0, 2000), origen: 'escrit', creat: new Date().toISOString() });
+  save(); render(); document.getElementById('notaVeuText')?.focus();
+});
+function treuNota(n, missatge) {
+  const lloc = state.notesveu.indexOf(n), copia = { ...n };
+  state.notesveu.splice(lloc, 1); save(); render();
+  toastDesfes(missatge, () => { state.notesveu.splice(Math.max(0, lloc), 0, copia); save(); render(); });
+  if (copia.audio) setTimeout(() => { if (!state.notesveu.some((x) => x.id === copia.id)) sync()?.esborraDoc(copia.audio.cami).catch(() => {}); }, 7000);
+}
+$('#main').addEventListener('click', async (e) => {
+  const t = e.target;
+  if (t.closest('#veuNota')) {
+    try {
+      const url = (await sync().enllacVeu(false)) + '&nota=1';
+      try { await navigator.clipboard.writeText(url); toast("Enllaç copiat: posa'l a la drecera", 4000); } catch (x) { prompt('Copia aquest enllaç:', url); }
+    } catch (x) { toast(navigator.onLine ? "No s'ha pogut preparar l'enllaç." : 'Cal connexió a internet.'); }
+    return;
+  }
+  const es = t.closest('[data-notaescolta]');
+  if (es) {
+    const n = state.notesveu.find((x) => x.id === es.dataset.notaescolta);
+    if (!n?.audio) return;
+    es.disabled = true; es.textContent = 'Carregant…';
+    try {
+      const url = await sync().urlDoc(n.audio.cami);
+      const caixa = document.getElementById('veuAudio-' + n.id);
+      if (caixa) { caixa.innerHTML = `<audio controls autoplay preload="auto" src="${esc(url)}"></audio>`; }
+    } catch (x) { es.disabled = false; es.textContent = '▶ Escolta'; toast(navigator.onLine ? "No s'ha pogut carregar l'àudio." : 'Cal connexió a internet.'); }
+    return;
+  }
+  const ed = t.closest('[data-notaedita]');
+  if (ed) {
+    const n = state.notesveu.find((x) => x.id === ed.dataset.notaedita);
+    if (!n) return;
+    const nou = await demanaText(n.text ? 'Corregeix la nota' : 'Què diu l\'àudio?', n.text || '', { max: 2000 });
+    if (nou !== null) { n.text = nou.trim().slice(0, 2000); save(); render(); }
+    return;
+  }
+  const tr = t.closest('[data-notatreu]');
+  if (tr) { const n = state.notesveu.find((x) => x.id === tr.dataset.notatreu); if (n) treuNota(n, 'Nota esborrada'); return; }
+  const en = t.closest('[data-notaenvia]');
+  if (!en) return;
+  const n = state.notesveu.find((x) => x.id === en.dataset.notaenvia);
+  if (!n) return;
+  if (!n.text) {
+    const nou = await demanaText('Què diu l\'àudio?', '', { max: 2000, ajuda: 'Escriu-ho per poder-ho enviar.' });
+    if (!nou || !nou.trim()) return;
+    n.text = nou.trim().slice(0, 2000); save(); render();
+  }
+  const on = await triaOpcio('Envia a…', [['rec', 'Recordatoris', ''], ['llista', 'Una llista', ''], ['compres', 'Compres', 'A la botiga que triïs'], ['memoria', 'Memòria', 'A la carpeta que triïs'], ['agenda', "L'Agenda", 'Com a pla nou']]);
+  if (!on) return;
+  const text = n.text.trim(), ara = new Date().toISOString();
+  if (on === 'rec') {
+    state.recordatoris.push({ id: nouId('r'), text: text.slice(0, 300), creat: ara });
+    treuNota(n, 'Enviada a Recordatoris');
+  } else if (on === 'llista') {
+    const ll = state.llistes.slice().sort(perOrdreLl);
+    if (!ll.length) { toast('Encara no tens cap llista. Crea\'n una a Llista.'); return; }
+    const lid = await triaOpcio('A quina llista?', ll.map((l) => [l.id, l.nom, nomCarpeta('llista', carpetaItem('llista', l))]));
+    const l = state.llistes.find((x) => x.id === lid);
+    if (!l) return;
+    l.items.push({ id: nouId('i'), text: text.slice(0, 200), fet: false });
+    treuNota(n, `Enviada a ${l.nom}`);
+  } else if (on === 'compres') {
+    const b = await triaOpcio('A quina botiga?', [...carpetesDe('compres').map((c) => [c.id, c.nom, '']), ['g', 'General', 'Sense botiga']]);
+    if (!b) return;
+    const carpeta = b === 'g' ? '' : b;
+    text.split(/\s*(?:,|\n| i )\s*/).map((x) => x.trim()).filter(Boolean).forEach((x) => {
+      const igual = state.compres.find((y) => normal(y.text) === normal(x) && carpetaItem('compres', y) === carpeta);
+      if (igual) igual.fet = false;
+      else state.compres.push({ id: nouId('c'), text: x.slice(0, 200), fet: false, carpeta, creat: ara });
+    });
+    treuNota(n, `Enviada a ${nomCarpeta('compres', carpeta)}`);
+  } else if (on === 'memoria') {
+    const c = await triaOpcio('A quina carpeta?', [['g', 'General', ''], ...carpetesMem().map((k) => [k.id, k.nom, ''])]);
+    if (!c) return;
+    const [titol, ...resta] = text.split('\n');
+    state.memoria.push({ id: nouId('m'), titol: titol.slice(0, 80), text: (titol.length > 80 ? titol.slice(80) + '\n' : '') + resta.join('\n'), carpeta: c === 'g' ? '' : c, creat: ara });
+    treuNota(n, 'Enviada a Memòria');
+  } else if (on === 'agenda') {
+    treuNota(n, 'Nota passada a l\'Agenda');
+    obreForm(null, { titol: text.slice(0, 120) });
+  }
+});
 // Píndoles: la d'avui i les dels dies anteriors, i les preferides (guardades a Ajustos, es sincronitzen)
 const preferides = () => (Array.isArray(state.ajustos.pindoles) ? state.ajustos.pindoles : []);
 function filaPindola(text, data) {
@@ -1857,7 +2024,7 @@ function vistaPindoles() {
   return capSatel('Píndoles') + pestanyes + `<div class="pd-llista">${html}</div>`
     + (queden > 0 ? '<div class="grp centre"><button class="btn" data-pdmes>Mostra\'n més</button></div>' : '');
 }
-const VISTES = { inici: vistaInici, aniversaris: vistaAniversaris, recordatoris: vistaRecordatoris, llista: vistaLlista, compres: vistaCompres, memoria: vistaMemoria, documents: vistaDocuments, pindoles: vistaPindoles, propers: vistaPropers, calendari: vistaCalendari, gent: vistaGent, ajustos: vistaAjustos, entrada: vistaEntrada };
+const VISTES = { inici: vistaInici, aniversaris: vistaAniversaris, recordatoris: vistaRecordatoris, llista: vistaLlista, compres: vistaCompres, memoria: vistaMemoria, documents: vistaDocuments, veu: vistaVeu, pindoles: vistaPindoles, propers: vistaPropers, calendari: vistaCalendari, gent: vistaGent, ajustos: vistaAjustos, entrada: vistaEntrada };
 // Aspecte: Clar, Fosc o Automàtic (com l'iPhone). Es guarda amb el compte i també en aquest aparell (per a la guia)
 function aplicaTema() {
   const t = state.ajustos.tema, r = document.documentElement;
