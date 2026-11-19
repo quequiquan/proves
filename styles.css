@@ -1133,3 +1133,16 @@ button.gx-pindola, .gx-pindola { color: color-mix(in srgb, var(--text) 82%, var(
 .pdf-full .mem-imp { padding: 10px 0; border-bottom: 1px solid #ccc; }
 .pdf-full img { max-width: 100%; }
 .mem-fitxa[data-memobre] { cursor: pointer; }
+/* Recordatoris: lliscar per esborrar */
+.recs > li.mur-rec { position: relative; display: block; padding: 0; border: 0; background: none; border-radius: 14px; overflow: hidden; }
+.recs .rec-cos { position: relative; z-index: 1; display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 8px 12px; touch-action: pan-y; transition: transform .2s ease; }
+.recs .rec-cos.important { border-color: color-mix(in srgb, #E8590C 55%, var(--border)); background: color-mix(in srgb, #E8590C 6%, var(--surface)); }
+.recs > li.mou .rec-cos { transition: none; }
+.recs > li > .mur-accions { position: absolute; inset: 0 0 0 auto; display: flex; }
+.recs > li > .mur-accions button { border: 0; color: #fff; font: inherit; font-weight: 800; font-size: 14px; padding: 0 20px; min-width: 92px; cursor: pointer; }
+.recs > li:not(.obert):not(.mou) > .mur-accions { visibility: hidden; }
+.recs > li.fet .rec-check { background: var(--c, #E8590C); }
+/* Triar una opció */
+.demana-caixa .opcio { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: 12px 14px; }
+.demana-caixa .opcio small { color: var(--muted); font-weight: 600; font-size: 13px; }
+.demana-caixa > .enllac { justify-self: center; }

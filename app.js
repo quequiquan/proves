@@ -1219,6 +1219,7 @@ function vistaRecordatoris() {
     if (subs.length) out.push(`${subs.filter((x) => x.fet).length}/${subs.length}`);
     if (n) out.push(n === 1 ? '1 foto' : n + ' fotos');
     if (r.notes) out.push('Notes');
+    if (r.lloc || r.llocUrl) out.push(r.lloc && r.lloc.length < 28 ? r.lloc : 'Ubicació');
     if (r.url) out.push('Enllaç');
     return out;
   };
@@ -1227,9 +1228,10 @@ function vistaRecordatoris() {
     ${barraRecNou()}
     <button class="enllac enganxa" data-enganxa="recordatoris">Enganxa una llista d'una altra app</button>
     ${llista.length > 3 ? '<input id="cercaRec" type="search" class="doc-cerca" placeholder="Cerca un recordatori…" autocomplete="off">' : ''}
-    ${llista.length ? `<ul class="rec-llista">${llista.map((r) => `<li data-rec="${esc(r.id)}" data-reccerca="${esc(normal([r.text, r.notes, ...(r.subtasques || []).map((x) => x.text)].filter(Boolean).join(' ')))}"${r.important ? ' class="important"' : ''}>
-        <button class="rec-check" data-recfet="${esc(r.id)}" aria-label="Fet"></button>
-        <button class="rec-text" data-recedita="${esc(r.id)}"><span>${r.important ? '<i class="rec-bandera"></i>' : ''}${esc(r.text)}</span><small>${esc([fa(r.creat), ...indicadors(r)].filter(Boolean).join(' · '))}</small></button></li>`).join('')}</ul>`
+    ${llista.length ? `<ul class="rec-llista recs">${llista.map((r) => `<li class="mur-rec" data-rec="${esc(r.id)}" data-reccerca="${esc(normal([r.text, r.notes, r.lloc, ...(r.subtasques || []).map((x) => x.text)].filter(Boolean).join(' ')))}">
+        <div class="mur-accions"><button type="button" class="acc-esborra" data-rectreu="${esc(r.id)}">Esborra</button></div>
+        <div class="rec-cos${r.important ? ' important' : ''}"><button class="rec-check" data-recfet="${esc(r.id)}" aria-label="Fet"></button>
+        <button class="rec-text" data-recedita="${esc(r.id)}"><span>${r.important ? '<i class="rec-bandera"></i>' : ''}${esc(r.text)}</span><small>${esc([fa(r.creat), ...indicadors(r)].filter(Boolean).join(' · '))}</small></button></div></li>`).join('')}</ul>`
       : '<p class="help buit">No tens res pendent.</p>'}
     <p class="help buit" id="recRes" hidden>No hi ha cap recordatori que hi coincideixi.</p>`;
 }
@@ -2058,7 +2060,7 @@ $('#main').addEventListener('submit', (e) => {
   }
   const n = recNou(), id = 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   state.recordatoris.push({ id, text: text.slice(0, 300), creat: new Date().toISOString(),
-    ...(n.data ? { data: n.data, hora: n.hora || '' } : {}), ...(n.important ? { important: true } : {}), ...(n.url ? { url: n.url } : {}) });
+    ...(n.data ? { data: n.data, hora: n.hora || '' } : {}), ...(n.important ? { important: true } : {}), ...(n.lloc ? { lloc: n.lloc, llocUrl: n.llocUrl || '' } : {}) });
   const fotos = n.fotos.slice();
   ui.recNou = null; ui.recNouData = false; ui.recNouText = '';
   save(); render();
@@ -2182,6 +2184,10 @@ function vistaRecFitxa(r) {
           <p class="help">Surt a l'agenda i al calendari de l'iPhone (a l'etiqueta Recordatoris), on t'avisarà.</p>` : '<p class="help">Si hi poses dia, sortirà a l\'agenda i el calendari de l\'iPhone t\'avisarà.</p>'}
       </div>
       <label class="rec-bloc"><span>Notes</span><textarea data-reccamp="notes" rows="4" maxlength="3000" placeholder="Detalls, telèfons, el que calgui…">${esc(r.notes || '')}</textarea></label>
+      <div class="rec-bloc"><span>Ubicació</span>
+        <div class="rec-url"><input data-reccamp="lloc" maxlength="120" placeholder="On és? (un restaurant, una adreça…)" value="${esc(r.lloc || '')}">${mapsDe(r) ? `<a class="btn" href="${esc(mapsDe(r))}" target="_blank" rel="noopener">Maps</a>` : ''}</div>
+        <div class="grp"><button type="button" class="enllac" data-reclloc="ara">On soc ara</button>${r.lloc || r.llocUrl ? '<button type="button" class="enllac" data-reclloc="treu">Treu la ubicació</button>' : ''}</div>
+      </div>
       <label class="rec-bloc"><span>Enllaç</span><div class="rec-url"><input data-reccamp="url" type="url" inputmode="url" maxlength="2000" placeholder="https://…" value="${esc(r.url || '')}">${r.url ? `<a class="btn" href="${esc(r.url)}" target="_blank" rel="noopener">Obre</a>` : ''}</div></label>
       <div class="rec-bloc"><span>Subtasques${subs.length ? ` · ${subs.filter((s) => s.fet).length}/${subs.length}` : ''}</span>
         ${subs.length ? `<ul class="rec-subs">${subs.map((s) => `<li class="${s.fet ? 'fet' : ''}"><button class="rec-check petit${s.fet ? ' ple' : ''}" data-subfet="${esc(s.id)}" aria-label="${s.fet ? 'Desmarca' : 'Fet'}"></button><button class="rec-subtext" data-subedita="${esc(s.id)}">${esc(s.text)}</button></li>`).join('')}</ul>` : ''}
@@ -2228,8 +2234,9 @@ $('#main').addEventListener('change', async (e) => {
     if ((r[k] || '') === v) return;
     r[k] = v.slice(0, k === 'notes' ? 3000 : k === 'url' ? 2000 : 300);
     if (k === 'data' && !v) { r.hora = ''; }
+    if (k === 'lloc') r.llocUrl = '';
     save();
-    if (['url', 'data', 'hora'].includes(k)) render();
+    if (['url', 'data', 'hora', 'lloc'].includes(k)) render();
     return;
   }
   if (t.id === 'recFoto') {
@@ -2270,6 +2277,13 @@ $('#main').addEventListener('click', async (e) => {
   if (!r) return;
   if (t.closest('[data-recimp]')) { r.important = !r.important; save(); render(); return; }
   if (t.closest('[data-rectreudata]')) { r.data = ''; r.hora = ''; save(); render(); return; }
+  const rl = t.closest('[data-reclloc]');
+  if (rl) {
+    if (rl.dataset.reclloc === 'treu') { r.lloc = ''; r.llocUrl = ''; save(); render(); return; }
+    const p = await onSocAra();
+    if (p) { const rr = state.recordatoris.find((x) => x.id === r.id); if (rr) { Object.assign(rr, p); save(); render(); toast('Ubicació guardada'); } }
+    return;
+  }
   const sf = t.closest('[data-subfet]');
   if (sf) { const s = (r.subtasques || []).find((x) => x.id === sf.dataset.subfet); if (s) { s.fet = !s.fet; save(); render(); } return; }
   const se = t.closest('[data-subedita]');
@@ -2357,13 +2371,13 @@ const SVG_REC = {
   imp: '<svg viewBox="0 0 24 24"><path d="M6 21V4M6 4h11l-2.5 4.5L17 13H6"/></svg>',
   foto: '<svg viewBox="0 0 24 24"><path d="M4 8.5h3l1.6-2.5h6.8L17 8.5h3v10.5H4z"/><circle cx="12" cy="13.5" r="3.3"/></svg>',
 };
-const recNou = () => (ui.recNou ||= { data: '', hora: '', important: false, url: '', fotos: [] });
+const recNou = () => (ui.recNou ||= { data: '', hora: '', important: false, lloc: '', llocUrl: '', fotos: [] });
 function barraRecNou() {
   const n = recNou();
-  const xips = [n.data ? `${dataCurta(n.data)}${n.hora ? ' ' + n.hora : ''}` : '', n.url ? 'Ubicació' : '', n.important ? 'Important' : '', n.fotos.length ? (n.fotos.length === 1 ? '1 foto' : n.fotos.length + ' fotos') : ''].filter(Boolean);
+  const xips = [n.data ? `${dataCurta(n.data)}${n.hora ? ' ' + n.hora : ''}` : '', n.lloc ? (n.lloc.length < 30 ? n.lloc : 'Ubicació') : '', n.important ? 'Important' : '', n.fotos.length ? (n.fotos.length === 1 ? '1 foto' : n.fotos.length + ' fotos') : ''].filter(Boolean);
   return `<div class="rec-barra">
       <button type="button" class="rb${n.data ? ' on' : ''}" data-rb="data" aria-label="Dia i hora">${SVG_REC.data}</button>
-      <button type="button" class="rb${n.url ? ' on' : ''}" data-rb="lloc" aria-label="On soc ara">${SVG_REC.lloc}</button>
+      <button type="button" class="rb${n.lloc ? ' on' : ''}" data-rb="lloc" aria-label="Ubicació">${SVG_REC.lloc}</button>
       <button type="button" class="rb${n.important ? ' on' : ''}" data-rb="imp" aria-label="Important">${SVG_REC.imp}</button>
       <label class="rb${n.fotos.length ? ' on' : ''}" aria-label="Foto">${SVG_REC.foto}<input type="file" id="recNouFoto" accept="image/*" multiple hidden></label>
       ${xips.length ? `<span class="rb-xips">${esc(xips.join(' · '))}</span><button type="button" class="enllac rb-treu" data-rb="treu">Treu</button>` : ''}
@@ -2382,16 +2396,12 @@ $('#main').addEventListener('click', (e) => {
   else if (acc === 'imp') n.important = !n.important;
   else if (acc === 'treu') { ui.recNou = null; ui.recNouData = false; }
   else if (acc === 'lloc') {
-    if (n.url) { n.url = ''; }
-    else {
-      if (!navigator.geolocation) { toast('Aquest aparell no pot dir on ets.'); return; }
-      toast('Buscant on ets…', 2000);
-      navigator.geolocation.getCurrentPosition((p) => {
-        recNou().url = `https://maps.google.com/?q=${p.coords.latitude.toFixed(6)},${p.coords.longitude.toFixed(6)}`;
-        desaTextRecNou(); render(); toast("S'hi afegirà on ets ara");
-      }, () => toast("No s'ha pogut saber on ets. Mira que l'app tingui permís d'ubicació."), { enableHighAccuracy: true, timeout: 12000 });
-      return;
-    }
+    triaLloc(Boolean(n.lloc)).then((p) => {
+      if (p) Object.assign(recNou(), p);
+      render();
+      const i = document.getElementById('recText'); if (i) { i.value = ui.recNouText || ''; }
+    });
+    return;
   }
   render();
   const i = document.getElementById('recText'); if (i) { i.value = ui.recNouText || ''; i.focus(); }
@@ -2493,6 +2503,80 @@ $('#main').addEventListener('click', async (e) => {
     toast('Dades afegides a la fitxa. Recorda prémer Desa.', 3500);
   }
 });
+
+// Finestreta per triar una opció (p. ex. «On soc ara» o «Busca un lloc»)
+function triaOpcio(titol, opcions) {
+  document.querySelector('.demana')?.remove();
+  return new Promise((resol) => {
+    const d = document.createElement('div');
+    d.className = 'demana';
+    d.innerHTML = '<div class="demana-caixa"><b>' + esc(titol) + '</b>' + opcions.map(([k, n, ajuda]) => '<button type="button" class="btn opcio" data-op="' + esc(k) + '"><span>' + esc(n) + '</span>' + (ajuda ? '<small>' + esc(ajuda) + '</small>' : '') + '</button>').join('')
+      + '<button type="button" class="enllac" data-op="">Cancel·la</button></div>';
+    document.body.appendChild(d);
+    d.addEventListener('click', (e) => { const b = e.target.closest('[data-op]'); if (b || e.target === d) { d.remove(); resol(b ? b.dataset.op : ''); } });
+  });
+}
+// Ubicació: on soc ara (coordenades) o un lloc buscat pel nom (s'obre a Google Maps)
+const mapsDe = (r) => r.llocUrl || (r.lloc ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(r.lloc)}` : '');
+function onSocAra() {
+  return new Promise((ok) => {
+    if (!navigator.geolocation) { toast('Aquest aparell no pot dir on ets.'); ok(null); return; }
+    toast('Buscant on ets…', 2000);
+    navigator.geolocation.getCurrentPosition((p) => {
+      const ara = new Date();
+      ok({ lloc: `On era el ${ara.getDate()}/${ara.getMonth() + 1} a les ${pad(ara.getHours())}:${pad(ara.getMinutes())}`,
+        llocUrl: `https://maps.google.com/?q=${p.coords.latitude.toFixed(6)},${p.coords.longitude.toFixed(6)}` });
+    }, () => { toast("No s'ha pogut saber on ets. Mira que l'app tingui permís d'ubicació.", 4500); ok(null); }, { enableHighAccuracy: true, timeout: 12000 });
+  });
+}
+async function triaLloc(actual) {
+  const op = await triaOpcio('Ubicació', [
+    ['ara', 'On soc ara', "Per recordar on has aparcat, on has trobat bolets…"],
+    ['busca', 'Busca un lloc', 'Un restaurant, una adreça, on has quedat…'],
+    ...(actual ? [['treu', 'Treu la ubicació', '']] : []),
+  ]);
+  if (op === 'ara') return onSocAra();
+  if (op === 'busca') {
+    const nom = await demanaText('Quin lloc?', '', { max: 120, placeholder: 'Restaurant l\'Escabetx, Girona' });
+    if (!nom || !nom.trim()) return null;
+    return { lloc: nom.trim(), llocUrl: '' };
+  }
+  if (op === 'treu') return { lloc: '', llocUrl: '' };
+  return null;
+}
+// Recordatoris: lliscar cap a l'esquerra per esborrar (amb Desfés)
+let lliscR = null, murRObert = null;
+const tancaMurR = (m = murRObert) => { if (!m) return; m.querySelector('.rec-cos').style.transform = ''; m.classList.remove('obert'); if (murRObert === m) murRObert = null; };
+const ampleR = (m) => m.querySelector('.mur-accions').offsetWidth;
+$('#main').addEventListener('touchstart', (e) => {
+  const m = e.target.closest('.mur-rec');
+  if (murRObert && murRObert !== m) tancaMurR();
+  if (!m || e.target.closest('.mur-accions') || e.touches.length !== 1) { lliscR = null; return; }
+  lliscR = { m, x: e.touches[0].clientX, y: e.touches[0].clientY, ini: m.classList.contains('obert') ? -ampleR(m) : 0, mou: false };
+}, { passive: true });
+$('#main').addEventListener('touchmove', (e) => {
+  if (!lliscR) return;
+  const dx = e.touches[0].clientX - lliscR.x, dy = e.touches[0].clientY - lliscR.y;
+  if (!lliscR.mou) {
+    if (Math.abs(dx) < 10 || Math.abs(dx) < Math.abs(dy) * 1.2) { if (Math.abs(dy) > 10) lliscR = null; return; }
+    lliscR.mou = true; lliscR.m.classList.add('mou');
+  }
+  lliscR.m.querySelector('.rec-cos').style.transform = `translateX(${Math.max(-ampleR(lliscR.m) - 30, Math.min(0, lliscR.ini + dx))}px)`;
+}, { passive: true });
+$('#main').addEventListener('touchend', (e) => {
+  if (!lliscR) return;
+  const { m, mou, ini, x } = lliscR; lliscR = null;
+  if (!mou) return;
+  m.classList.remove('mou');
+  const dx = e.changedTouches[0].clientX - x;
+  if (ini + dx < -ampleR(m) / 2) { m.classList.add('obert'); m.querySelector('.rec-cos').style.transform = `translateX(-${ampleR(m)}px)`; murRObert = m; }
+  else tancaMurR(m);
+}, { passive: true });
+$('#main').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-rectreu]');
+  if (b) { const r = state.recordatoris.find((x) => x.id === b.dataset.rectreu); if (r) treuRecordatori(r, `Esborrat: ${r.text}`); e.stopPropagation(); return; }
+  if (murRObert && e.target.closest('.mur-rec') === murRObert) { e.preventDefault(); e.stopPropagation(); tancaMurR(); }
+}, true);
 
 /* ---------- Llista i Compres ---------- */
 // Avís «Ja hi és» al costat de la casella (a baix de tot no es veu quan el teclat és obert) i l'element parpelleja
