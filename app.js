@@ -2386,6 +2386,8 @@ function barraRecNou() {
 }
 // Es manté el que hi ha escrit a la casella quan es torna a pintar la pantalla
 const desaTextRecNou = () => { const i = document.getElementById('recText'); if (i) ui.recNouText = i.value; };
+// El que s'escriu a la casella es recorda a cada lletra, perquè no es perdi si es toca un botó de la barra
+$('#main').addEventListener('input', (e) => { if (e.target.id === 'recText') ui.recNouText = e.target.value; });
 $('#main').addEventListener('click', (e) => {
   const b = e.target.closest('[data-rb]');
   if (!b) return;
@@ -2398,8 +2400,11 @@ $('#main').addEventListener('click', (e) => {
   else if (acc === 'lloc') {
     triaLloc(Boolean(n.lloc)).then((p) => {
       if (p) Object.assign(recNou(), p);
+      // Si encara no hi havia res escrit i s'ha buscat un lloc, el nom del lloc fa de recordatori (es pot canviar)
+      if (p && p.lloc && !p.llocUrl && !(ui.recNouText || '').trim()) ui.recNouText = p.lloc;
       render();
-      const i = document.getElementById('recText'); if (i) { i.value = ui.recNouText || ''; }
+      const i = document.getElementById('recText');
+      if (i) { i.value = ui.recNouText || ''; i.focus(); try { i.setSelectionRange(i.value.length, i.value.length); } catch (x) { /* res */ } }
     });
     return;
   }
