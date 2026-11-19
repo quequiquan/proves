@@ -53,6 +53,20 @@ b { font-weight: 800; }
   padding: 10px 16px; border-radius: 99px; box-shadow: 0 6px 18px rgba(0,0,0,.25); opacity: 0; pointer-events: none; transition: opacity .2s; }
 .amunt.on { opacity: 1; pointer-events: auto; }
 @media print { .eines, .amunt { display: none !important; } }
+.carps { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.carps span { background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--c, var(--border)); border-radius: 10px; padding: 7px 8px; display: grid; gap: 1px; font-size: 12px; }
+.carps span small { color: var(--muted); font-size: 10px; font-weight: 700; }
+.carps span.nova { border-style: dashed; border-left-width: 1px; place-items: center; color: var(--muted); font-size: 11px; }
+.carps span.alca { transform: scale(1.06) rotate(-2deg); box-shadow: 0 6px 14px rgba(0,0,0,.22); }
+.rbt { display: flex; gap: 5px; }
+.rbt span { border: 1.5px solid var(--border); border-radius: 99px; padding: 3px 8px; font-weight: 800; font-size: 10.5px; }
+.rbt span.on { background: #E8590C; border-color: #E8590C; color: #fff; }
+.m-card i.imp { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #E8590C; margin-right: 5px; vertical-align: 1px; }
+.mic { display: grid; place-items: center; margin: 6px 0 2px; }
+.mic span { width: 58px; height: 58px; border-radius: 50%; background: #0B7285; box-shadow: 0 6px 16px rgba(11,114,133,.35); position: relative; }
+.mic span::after { content: ""; position: absolute; left: 50%; top: 50%; width: 14px; height: 22px; margin: -14px 0 0 -7px; border-radius: 8px; background: #fff; }
+.m-card.veu { border-left: 4px solid #0B7285; }
+.m-card.veu .acc { color: var(--muted); font-size: 10px; margin-top: 3px; }
 /* Índex */
 .index { display: flex; flex-wrap: wrap; gap: 8px; margin: 22px 0 8px; }
 .index a { text-decoration: none; color: var(--text); background: var(--surface); border: 1px solid var(--border); padding: 7px 13px; border-radius: 99px; font-weight: 700; font-size: 14px; }
@@ -193,7 +207,7 @@ section.final h2 { font-size: clamp(24px, 4vw, 30px); }
     <svg viewBox="0 0 1024 1024" aria-hidden="true"><rect width="1024" height="1024" rx="230" fill="#221C18"/><circle cx="512" cy="512" r="170" fill="#FF4430"/><circle cx="512.0" cy="222.0" r="78" fill="#FF8A00"/><circle cx="763.1" cy="367.0" r="78" fill="#A66BFF"/><circle cx="763.1" cy="657.0" r="78" fill="#FF3D9A"/><circle cx="512.0" cy="802.0" r="78" fill="#1FA8FF"/><circle cx="260.9" cy="657.0" r="78" fill="#22E06B"/><circle cx="260.9" cy="367.0" r="78" fill="#FFD000"/></svg>
     <div>
       <h1>Galàxia</h1>
-      <p>Manual d'ús. L'agenda al centre i, al voltant, tot el que vols tenir a mà: recordatoris, memòria, aniversaris, llistes, la compra i els documents. Els plans surten sols a l'agenda de l'iPhone, cada etiqueta amb el seu color.</p>
+      <p>Manual d'ús. L'agenda al centre i, al voltant, tot el que vols tenir a mà: recordatoris, memòria, aniversaris, llistes, la compra de cada botiga, els documents i les notes de veu. Els plans surten sols a l'agenda de l'iPhone, cada etiqueta amb el seu color.</p>
     </div>
   </header>
 
@@ -201,10 +215,13 @@ section.final h2 { font-size: clamp(24px, 4vw, 30px); }
   <nav class="index" id="index" aria-label="Apartats">
     <a href="#installar">Instal·lar</a>
     <a href="#galaxia">La galàxia</a>
+    <a href="#carpetes">Carpetes</a>
     <a href="#recordatoris">Recordatoris</a>
+    <a href="#recordatoris">Llista</a>
     <a href="#compres">Compres</a>
     <a href="#memoria">Memòria</a>
     <a href="#memoria">Documents</a>
+    <a href="#veu">Notes de veu</a>
     <a href="#aniversaris">Aniversaris</a>
     <a href="#nou-pla">Crear un pla</a>
     <a href="#etiquetes">Etiquetes</a>
@@ -214,7 +231,6 @@ section.final h2 { font-size: clamp(24px, 4vw, 30px); }
     <a href="#compartir">Compartir</a>
     <a href="#contactes">Contactes</a>
     <a href="#iphone">Agenda de l'iPhone</a>
-    <a href="#veu">Plans per veu</a>
     <a href="#ajustos">Ajustos</a>
     <a href="#dubtes">Dubtes</a>
   </nav>
@@ -255,17 +271,18 @@ section.final h2 { font-size: clamp(24px, 4vw, 30px); }
     <div class="text">
       <span class="etiq">En obrir l'app</span>
       <h2>La galàxia</h2>
-      <p>Quan obres l'app, et rep amb la salutació («Bon dia», «Bona tarda» o «Bona nit», segons l'hora) i la data d'avui. A sota hi ha el cercle: l'<b>Agenda</b> al mig i sis micro-apps al voltant, com els especialistes al voltant del metge de capçalera.</p>
+      <p>Quan obres l'app, et rep amb la salutació («Bon dia», «Bona tarda» o «Bona nit», segons l'hora) i la data d'avui. A sota hi ha el cercle: l'<b>Agenda</b> al mig i set micro-apps al voltant, com els especialistes al voltant del metge de capçalera.</p>
       <ul class="punts">
-        <li style="--c:#FF4430"><b>Agenda</b> (al mig): toca-la per entrar a l'agenda; s'obre sempre al <b>calendari</b>, en el dia d'avui. Si la <b>mantens premuda</b>, obre directament un pla nou. El número petit de sota són els plans d'avui.</li>
-        <li style="--c:#E8590C"><b>R · Recordatoris</b>: coses pendents sense data.</li>
-        <li style="--c:#7048E8"><b>M · Memòria</b>: informació per consultar (pòlisses, telèfons…).</li>
+        <li style="--c:#FF4430"><b>Agenda</b> (al mig): toca-la per entrar a l'agenda; s'obre sempre al <b>calendari del mes</b>, en el dia d'avui, per veure d'un cop d'ull els dies lliures. Si la <b>mantens premuda</b>, obre directament un pla nou. El número petit de sota són els plans d'avui.</li>
+        <li style="--c:#E8590C"><b>R · Recordatoris</b>: coses per fer, amb data o sense.</li>
+        <li style="--c:#7048E8"><b>M · Memòria</b>: informació per consultar, en carpetes (restaurants, vins, pòlisses…).</li>
         <li style="--c:#E64980"><b>A · Aniversaris</b>: els aniversaris i sants dels contactes.</li>
-        <li style="--c:#1C7ED6"><b>L · Llista</b>: llistes puntuals (un viatge, uns encàrrecs).</li>
-        <li style="--c:#2F9E44"><b>C · Compres</b>: la llista de la compra.</li>
-        <li style="--c:#E0A800"><b>D · Documents</b>: qualsevol document (fotos, PDF, Word, Excel…) i enllaços a pàgines web.</li>
+        <li style="--c:#1C7ED6"><b>L · Llista</b>: llistes puntuals (un viatge, uns encàrrecs), en carpetes.</li>
+        <li style="--c:#2F9E44"><b>C · Compres</b>: una llista de la compra per a cada botiga.</li>
+        <li style="--c:#E0A800"><b>D · Documents</b>: qualsevol document (fotos, PDF, Word, Excel…) i enllaços, en carpetes.</li>
+        <li style="--c:#0B7285"><b>V · Veu</b>: les notes que dictes o graves, per classificar-les després.</li>
       </ul>
-      <p class="consell"><b>Els numerets</b> de cada bombolla diuen què hi tens pendent: recordatoris, coses per comprar, coses de les llistes i, a Aniversaris, les persones que has de felicitar <b>avui</b>.</p>
+      <p class="consell"><b>Els numerets</b> de cada bombolla diuen què hi tens pendent: recordatoris, coses per comprar, coses de les llistes, notes de veu per classificar i, a Aniversaris, les persones que has de felicitar <b>avui</b>.</p>
       <p class="consell"><b>La píndola del dia.</b> Sota el cercle surt cada dia una frase positiva diferent. Si la toques, veus les dels dies anteriors i, amb el <b>cor</b>, guardes les que més t'agradin a <b>Preferides</b>. A <b>Les meves</b> pots escriure les teves pròpies frases: sortiran barrejades amb les altres.</p>
       <p class="consell"><b>El logotip de dalt</b> obre un menú petit: tornar a l'inici, veure amb quin correu has entrat i <b>tancar la sessió</b> en aquest aparell o en tots els altres.</p>
     </div>
@@ -274,18 +291,49 @@ section.final h2 { font-size: clamp(24px, 4vw, 30px); }
       <div class="m-cos">
         <div class="portada" style="padding:8px 0 0">
           <span class="salut">Bon dia, Angel</span>
-          <span class="data" style="margin-bottom:6px">Dimecres 18 de novembre</span>
+          <span class="data" style="margin-bottom:6px">Dijous 19 de novembre</span>
         </div>
         <div class="gx-mock">
           <span class="gx-c">Agenda<small>2</small></span>
           <span class="gx-s" style="--c:#E8590C;--a:-90deg">R<em>3</em></span>
-          <span class="gx-s" style="--c:#7048E8;--a:-30deg">M</span>
-          <span class="gx-s" style="--c:#E64980;--a:30deg">A<em>1</em></span>
-          <span class="gx-s" style="--c:#1C7ED6;--a:90deg">L</span>
-          <span class="gx-s" style="--c:#2F9E44;--a:150deg">C<em>5</em></span>
-          <span class="gx-s gx-g" style="--c:#FFC300;--a:210deg">D</span>
+          <span class="gx-s" style="--c:#7048E8;--a:-38.6deg">M</span>
+          <span class="gx-s" style="--c:#E64980;--a:12.9deg">A<em>1</em></span>
+          <span class="gx-s" style="--c:#1C7ED6;--a:64.3deg">L</span>
+          <span class="gx-s" style="--c:#2F9E44;--a:115.7deg">C<em>5</em></span>
+          <span class="gx-s gx-g" style="--c:#FFC300;--a:167.1deg">D</span>
+          <span class="gx-s" style="--c:#0B7285;--a:218.6deg">V<em>2</em></span>
         </div>
         <p class="pindola">Dona una oportunitat a allò nou.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Carpetes -->
+  <section class="ap" id="carpetes">
+    <div class="text">
+      <span class="etiq">Llista · Compres · Memòria · Documents</span>
+      <h2>Les carpetes de colors</h2>
+      <p>Llista, Compres, Memòria i Documents s'ordenen en <b>carpetes de colors</b>. Totes funcionen igual:</p>
+      <ul class="punts">
+        <li style="--c:#7048E8"><b>Toca</b> una carpeta per entrar-hi. <b>‹ Carpetes</b> (o <b>‹ Botigues</b>) et torna enrere.</li>
+        <li style="--c:#7048E8"><b>+ Nova carpeta</b> en crea una amb el nom que vulguis.</li>
+        <li style="--c:#7048E8"><b>Mantén-la premuda</b> mig segon: s'aixeca i la pots <b>arrossegar</b> on vulguis, per posar a dalt les que fas servir més.</li>
+        <li style="--c:#7048E8">Si la mantens premuda i la <b>deixes anar sense moure-la</b>, surt un menú amb <b>15 colors</b>, <b>Canvia el nom</b> i <b>Esborra la carpeta</b>.</li>
+        <li style="--c:#E03131"><b>Llisca-la cap a l'esquerra</b> per esborrar-la. El que hi havia passa a <b>General</b> i surt <b>Desfés</b> uns segons.</li>
+      </ul>
+      <p class="consell"><b>General</b> recull el que no té carpeta i desapareix quan queda buida. <b>Per classificar</b> (a Memòria) recull el que desis des del menú Compartir de l'iPhone.</p>
+    </div>
+    <div class="mobil" aria-hidden="true">
+      <div class="m-barra" style="background:#1C7ED6">‹ Galàxia &nbsp; Llista</div>
+      <div class="m-cos">
+        <div class="carps">
+          <span style="--c:#E8590C"><b>Avui</b><small>2 llistes</small></span>
+          <span style="--c:#2F9E44" class="alca"><b>Escapada</b><small>1 llista</small></span>
+          <span style="--c:#1C7ED6"><b>Vacances</b><small>3 llistes</small></span>
+          <span style="--c:#E03131"><b>Urgent</b><small>0 llistes</small></span>
+          <span class="nova"><b>+ Nova carpeta</b></span>
+        </div>
+        <div style="color:var(--muted);font-size:10.5px">Mantén premuda una carpeta per moure-la o canviar-ne el color. Llisca-la per esborrar-la.</div>
       </div>
     </div>
   </section>
@@ -295,32 +343,32 @@ section.final h2 { font-size: clamp(24px, 4vw, 30px); }
     <div class="text">
       <span class="etiq">Per no oblidar res</span>
       <h2>Recordatoris i Llista</h2>
-      <p><b style="color:#E8590C">Recordatoris</b> és per a les coses pendents <b>sense data</b> que no vols oblidar: «trucar al gestor», «mirar l'assegurança del cotxe»…</p>
+      <p><b style="color:#E8590C">Recordatoris</b> és per a les coses que has de fer: «trucar al gestor», «portar el cotxe a la ITV»…</p>
       <ol class="passos">
-        <li><span>Escriu-lo a dalt i prem <b>Afegeix</b>.</span></li>
-        <li><span>Quan l'hagis fet, toca el <b>cercle</b> de l'esquerra: desapareix. Durant uns segons surt <b>Desfés</b>.</span></li>
-        <li><span>Toca el text per corregir-lo: surt seleccionat i el que escrius el substitueix.</span></li>
+        <li><span>Escriu-lo a dalt. A sota hi ha quatre tecles: <b>Agenda</b> (dia, hora i avís), <b>Ubicació</b> (on soc ara o un lloc que busques), <b>Important</b> i <b>Foto</b>. Un toc l'activa (es posa taronja) i un altre la treu. Prem <b>Afegeix</b>.</span></li>
+        <li><span>Toca un recordatori per obrir-ne la <b>fitxa</b>: notes, enllaç, subtasques, fotos, ubicació i quan. Els que tenen dia surten a l'<b>Agenda</b> i, amb el calendari subscrit, a l'iPhone amb avís.</span></li>
+        <li><span>Quan l'hagis fet, toca el <b>cercle</b>: passa a <b>Fets</b>, a baix de tot, on es guarda <b>30 dies</b>. Allà el pots <b>Recuperar</b> o <b>Esborrar</b>; passats 30 dies s'esborra sol.</span></li>
+        <li><span><b>Llisca'l cap a l'esquerra</b> per esborrar-lo del tot (amb <b>Desfés</b>).</span></li>
       </ol>
-      <p style="margin-top:10px">Si n'escrius un que ja tens, l'app t'avisa i no el repeteix. Quan en tens més de tres, a dalt surt un <b>cercador</b>.</p>
-      <p style="margin-top:18px"><b style="color:#1C7ED6">Llista</b> és el paper que t'emportes a la butxaca: «Viatge a Menorca», «Encàrrecs de dissabte»…</p>
+      <p style="margin-top:10px">Els <b>importants</b> porten un punt de color. Si n'escrius un que ja tens, l'app t'avisa. Quan en tens més de tres, a dalt surt un <b>cercador</b>.</p>
+      <p style="margin-top:18px"><b style="color:#1C7ED6">Llista</b> és el paper que t'emportes a la butxaca: «Viatge a Menorca», «Encàrrecs de dissabte»… S'ordena en carpetes: <b>Avui</b>, <b>Escapada</b>, <b>Vacances</b>, <b>Urgent</b> i les que creïs.</p>
       <ul class="punts">
-        <li style="--c:#1C7ED6">Crea una llista amb un nom i hi apuntes les coses una darrere l'altra.</li>
-        <li style="--c:#1C7ED6">Toca el cercle de cada cosa feta i desapareix, fins que la llista queda neta.</li>
-        <li style="--c:#1C7ED6"><b>Torna-la a omplir</b> recupera totes les coses: ideal per a la llista del viatge, que és sempre la mateixa.</li>
-        <li style="--c:#1C7ED6"><b>Comparteix</b> l'envia per WhatsApp o correu, i <b>Imprimeix</b> fa un full amb quadrets per marcar.</li>
+        <li style="--c:#1C7ED6">Entra a una carpeta, crea una llista amb un nom i hi apuntes les coses.</li>
+        <li style="--c:#1C7ED6"><b>Mantén premuda una llista</b> i arrossega-la amunt o avall: a dalt les que fas servir més. <b>Llisca-la</b> cap a l'esquerra per esborrar-la.</li>
+        <li style="--c:#1C7ED6">Toca el cercle de cada cosa feta i desapareix. <b>Torna-la a omplir</b> les recupera totes: ideal per a la llista del viatge.</li>
+        <li style="--c:#1C7ED6"><b>Comparteix</b> l'envia per WhatsApp o correu, i <b>Imprimeix</b> fa un full amb quadrets. A baix, <b>Carpeta</b> la canvia de carpeta.</li>
       </ul>
-      <p class="consell"><b>Si apuntes una cosa que ja hi és</b>, surt un avís groc sota la casella i la cosa repetida parpelleja.</p>
+      <p class="consell"><b>Enganxa una llista d'una altra app</b>: copia una llista (de Notes, de Recordatorios…) i enganxa-la; cada línia serà una cosa.</p>
     </div>
     <div class="mobil" aria-hidden="true">
-      <div class="m-barra" style="background:#1C7ED6">‹ Llistes &nbsp; Viatge a Menorca</div>
+      <div class="m-barra" style="background:#E8590C">‹ Galàxia &nbsp; Recordatoris</div>
       <div class="m-cos">
-        <div class="fila2" style="grid-template-columns:1fr auto"><div class="m-camp">Afegeix a la llista</div><div class="boto" style="background:#1C7ED6;padding:6px 10px">Afegeix</div></div>
-        <div class="m-card"><span class="ck" style="--c:#1C7ED6"></span><b>Carregador del mòbil</b></div>
-        <div class="m-card"><span class="ck" style="--c:#1C7ED6"></span><b>Medicació</b></div>
-        <div class="m-card"><span class="ck" style="--c:#1C7ED6"></span><b>Ulleres de sol</b></div>
-        <div class="m-card"><span class="ck" style="--c:#1C7ED6"></span><b>Banyador</b></div>
-        <div class="fila2" style="margin-top:6px"><div class="boto sec">Comparteix</div><div class="boto sec">Imprimeix</div></div>
-        <div class="boto sec">Torna-la a omplir (3)</div>
+        <div class="fila2" style="grid-template-columns:1fr auto"><div class="m-camp ple">Trucar al lampista</div><div class="boto" style="background:#E8590C;padding:6px 10px">Afegeix</div></div>
+        <div class="rbt"><span class="on">Agenda</span><span>Ubicació</span><span class="on">Important</span><span>Foto</span></div>
+        <div style="color:var(--muted);font-size:10.5px;font-weight:700">Dv. 20 nov. 10:00 · Important</div>
+        <div class="m-card"><span class="ck" style="--c:#E8590C"></span><span><b><i class="imp"></i>Renovar el DNI</b><small>Dl. 23 nov. · Comissaria</small></span></div>
+        <div class="m-card"><span class="ck" style="--c:#E8590C"></span><span><b>Mirar l'assegurança</b><small>2 fotos</small></span></div>
+        <div class="m-lbl" style="margin-top:6px">▸ Fets (4)</div>
       </div>
     </div>
   </section>
@@ -330,17 +378,19 @@ section.final h2 { font-size: clamp(24px, 4vw, 30px); }
     <div class="text">
       <span class="etiq">La llista de la compra</span>
       <h2>Compres</h2>
-      <p>Apunta el que falta i <b>es classifica sol</b> per famílies: Verdura, Fruita, Làctics i ous, Carns, Peixos, Pans i rebosteria, Pasta i arròs, Conserves, Congelats, Begudes, Cafè i te, Olis i salses, Neteja i higiene… El que no encaixa va a <b>Altres</b>.</p>
+      <p>Hi ha una llista per a cada <b>botiga</b>: Ametller Origen, Esclat, Lidl, Aldi, Mercadona, Carrefour, Gros Mercat, Action… i les que afegeixis amb <b>+ Nova carpeta</b>. Cada botiga diu quantes coses tens <b>per comprar</b>.</p>
+      <p>Entra a la botiga i apunta el que falta: <b>es classifica sol</b> per famílies (Verdura, Fruita, Làctics i ous, Carns, Peixos, Neteja i higiene…). El que no encaixa va a <b>Altres</b>.</p>
       <ul class="punts">
         <li style="--c:#2F9E44">Quan ho compres, toca el cercle i desapareix de la llista.</li>
-        <li style="--c:#2F9E44">Si una cosa ha anat a una família equivocada, toca el <b>botó dels tres punts</b> i tria la bona. A partir de llavors la recorda.</li>
-        <li style="--c:#2F9E44">Les coses comprades queden a baix com a <b>Habituals</b>. Toca'n una i torna a la llista sense escriure-la.</li>
-        <li style="--c:#2F9E44">Els que compres més sovint surten primer i <b>ressaltats</b>. Per treure'n un, <b>mantén-lo premut</b>.</li>
-        <li style="--c:#2F9E44"><b>Comparteix la llista</b> l'envia ordenada per famílies, per exemple a qui vagi a comprar, i <b>Imprimeix</b> en fa un full amb quadrets.</li>
+        <li style="--c:#2F9E44">Si una cosa ha anat a una família equivocada, toca el <b>botó dels tres punts</b> i tria la bona.</li>
+        <li style="--c:#2F9E44">Toca el nom d'un producte per <b>corregir-lo</b> o <b>moure'l a una altra botiga</b>.</li>
+        <li style="--c:#2F9E44">Les coses comprades queden a baix com a <b>Habituals</b> d'aquella botiga. Toca'n una i torna a la llista sense escriure-la. Per treure-la dels habituals, <b>mantén-la premuda</b>.</li>
+        <li style="--c:#2F9E44"><b>Comparteix la llista</b> l'envia ordenada per famílies, amb el nom de la botiga, i <b>Imprimeix</b> en fa un full amb quadrets.</li>
       </ul>
+      <p class="consell"><b>Una mateixa cosa pot ser a dues botigues</b>: la llet del Lidl i la del Mercadona van cadascuna a la seva llista.</p>
     </div>
     <div class="mobil" aria-hidden="true">
-      <div class="m-barra" style="background:#2F9E44">‹ Galàxia &nbsp; Compres</div>
+      <div class="m-barra" style="background:#2F9E44">‹ Botigues &nbsp; Mercadona</div>
       <div class="m-cos">
         <div class="m-camp">Què falta?</div>
         <div class="fam" style="--c:#2F9E44">Verdura</div>
@@ -359,29 +409,62 @@ section.final h2 { font-size: clamp(24px, 4vw, 30px); }
     <div class="text">
       <span class="etiq">El que has de saber</span>
       <h2>Memòria i Documents</h2>
-      <p><b style="color:#7048E8">Memòria</b> guarda informació per consultar durant anys: el número de la pòlissa, el telèfon del lampista, la Wi-Fi de la casa de la platja…</p>
+      <p><b style="color:#7048E8">Memòria</b> guarda informació per consultar durant anys, ordenada en carpetes: Restaurants, Vins, Filosofia, la pòlissa de la casa, el telèfon del lampista…</p>
       <ul class="punts">
-        <li style="--c:#7048E8"><b>Nova fitxa</b>: un títol i, a sota, tot el que vulguis recordar.</li>
-        <li style="--c:#7048E8">Cada fitxa té <b>Comparteix</b>, <b>Copia</b>, <b>Imprimeix</b> i <b>Edita</b>. També pots imprimir-les totes juntes.</li>
-        <li style="--c:#7048E8">Quan en tens moltes, surt un <b>cercador</b> a dalt.</li>
+        <li style="--c:#7048E8">Dins d'una carpeta, <b>Nova fitxa</b>: un títol, la carpeta i tot el que vulguis recordar. Després, amb <b>Edita</b>, hi pots afegir <b>fotos</b>.</li>
+        <li style="--c:#7048E8">A la fitxa, <b>Cerca a Google</b> o <b>Cerca a Maps</b> busquen el títol; copia l'adreça o el telèfon i torna a prémer <b>Enganxa les dades</b>.</li>
+        <li style="--c:#7048E8">Toca una fitxa per obrir-la. Té <b>Comparteix</b>, <b>Copia</b>, <b>Imprimeix</b> i <b>Edita</b>, i els enllaços es poden tocar. <b>Llisca-la</b> cap a l'esquerra per esborrar-la.</li>
+        <li style="--c:#7048E8"><b>Selecciona per esborrar</b>: marca diverses fitxes (o <b>totes</b>) i esborra-les de cop, amb <b>Desfés</b>.</li>
+        <li style="--c:#7048E8">A l'inici de Memòria, el <b>cercador</b> busca a totes les carpetes alhora.</li>
       </ul>
-      <p style="margin-top:18px"><b style="color:#B88700">Documents</b> guarda qualsevol document al teu núvol privat (només tu els pots veure): fotos, PDF, contractes en Word, pressupostos en Excel… i també enllaços a pàgines web.</p>
+      <p class="consell"><b>Desa a Galàxia</b>: des de Google, Maps, Instagram o qualsevol web, toca <b>Compartir → Desa a Galàxia</b> i es crea una fitxa a la carpeta <b>Per classificar</b> amb el nom i l'enllaç.</p>
+      <p style="margin-top:18px"><b style="color:#B88700">Documents</b> guarda qualsevol document al teu núvol privat (només tu els pots veure), en carpetes: <b>Personals</b>, <b>Salut</b>, <b>Assegurances</b>, <b>Laborals</b> i les que creïs.</p>
       <ul class="punts">
-        <li style="--c:#E0A800"><b>Afegeix un fitxer</b>: fes una foto, tria'n una de la fototeca o un fitxer de l'iPhone (fins a 50 MB), i posa-li nom. <b>Afegeix un enllaç</b>: enganxa l'adreça d'una web.</li>
-        <li style="--c:#E0A800">A dalt hi ha un <b>cercador</b> i uns <b>filtres per tipus</b> (Fotos, PDF, Textos, Fulls de càlcul, Enllaços…).</li>
-        <li style="--c:#E0A800">Toca un document per veure'l en gran. <b>Pessiga amb dos dits</b> o fes <b>doble toc</b> per ampliar-lo i llegir la lletra petita.</li>
-        <li style="--c:#E0A800">A baix: <b>Obre / Comparteix</b> (Word, Excel i la resta s'obren amb el visor de l'iPhone), <b>Imprimeix</b>, <b>Canvia el nom</b> i <b>Esborra</b>.</li>
+        <li style="--c:#E0A800">Dins d'una carpeta: <b>Fes una foto</b> obre la càmera (receptes, tiquets, informes, targetes); <b>Afegeix fitxers</b> tria fotos o fitxers de l'iPhone (fins a 50 MB), i <b>Afegeix un enllaç</b> guarda una web.</li>
+        <li style="--c:#E0A800">Hi ha un <b>cercador</b> i uns <b>filtres per tipus</b> (Fotos, PDF, Textos, Fulls de càlcul, Enllaços…).</li>
+        <li style="--c:#E0A800">Toca un document per veure'l en gran. <b>Pessiga amb dos dits</b> o fes <b>doble toc</b> per ampliar-lo.</li>
+        <li style="--c:#E0A800">A baix: <b>Obre / Comparteix</b>, <b>Imprimeix</b>, <b>Carpeta</b> (per moure'l), <b>Canvia el nom</b> i <b>Esborra</b>.</li>
       </ul>
-      <p class="consell"><b>Les contrasenyes</b>, millor a l'app <b>Contrasenyes</b> de l'iPhone, que és més segura. Per escanejar diversos fulls en un sol PDF, fes-ho amb l'app <b>Arxius</b> (··· → Escanejar documents) i després tria'l des de Documents.</p>
+      <p class="consell"><b>Les contrasenyes</b>, millor a l'app <b>Contrasenyes</b> de l'iPhone. Per escanejar diversos fulls en un sol PDF, fes-ho amb l'app <b>Arxius</b> (··· → Escanejar documents) i després tria'l amb <b>Afegeix fitxers</b>.</p>
     </div>
     <div class="mobil" aria-hidden="true">
       <div class="m-barra" style="background:#7048E8">‹ Galàxia &nbsp; Memòria</div>
       <div class="m-cos">
-        <div class="fila2" style="grid-template-columns:1fr auto"><div class="m-camp">Cerca…</div><div class="boto" style="background:#7048E8;padding:6px 10px">Nova fitxa</div></div>
-        <div class="m-card mem"><span><b>Lampista</b><small style="color:var(--text);font-size:12px">Joan · 666 11 22 33</small><small class="acc">Comparteix · Copia · Imprimeix · Edita</small></span></div>
-        <div class="m-card mem"><span><b>Pòlissa de la casa</b><small style="color:var(--text);font-size:12px">Companyia i número de pòlissa</small><small class="acc">Comparteix · Copia · Imprimeix · Edita</small></span></div>
-        <div class="m-lbl" style="margin-top:6px">Documents</div>
-        <div class="docs"><span><i></i>Rebut IBI</span><span><i class="pdf">DOCX</i>Contracte</span></div>
+        <div class="m-camp">Cerca a totes les carpetes…</div>
+        <div class="carps">
+          <span style="--c:#F59F00"><b>Per classificar</b><small>3 fitxes</small></span>
+          <span style="--c:#E8590C"><b>Restaurants</b><small>12 fitxes</small></span>
+          <span style="--c:#A61E4D"><b>Vins</b><small>8 fitxes</small></span>
+          <span style="--c:#7048E8"><b>Filosofia</b><small>13 fitxes</small></span>
+        </div>
+        <div class="m-lbl" style="margin-top:6px">Documents · Salut</div>
+        <div class="docs"><span><i></i>Analítica</span><span><i class="pdf">PDF</i>Informe</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Notes de veu -->
+  <section class="ap" id="veu">
+    <div class="text">
+      <span class="etiq">Sense haver d'escriure</span>
+      <h2>Notes de veu</h2>
+      <p>Per apuntar el que se t'acudeix mentre camines o quan no pots aturar-te a escriure. Les notes van a la micro-app <b style="color:#0B7285">V · Veu</b> i, quan tinguis una estona, les classifiques.</p>
+      <ul class="punts">
+        <li style="--c:#0B7285"><b>Amb la icona «Nota de veu»</b> de la pantalla d'inici (o amb <b>dos tocs al darrere</b> del mòbil): sona el so d'escoltar, parles <b>en català</b> i calles. Surt l'avís <b>«Apuntat»</b> i ja està. Arriba escrita, marcada com a <b>Dictat</b>.</li>
+        <li style="--c:#0B7285"><b>Amb el botó rodó</b> de dins de Veu: un toc comença a gravar i un altre acaba (també el pots mantenir premut mentre parles). Es guarda l'<b>àudio</b>, que pots <b>escoltar</b>. Per enviar-lo, toca abans <b>Escriu què diu</b>.</li>
+        <li style="--c:#0B7285"><b>Escrivint-la</b> a la casella (o dictant-la amb el micròfon del teclat).</li>
+      </ul>
+      <p style="margin-top:10px"><b>Envia a…</b> passa cada nota a <b>Recordatoris</b>, a una <b>llista</b>, a <b>Compres</b> (a la botiga que triïs: «piles, llet i tomàquets» en fa tres productes), a <b>Memòria</b> (a la carpeta que triïs) o a l'<b>Agenda</b> com a pla nou. En enviar-la, surt de Veu (amb <b>Desfés</b>).</p>
+      <p class="consell"><b>Per preparar la drecera</b> (un sol cop): a Veu, obre <b>Dictar amb el doble toc al darrere del mòbil</b> i copia l'enllaç. A l'app <b>Atajos</b>: <b>Dictar texto</b> (idioma Català, dejar de escuchar «Tras pausa») → <b>Obtener contenido de URL</b> (l'enllaç, que acaba en <b>&amp;nota=1</b>; método POST; formulario amb el camp <b>text</b> = Texto dictado) → <b>Mostrar notificación</b>. Després, <b>Añadir a pantalla de inicio</b>, o assigna-la a Ajustes → Accesibilidad → Tocar → <b>Tocar atrás</b>.</p>
+      <p class="consell"><b>Si una nota no surt</b>, a Veu prem <b>Busca notes al núvol</b>. I tanca i torna a obrir Galàxia als altres aparells (l'ordinador, l'iPad…), perquè tots tinguin la versió nova.</p>
+    </div>
+    <div class="mobil" aria-hidden="true">
+      <div class="m-barra" style="background:#0B7285">‹ Galàxia &nbsp; Notes de veu</div>
+      <div class="m-cos">
+        <div class="mic"><span></span></div>
+        <div style="text-align:center;color:var(--muted);font-size:10.5px;font-weight:700">Toca per gravar i torna a tocar per acabar</div>
+        <div class="m-card veu"><span><small>Dictat · 19 nov. · 20:41</small><b>Trucar al lampista</b><small class="acc">Envia a… · Corregeix · Esborra</small></span></div>
+        <div class="m-card veu"><span><small>Àudio · 19 nov. · 18:05 · 0:23</small><b>▶ Escolta</b><small class="acc">Envia a… · Escriu què diu · Esborra</small></span></div>
       </div>
     </div>
   </section>
@@ -669,31 +752,6 @@ section.final h2 { font-size: clamp(24px, 4vw, 30px); }
     </div>
   </section>
 
-  <!-- Veu -->
-  <section class="ap" id="veu">
-    <div class="text">
-      <span class="etiq">Sense tocar la pantalla</span>
-      <h2>Plans per veu</h2>
-      <p>Per apuntar un pla parlant, per exemple mentre condueixes. Hi ha dues maneres d'engegar-ho:</p>
-      <ul class="punts">
-        <li><b>Siri:</b> digues «Oye Siri, agenda personal». Quan et pregunti «¿Cuál es el texto?», digues el pla <b>en castellà</b>: Siri només entén el castellà, i l'app el tradueix al català.</li>
-        <li><b>Dos copets</b> a la part de darrere de l'iPhone: es posa a escoltar i pots dir el pla <b>en català</b>.</li>
-      </ul>
-      <p>L'app entén el dia (avui, demà, dijous, el 25 de novembre…), l'hora (a les nou del vespre, a dos quarts de tres…), el lloc (a Cal Ton) i amb qui (amb la Mamen). Comença per <b>«Recorda'm…»</b> o <b>«Recuérdame…»</b> per fer-ne un recordatori.</p>
-      <p class="consell"><b>Es desa com a Per confirmar</b>, amb la frase que has dit a les notes. Quan aturis el cotxe, obre'l, corregeix-lo si cal i posa'l a <b>Confirmat</b>.</p>
-      <p class="consell"><b>Per preparar-ho</b> (un sol cop), mira <b>Ajustos → Plans per veu (Siri)</b>: hi ha l'enllaç privat i els passos de la Drecera.</p>
-    </div>
-    <div class="mobil" aria-hidden="true">
-      <div class="m-barra">Oye Siri, agenda personal</div>
-      <div class="m-cos">
-        <div class="m-card" style="display:block"><small>¿Cuál es el texto?</small><b>«Cena con Mamen el jueves a las nueve de la noche en Cal Ton»</b></div>
-        <div class="m-card" style="display:block;background:var(--surface-2)"><small>Siri respon</small>Apuntat per confirmar: Sopar amb Mamen, dijous 19 de novembre a les 21:00, a Cal Ton.</div>
-        <div class="m-lbl">A l'app</div>
-        <div class="m-card" style="--c:#F76707"><span class="pt"></span><span><b>Sopar amb Mamen</b><small>21:00 · Cal Ton · Per confirmar</small></span></div>
-      </div>
-    </div>
-  </section>
-
   <!-- Ajustos -->
   <section class="ap" id="ajustos">
     <div class="text">
@@ -701,6 +759,7 @@ section.final h2 { font-size: clamp(24px, 4vw, 30px); }
       <h2>Ajustos</h2>
       <ul class="punts">
         <li><b>Aspecte</b>: <b>Clar</b>, <b>Fosc</b> o <b>Automàtic</b> (com l'iPhone).</li>
+        <li><b>Icona</b>: set colors per triar (fes córrer la tira amb el dit). Prem <b>Copia l'enllaç</b>, obre'l a Safari i torna a afegir l'app a la pantalla d'inici: l'iPhone agafa la icona en aquell moment.</li>
         <li><b>Com vols l'app</b>: <b>Galàxia</b> (el cercle amb totes les micro-apps) o <b>Agenda</b> (només l'agenda, amb la mateixa pantalla d'inici però sense satèl·lits). Es pot canviar quan vulguis.</li>
         <li><b>Compte</b>: entra amb el teu correu i un codi que t'arriba per correu, sense contrasenya. Així els plans es guarden al núvol i es poden compartir.</li>
         <li><b>Qui pot fer servir l'app</b> (només l'administrador): la llista de persones convidades i, per a cadascuna, si comença amb Galàxia o amb Agenda.</li>
@@ -717,6 +776,7 @@ section.final h2 { font-size: clamp(24px, 4vw, 30px); }
       <div class="m-barra">Ajustos</div>
       <div class="m-cos">
         <div class="m-card"><span><b>Aspecte</b><small>Clar · Fosc · Automàtic</small></span></div>
+        <div class="m-card"><span><b>Icona</b><small>Negre · Blanc · Posta de sol · Blau…</small></span></div>
         <div class="m-card"><span><b>Com vols l'app</b><small>Galàxia · Agenda</small></span></div>
         <div class="m-card"><span><b>Compte</b><small>Entra amb el teu correu</small></span></div>
         <div class="m-card"><span><b>Altres calendaris</b><small>Gravacions · color negre</small></span></div>
@@ -740,6 +800,8 @@ section.final h2 { font-size: clamp(24px, 4vw, 30px); }
         <p>Toca el logotip de Galàxia, a dalt a l'esquerra, i tria «Tanca la sessió en aquest dispositiu». Si te n'has oblidat, des del teu mòbil tria «Tanca la sessió als altres dispositius».</p></details>
       <details open><summary>No em surt un canvi nou de l'app</summary>
         <p>Tanca l'app del tot (llisca-la cap amunt al selector d'apps) i torna-la a obrir. A vegades cal fer-ho dues vegades.</p></details>
+      <details open><summary>Una nota de veu no surt a Veu</summary>
+        <p>A Veu, prem «Busca notes al núvol». Si en surten d'esborrades, tens Galàxia oberta amb una versió antiga en un altre aparell (l'ordinador, l'iPad…): tanca-la i torna-la a obrir. Si la drecera respon «Apuntat per confirmar…», l'enllaç no acaba en «&amp;nota=1».</p></details>
       <details open><summary>Un pla no surt a l'agenda de l'iPhone</summary>
         <p>A l'app Calendari de l'iPhone, toca Calendaris i arrossega la llista cap avall. Comprova també que estàs subscrit al calendari de l'etiqueta d'aquest pla.</p></details>
       <details open><summary>Els plans em surten dues vegades a l'iPhone</summary>
