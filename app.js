@@ -1027,7 +1027,7 @@ function vistaAjustos() {
       <p class="help">Per apuntar plans parlant, per exemple mentre condueixes: <b>«Ei Siri, nou pla»</b> i després dius el pla,
         com <i>«Sopar amb la Mamen dijous a les nou del vespre a Cal Ton»</i>. Es desa com a <b>Per confirmar</b> perquè el revisis després.</p>
       ${usuari()
-        ? `<div class="grp"><button class="btn primary" id="veuCopia">Copia el meu enllaç de veu</button></div>
+        ? `<div class="grp"><button class="btn primary" id="veuCopia">Copia el meu enllaç de veu</button><button class="btn" id="veuDesa">Copia l'enllaç per a «Desa a Galàxia»</button></div>
           <details class="ajuda"><summary>Com es prepara la Drecera (un sol cop)</summary>
             <ol class="passos-veu">
               <li>Prem <b>Copia el meu enllaç de veu</b>.</li>
@@ -1326,13 +1326,16 @@ function vistaCompres() {
 // Memòria: fitxes amb informació per consultar (no contrasenyes)
 // Memòria en carpetes (Restaurants, Vins, Filosofia…). «General» és la carpeta de les fitxes sense carpeta.
 const COLORS_CARPETA = ['#7048E8', '#E8590C', '#A61E4D', '#2F9E44', '#1C7ED6', '#E64980', '#C2A100', '#0B7285', '#5C677D'];
-const carpetesMem = () => (Array.isArray(state.ajustos.carpetesMem) ? state.ajustos.carpetesMem : []);
+const carpetesReals = () => (Array.isArray(state.ajustos.carpetesMem) ? state.ajustos.carpetesMem : []);
+// «Per classificar»: on arriben les fitxes que es desen des del menú Compartir de l'iPhone (només surt si en té alguna)
+const PER_CLASSIFICAR = { id: 'perclass', nom: 'Per classificar', color: '#F59F00', virtual: true };
+const carpetesMem = () => (state.memoria.some((f) => f.carpeta === 'perclass') ? [PER_CLASSIFICAR, ...carpetesReals()] : carpetesReals());
 const carpetaDe = (f) => (carpetesMem().some((c) => c.id === f.carpeta) ? f.carpeta : '');
 const carpetaActual = () => (ui.memCarpeta === 'g' ? '' : carpetesMem().some((c) => c.id === ui.memCarpeta) ? ui.memCarpeta : null);
 // Un sol cop: es creen les carpetes inicials i les fitxes «Filosofia · …» passen a la carpeta Filosofia
 function preparaCarpetes() {
   if (state.ajustos.carpetesFetes) return;
-  const llista = [...carpetesMem()];
+  const llista = [...carpetesReals()];
   const troba = (nom, color) => {
     let c = llista.find((x) => normal(x.nom) === normal(nom));
     if (!c) { c = { id: nouId('cm'), nom, color }; llista.push(c); }
@@ -1404,7 +1407,7 @@ function vistaMemoria() {
     ${fitxes.length ? `<div class="mem-llista">${fitxes.map((x) => filaFitxa(x, false)).join('')}</div><p class="help buit" id="memRes" hidden>No hi ha cap fitxa que hi coincideixi.</p>
       ${fitxes.length > 1 ? '<div class="grp centre"><button class="btn" data-memimprimeix="totes">Imprimeix totes les fitxes</button></div>' : ''}`
       : '<p class="help buit">Aquesta carpeta encara és buida.</p>'}
-    ${c ? `<div class="ll-peu"><button class="enllac" data-memcarpnom>Canvia el nom</button><button class="enllac" data-memcarpcolor>Canvia el color</button><button class="enllac perill" data-memcarpesborra>Esborra la carpeta</button></div>` : ''}`;
+    ${c && !c.virtual ? `<div class="ll-peu"><button class="enllac" data-memcarpnom>Canvia el nom</button><button class="enllac" data-memcarpcolor>Canvia el color</button><button class="enllac perill" data-memcarpesborra>Esborra la carpeta</button></div>` : ''}`;
 }
 // Navegació i gestió de carpetes
 $('#main').addEventListener('click', async (e) => {
@@ -1418,19 +1421,19 @@ $('#main').addEventListener('click', async (e) => {
     const ja = carpetesMem().find((c) => normal(c.nom) === normal(nom.trim()));
     if (ja) { ui.memCarpeta = ja.id; render(); return; }
     const c = { id: nouId('cm'), nom: nom.trim().slice(0, 40), color: COLORS_CARPETA[carpetesMem().length % COLORS_CARPETA.length] };
-    state.ajustos.carpetesMem = [...carpetesMem(), c]; save(); ui.memCarpeta = c.id; render(); window.scrollTo(0, 0);
+    state.ajustos.carpetesMem = [...carpetesReals(), c]; save(); ui.memCarpeta = c.id; render(); window.scrollTo(0, 0);
     return;
   }
   const c = carpetesMem().find((k) => k.id === ui.memCarpeta);
   if (!c) return;
   if (t.closest('[data-memcarpnom]')) {
     const nom = await demanaText('Nom de la carpeta', c.nom, { max: 40 });
-    if (nom && nom.trim()) { state.ajustos.carpetesMem = carpetesMem().map((k) => (k.id === c.id ? { ...k, nom: nom.trim().slice(0, 40) } : k)); save(); render(); }
+    if (nom && nom.trim()) { state.ajustos.carpetesMem = carpetesReals().map((k) => (k.id === c.id ? { ...k, nom: nom.trim().slice(0, 40) } : k)); save(); render(); }
     return;
   }
   if (t.closest('[data-memcarpcolor]')) {
     const i = COLORS_CARPETA.indexOf(c.color);
-    state.ajustos.carpetesMem = carpetesMem().map((k) => (k.id === c.id ? { ...k, color: COLORS_CARPETA[(i + 1) % COLORS_CARPETA.length] } : k)); save(); render();
+    state.ajustos.carpetesMem = carpetesReals().map((k) => (k.id === c.id ? { ...k, color: COLORS_CARPETA[(i + 1) % COLORS_CARPETA.length] } : k)); save(); render();
     return;
   }
   const es = t.closest('[data-memcarpesborra]');
@@ -1438,7 +1441,7 @@ $('#main').addEventListener('click', async (e) => {
     const n = state.memoria.filter((x) => carpetaDe(x) === c.id).length;
     if (es.dataset.segur !== '1') { es.dataset.segur = '1'; es.textContent = n ? `Segur? Les ${n} fitxes passaran a General` : "Segur? Toca'l un altre cop"; return; }
     state.memoria.forEach((x) => { if (x.carpeta === c.id) x.carpeta = ''; });
-    state.ajustos.carpetesMem = carpetesMem().filter((k) => k.id !== c.id); save();
+    state.ajustos.carpetesMem = carpetesReals().filter((k) => k.id !== c.id); save();
     ui.memCarpeta = null; render(); toast('Carpeta esborrada');
   }
 });
@@ -3237,11 +3240,11 @@ $('#main').addEventListener('click', async (e) => {
 
 /* ---------- Ajustos: enllaç de veu ---------- */
 $('#main').addEventListener('click', async (e) => {
-  const b = e.target.closest('#veuCopia, #veuNou');
+  const b = e.target.closest('#veuCopia, #veuNou, #veuDesa');
   if (!b) return;
   if (b.id === 'veuNou' && b.dataset.segur !== '1') { b.dataset.segur = '1'; b.textContent = "segur? toca'l un altre cop"; return; }
   try {
-    const url = await sync().enllacVeu(b.id === 'veuNou');
+    const url = (await sync().enllacVeu(b.id === 'veuNou')) + (b.id === 'veuDesa' ? '&desa=1' : '');
     try { await navigator.clipboard.writeText(url); toast(b.id === 'veuNou' ? 'Enllaç nou copiat: posa\'l a la Drecera' : 'Enllaç copiat'); }
     catch (x) { prompt('Copia aquest enllaç:', url); }
   } catch (err) {
