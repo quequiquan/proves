@@ -1348,10 +1348,12 @@ function preparaCarpetes() {
   }
   state.ajustos.carpetesMem = llista; state.ajustos.carpetesFetes = true; save();
 }
+// Text amb els enllaços (http…) que es poden tocar
+const ambEnllacos = (t) => esc(t).replace(/https?:\/\/[^\s<]+/g, (u) => `<a href="${u}" target="_blank" rel="noopener">${u.replace(/^https?:\/\/(www\.)?/, '').slice(0, 40)}${u.length > 48 ? '…' : ''}</a>`);
 function filaFitxa(x, ambCarpeta) {
   const c = ambCarpeta ? carpetesMem().find((k) => k.id === carpetaDe(x)) : null;
   return `<div class="mem-fitxa" data-memcerca="${esc(normal(x.titol + ' ' + x.text))}"${c ? ` style="--c:${esc(c.color)}"` : ''}>
-        ${ambCarpeta ? `<small class="mem-de">${esc(c ? c.nom : 'General')}</small>` : ''}<b>${esc(x.titol)}</b>${x.text ? `<p>${esc(x.text)}</p>` : ''}
+        ${ambCarpeta ? `<small class="mem-de">${esc(c ? c.nom : 'General')}</small>` : ''}<b>${esc(x.titol)}</b>${x.text ? `<p>${ambEnllacos(x.text)}</p>` : ''}
         ${(x.imatges || []).length ? `<div class="mem-imgs">${x.imatges.map((im) => `<button class="rec-img" data-memimg="${esc(x.id)}|${esc(im.id)}"><img src="${esc(im.mini)}" alt=""></button>`).join('')}</div>` : ''}
         <div class="mem-accions"><button class="enllac" data-memcomparteix="${esc(x.id)}">Comparteix</button>${x.text ? `<button class="enllac" data-memcopia="${esc(x.id)}">Copia</button>` : ''}<button class="enllac" data-memimprimeix="${esc(x.id)}">Imprimeix</button><button class="enllac" data-memedita="${esc(x.id)}">Edita</button></div>
       </div>`;
@@ -2058,16 +2060,33 @@ $('#main').addEventListener('click', async (e) => {
   if (on === 'memoria') {
     const text = await enganxaText('Enganxa les notes', "Cada nota, separada de la següent per una línia en blanc. La primera línia de cada nota serà el títol de la fitxa.");
     if (!text || !text.trim()) return;
-    const blocs = text.split(/\r?\n\s*\r?\n/).map((x) => x.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)).filter((x) => x.length);
-    let n = 0;
+    let blocs = text.split(/\r?\n\s*\r?\n/).map((x) => x.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)).filter((x) => x.length);
+    // Llista d'una línia per element («Nom | https://…», com la de la drecera de l'iPhone): cada línia és una fitxa
+    const URL_RE = /https?:\/\/[^\s|]+/gi;
+    if (blocs.length === 1 && blocs[0].length > 1 && blocs[0].filter((l) => l.includes('|') || /https?:\/\//i.test(l)).length >= blocs[0].length / 2) {
+      blocs = blocs[0].map((l) => {
+        const urls = l.match(URL_RE) || [];
+        const parts = l.replace(URL_RE, ' ').split(/\s*\|\s*/).map((x) => x.trim()).filter(Boolean);
+        return parts.length ? [parts[0], ...urls, ...parts.slice(1)] : [];
+      }).filter((x) => x.length);
+    }
+    let n = 0, act = 0;
     blocs.forEach((ls) => {
       const titol = ls[0].replace(/^[-•*#\s]+/, '').slice(0, 80);
       const carp = carpetaActual() || '';
-      if (!titol || state.memoria.some((f) => carpetaDe(f) === carp && normal(f.titol) === normal(titol))) return;
+      if (!titol) return;
+      const ja = state.memoria.find((f) => carpetaDe(f) === carp && normal(f.titol) === normal(titol));
+      if (ja) {   // ja hi és: s'hi afegeix el que li falti (p. ex. l'enllaç)
+        const nous = ls.slice(1).filter((l) => !normal(ja.text || '').includes(normal(l)));
+        if (nous.length) { ja.text = [ja.text, ...nous].filter(Boolean).join('\n').slice(0, 3000); act++; }
+        return;
+      }
       state.memoria.push({ id: nouId('m'), titol, text: ls.slice(1).join('\n').slice(0, 3000), carpeta: carp, creat: new Date().toISOString() }); n++;
     });
     save(); render();
-    toast(n ? (n === 1 ? '1 fitxa afegida' : `${n} fitxes afegides`) + (blocs.length > n ? ` (${blocs.length - n} ja hi eren)` : '') : 'Ja les tenies totes', 4000);
+    const tros = [n ? (n === 1 ? '1 fitxa afegida' : `${n} fitxes afegides`) : '', act ? (act === 1 ? '1 completada' : `${act} completades`) : '',
+      blocs.length - n - act > 0 ? `${blocs.length - n - act} ja hi eren` : ''].filter(Boolean);
+    toast(tros.length ? tros.join(' · ') : 'Ja les tenies totes', 5000);
     return;
   }
   if (on === 'frases') {

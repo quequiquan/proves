@@ -1103,3 +1103,4 @@ button.gx-pindola, .gx-pindola { color: color-mix(in srgb, var(--text) 82%, var(
 .mem-carpeta.nova b { font-size: 15px; }
 .mem-fitxa .mem-de { display: block; color: var(--c, var(--muted)); font-weight: 800; font-size: 12px; margin-bottom: 2px; }
 .mem-form select { width: 100%; }
+.mem-fitxa p a { color: var(--accent); font-weight: 700; overflow-wrap: anywhere; }
