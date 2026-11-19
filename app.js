@@ -2401,10 +2401,12 @@ $('#main').addEventListener('click', (e) => {
     triaLloc(Boolean(n.lloc)).then((p) => {
       if (p) Object.assign(recNou(), p);
       // Si encara no hi havia res escrit i s'ha buscat un lloc, el nom del lloc fa de recordatori (es pot canviar)
-      if (p && p.lloc && !p.llocUrl && !(ui.recNouText || '').trim()) ui.recNouText = p.lloc;
+      const autom = Boolean(p && p.lloc && !p.llocUrl && !(ui.recNouText || '').trim());
+      if (autom) ui.recNouText = p.lloc;
       render();
       const i = document.getElementById('recText');
-      if (i) { i.value = ui.recNouText || ''; i.focus(); try { i.setSelectionRange(i.value.length, i.value.length); } catch (x) { /* res */ } }
+      // El nom posat automàticament queda seleccionat: si escrius, el substitueix
+      if (i) { i.value = ui.recNouText || ''; i.focus(); try { i.setSelectionRange(autom ? 0 : i.value.length, i.value.length); } catch (x) { /* res */ } }
     });
     return;
   }
