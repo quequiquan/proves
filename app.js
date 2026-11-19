@@ -2415,7 +2415,11 @@ $('#main').addEventListener('click', (e) => {
   if (!b) return;
   const n = recNou(), acc = b.dataset.rb;
   desaTextRecNou();
-  if (acc === 'data') { ui.recNouData = !ui.recNouData; if (!n.data) n.data = avui(); }
+  // Agenda funciona com les altres tecles: un toc la posa (obre el dia i l'hora), un altre toc la treu
+  if (acc === 'data') {
+    if (ui.recNouData || n.data) { n.data = ''; n.hora = ''; ui.recNouData = false; }
+    else { ui.recNouData = true; n.data = avui(); }
+  }
   else if (acc === 'dataok') { n.data = $('#rbData')?.value || ''; n.hora = n.data ? ($('#rbHora')?.value || '') : ''; ui.recNouData = false; }
   else if (acc === 'imp') n.important = !n.important;
   else if (acc === 'treu') { ui.recNou = null; ui.recNouData = false; }
