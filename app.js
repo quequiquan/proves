@@ -1356,7 +1356,7 @@ function preparaCarpetes() {
 const ambEnllacos = (t) => esc(t).replace(/https?:\/\/[^\s<]+/g, (u) => `<a href="${u}" target="_blank" rel="noopener">${u.replace(/^https?:\/\/(www\.)?/, '').slice(0, 40)}${u.length > 48 ? '…' : ''}</a>`);
 function filaFitxa(x, ambCarpeta) {
   const c = ambCarpeta ? carpetesMem().find((k) => k.id === carpetaDe(x)) : null;
-  return `<div class="mur-mem" data-memcerca="${esc(normal(x.titol + ' ' + x.text))}"><div class="mur-accions"><button type="button" class="acc-esborra" data-memtreu="${esc(x.id)}">Esborra</button></div><div class="mem-fitxa"${c ? ` style="--c:${esc(c.color)}"` : ''}>
+  return `<div class="mur-mem" data-memcerca="${esc(normal(x.titol + ' ' + x.text))}"><div class="mur-accions"><button type="button" class="acc-esborra" data-memtreu="${esc(x.id)}">Esborra</button></div><div class="mem-fitxa" data-memobre="${esc(x.id)}"${c ? ` style="--c:${esc(c.color)}"` : ''}>
         ${ambCarpeta ? `<small class="mem-de">${esc(c ? c.nom : 'General')}</small>` : ''}<b>${esc(x.titol)}</b>${x.text ? `<p>${ambEnllacos(x.text)}</p>` : ''}
         ${(x.imatges || []).length ? `<div class="mem-imgs">${x.imatges.map((im) => `<button class="rec-img" data-memimg="${esc(x.id)}|${esc(im.id)}"><img src="${esc(im.mini)}" alt=""></button>`).join('')}</div>` : ''}
         <div class="mem-accions"><button class="enllac" data-memcomparteix="${esc(x.id)}">Comparteix</button>${x.text ? `<button class="enllac" data-memcopia="${esc(x.id)}">Copia</button>` : ''}<button class="enllac" data-memimprimeix="${esc(x.id)}">Imprimeix</button><button class="enllac" data-memedita="${esc(x.id)}">Edita</button></div>
@@ -2457,6 +2457,13 @@ $('#main').addEventListener('click', (e) => {
   if (b) { const f = state.memoria.find((x) => x.id === b.dataset.memtreu); if (f) esborraFitxaMem(f); return; }
   if (murMObert && e.target.closest('.mur-mem') === murMObert) { e.preventDefault(); e.stopPropagation(); tancaMurM(); }
 }, true);
+// Tocar una fitxa (fora dels botons i enllaços) l'obre per editar-la
+$('#main').addEventListener('click', (e) => {
+  const f = e.target.closest('[data-memobre]');
+  if (!f || e.target.closest('a, button, .rec-img, input, textarea, select')) return;
+  if (String(getSelection?.() || '').trim()) return;   // estava seleccionant text per copiar-lo
+  ui.memEdita = f.dataset.memobre; render(); window.scrollTo(0, 0);
+});
 // Memòria: buscar a Google o a Maps el que hi ha al títol, i enganxar les dades copiades
 $('#main').addEventListener('click', async (e) => {
   const b = e.target.closest('[data-memcerca-web]');

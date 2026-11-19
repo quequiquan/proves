@@ -1132,3 +1132,4 @@ button.gx-pindola, .gx-pindola { color: color-mix(in srgb, var(--text) 82%, var(
 .pdf-full .quadret { width: 16px; height: 16px; border: 2px solid #000; border-radius: 3px; flex: none; }
 .pdf-full .mem-imp { padding: 10px 0; border-bottom: 1px solid #ccc; }
 .pdf-full img { max-width: 100%; }
+.mem-fitxa[data-memobre] { cursor: pointer; }
