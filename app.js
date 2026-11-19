@@ -1209,7 +1209,27 @@ const fa = (iso) => {
   const dies = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
   return !iso || isNaN(dies) ? '' : dies < 1 ? 'Avui' : dies === 1 ? 'Ahir' : dies < 30 ? `Fa ${dies} dies` : dies < 60 ? 'Fa un mes' : `Fa ${Math.floor(dies / 30)} mesos`;
 };
+// Els recordatoris fets de fa més de 30 dies s'esborren (també les seves fotos)
+function purgaFets() {
+  const limit = Date.now() - 30 * 86400000;
+  const vells = (state.recordatoris || []).filter((x) => x.fet && x.fetEl && new Date(x.fetEl).getTime() < limit);
+  if (!vells.length) return;
+  state.recordatoris = state.recordatoris.filter((x) => !vells.includes(x)); save();
+  vells.forEach((x) => (x.imatges || []).forEach((im) => sync()?.esborraDoc(im.cami).catch(() => {})));
+}
+function marcaFet(r) {
+  r.fet = true; r.fetEl = new Date().toISOString(); save(); render();
+  toastDesfes(`Fet: ${r.text}`, () => { const x = state.recordatoris.find((y) => y.id === r.id); if (x) { x.fet = false; delete x.fetEl; } save(); render(); });
+}
+$('#main').addEventListener('click', (e) => {
+  if (e.target.closest('[data-recfets]')) { ui.recFets = !ui.recFets; render(); return; }
+  const rc = e.target.closest('[data-recrecupera]');
+  if (rc) { const x = state.recordatoris.find((y) => y.id === rc.dataset.recrecupera); if (x) { x.fet = false; delete x.fetEl; save(); render(); toast('Recuperat'); } return; }
+  const eb = e.target.closest('[data-recesborrafet]');
+  if (eb) { const x = state.recordatoris.find((y) => y.id === eb.dataset.recesborrafet); if (x) treuRecordatori(x, `Esborrat: ${x.text}`); }
+});
 function vistaRecordatoris() {
+  purgaFets();
   const obert = recObert();
   if (obert) return vistaRecFitxa(obert);
   const llista = pendentsRec().slice().sort((a, b) => (Boolean(b.important) - Boolean(a.important)) || String(b.creat || '').localeCompare(String(a.creat || '')));
@@ -1223,7 +1243,7 @@ function vistaRecordatoris() {
     if (r.url) out.push('Enllaç');
     return out;
   };
-  return capSatel('Recordatoris') + `<p class="help">Coses pendents que no vols oblidar. Toca un recordatori per afegir-hi notes, fotos, un enllaç o passos; quan el facis, toca el cercle i desapareix.</p>
+  return capSatel('Recordatoris') + `<p class="help">Coses pendents que no vols oblidar. Toca un recordatori per afegir-hi notes, fotos, un enllaç o passos. Quan el facis, toca el cercle: passa a «Fets», on es guarda 30 dies.</p>
     <form id="formRec" class="rec-nou" autocomplete="off"><input id="recText" placeholder="Què has de recordar?" maxlength="300" enterkeyhint="done" value="${esc(ui.recNouText || '')}"><button class="btn primary">Afegeix</button></form>
     ${barraRecNou()}
     <button class="enllac enganxa" data-enganxa="recordatoris">Enganxa una llista d'una altra app</button>
@@ -1233,7 +1253,15 @@ function vistaRecordatoris() {
         <div class="rec-cos${r.important ? ' important' : ''}"><button class="rec-check" data-recfet="${esc(r.id)}" aria-label="Fet"></button>
         <button class="rec-text" data-recedita="${esc(r.id)}"><span>${r.important ? '<i class="rec-bandera"></i>' : ''}${esc(r.text)}</span><small>${esc([fa(r.creat), ...indicadors(r)].filter(Boolean).join(' · '))}</small></button></div></li>`).join('')}</ul>`
       : '<p class="help buit">No tens res pendent.</p>'}
-    <p class="help buit" id="recRes" hidden>No hi ha cap recordatori que hi coincideixi.</p>`;
+    <p class="help buit" id="recRes" hidden>No hi ha cap recordatori que hi coincideixi.</p>
+    ${(() => {
+      const fets = (state.recordatoris || []).filter((x) => x.fet).sort((a, b) => String(b.fetEl || '').localeCompare(String(a.fetEl || '')));
+      if (!fets.length) return '';
+      return `<button class="rec-fets-cap" data-recfets aria-expanded="${Boolean(ui.recFets)}">${ui.recFets ? '▾' : '▸'} Fets (${fets.length})</button>
+        ${ui.recFets ? `<p class="help">Els recordatoris fets es guarden 30 dies i després s'esborren sols.</p><ul class="rec-fets">${fets.map((x) => `<li>
+          <span><s>${esc(x.text)}</s><small>Fet ${esc(fa(x.fetEl).toLowerCase())}</small></span>
+          <button class="enllac" data-recrecupera="${esc(x.id)}">Recupera</button><button class="enllac perill" data-recesborrafet="${esc(x.id)}">Esborra</button></li>`).join('')}</ul>` : ''}`;
+    })()}`;
 }
 $('#main').addEventListener('input', (e) => {
   if (e.target.id !== 'cercaRec') return;
@@ -2026,13 +2054,7 @@ $('#main').addEventListener('click', (e) => {
     const r = state.recordatoris.find((x) => x.id === fet.dataset.recfet);
     if (!r) return;
     fet.closest('li').classList.add('fet');
-    setTimeout(() => {
-      const copia = { ...r }, lloc = state.recordatoris.indexOf(r);
-      state.recordatoris = state.recordatoris.filter((x) => x.id !== r.id);
-      save(); render();
-      toastDesfes(`Fet: ${r.text}`, () => { state.recordatoris.splice(Math.max(0, lloc), 0, copia); save(); render(); });
-      netejaFotosRec(copia);
-    }, 380);
+    setTimeout(() => marcaFet(r), 380);
     return;
   }
   const ed = e.target.closest('[data-recedita]');
@@ -2295,7 +2317,7 @@ $('#main').addEventListener('click', async (e) => {
     if (!nou.trim()) r.subtasques = r.subtasques.filter((x) => x !== s); else s.text = nou.trim().slice(0, 200);
     save(); render(); return;
   }
-  if (t.closest('[data-recfitxafet]')) { treuRecordatori(r, `Fet: ${r.text}`); return; }
+  if (t.closest('[data-recfitxafet]')) { ui.recObert = ''; marcaFet(r); window.scrollTo(0, 0); return; }
   if (t.closest('[data-recesborra]')) {
     const b = t.closest('[data-recesborra]');
     if (b.dataset.segur !== '1') { b.dataset.segur = '1'; b.textContent = "Segur? Toca'l un altre cop"; return; }
@@ -2376,12 +2398,12 @@ function barraRecNou() {
   const n = recNou();
   const xips = [n.data ? `${dataCurta(n.data)}${n.hora ? ' ' + n.hora : ''}` : '', n.lloc ? (n.lloc.length < 30 ? n.lloc : 'Ubicació') : '', n.important ? 'Important' : '', n.fotos.length ? (n.fotos.length === 1 ? '1 foto' : n.fotos.length + ' fotos') : ''].filter(Boolean);
   return `<div class="rec-barra">
-      <button type="button" class="rb${n.data ? ' on' : ''}" data-rb="data" aria-label="Dia i hora">${SVG_REC.data}</button>
-      <button type="button" class="rb${n.lloc ? ' on' : ''}" data-rb="lloc" aria-label="Ubicació">${SVG_REC.lloc}</button>
-      <button type="button" class="rb${n.important ? ' on' : ''}" data-rb="imp" aria-label="Important">${SVG_REC.imp}</button>
-      <label class="rb${n.fotos.length ? ' on' : ''}" aria-label="Foto">${SVG_REC.foto}<input type="file" id="recNouFoto" accept="image/*" multiple hidden></label>
-      ${xips.length ? `<span class="rb-xips">${esc(xips.join(' · '))}</span><button type="button" class="enllac rb-treu" data-rb="treu">Treu</button>` : ''}
+      <button type="button" class="rb-t${n.data ? ' on' : ''}" data-rb="data">Agenda</button>
+      <button type="button" class="rb-t${n.lloc ? ' on' : ''}" data-rb="lloc">Ubicació</button>
+      <button type="button" class="rb-t${n.important ? ' on' : ''}" data-rb="imp">Important</button>
+      <label class="rb-t${n.fotos.length ? ' on' : ''}">Foto<input type="file" id="recNouFoto" accept="image/*" multiple hidden></label>
     </div>
+    ${xips.length ? `<div class="rb-resum"><span class="rb-xips">${esc(xips.join(' · '))}</span><button type="button" class="enllac rb-treu" data-rb="treu">Treu</button></div>` : ''}
     ${ui.recNouData ? `<div class="rec-quan rb-quan"><input type="date" id="rbData" value="${esc(n.data)}" aria-label="Dia"><input type="time" id="rbHora" value="${esc(n.hora)}" aria-label="Hora"><button type="button" class="btn" data-rb="dataok">D'acord</button></div>` : ''}`;
 }
 // Es manté el que hi ha escrit a la casella quan es torna a pintar la pantalla

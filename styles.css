@@ -1150,3 +1150,14 @@ button.gx-pindola, .gx-pindola { color: color-mix(in srgb, var(--text) 82%, var(
 .rec-bandera { width: 10px; height: 10px; border-radius: 50%; clip-path: none; background: #E8590C; }
 .rec-text .rec-bandera { display: inline-block; margin-right: 8px; vertical-align: 1px; }
 .rb svg .ple { fill: currentColor; stroke: none; }
+/* Barra ràpida amb paraules */
+.rb-t { border: 1.5px solid var(--border); background: var(--surface); color: var(--text); font: inherit; font-weight: 700; font-size: 14px; padding: 7px 13px; border-radius: 99px; cursor: pointer; }
+.rb-t.on { background: #E8590C; border-color: #E8590C; color: #fff; }
+.rb-resum { display: flex; align-items: center; gap: 8px; margin: -4px 0 12px; }
+/* Fets */
+.rec-fets-cap { border: 0; background: none; font: inherit; font-weight: 800; color: var(--muted); padding: 14px 0 6px; cursor: pointer; }
+.rec-fets { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.rec-fets li { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border: 1px dashed var(--border); border-radius: 12px; }
+.rec-fets li span { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.rec-fets li s { color: var(--muted); overflow-wrap: anywhere; }
+.rec-fets li small { color: var(--muted); font-size: 12px; font-weight: 600; }
