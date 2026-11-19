@@ -19,7 +19,7 @@
     (function () {
       try {
         var q = new URLSearchParams(location.search).get('icona');
-        var tipus = ['fosca', 'perla', 'groc', 'nit', 'crua'];
+        var tipus = ['fosca', 'perla', 'groc', 'nit', 'crua', 'blanc', 'posta', 'blau', 'vores'];
         if (tipus.indexOf(q) >= 0) localStorage.setItem('qqq-pref-icona', JSON.stringify(q));
         var t = JSON.parse(localStorage.getItem('qqq-pref-icona') || '"fosca"');
         if (t !== 'fosca' && tipus.indexOf(t) >= 0) {

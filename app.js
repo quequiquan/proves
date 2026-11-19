@@ -964,8 +964,8 @@ function vistaAjustos() {
     </div>
     <div class="section" id="seccioIcona">
       <h2>Icona</h2>
-      <p class="help">Tria la que es vegi millor amb el fons de pantalla del teu mòbil.</p>
-      <div class="icones-tria">${[['fosca', 'Negre', 'img/icona.svg'], ['perla', 'Gris perla', 'img/icona-perla.svg'], ['groc', 'Groc pàl·lid', 'img/icona-groc.svg']].map(([k, n, src]) => `<button class="icona-opcio" aria-pressed="${(llegeixPref('icona', 'fosca')) === k}" data-icona="${k}"><img src="${src}" alt=""><span>${n}</span></button>`).join('')}</div>
+      <p class="help">Tria la que es vegi millor amb el fons de pantalla del teu mòbil. Fes córrer la tira amb el dit per veure-les totes.</p>
+      <div class="icones-tria">${[['fosca', 'Negre', 'img/icona.svg'], ['perla', 'Gris perla', 'img/icona-perla.svg'], ['groc', 'Groc pàl·lid', 'img/icona-groc.svg'], ['blanc', 'Blanc', 'img/icona-blanc.svg'], ['posta', 'Posta de sol', 'img/icona-posta.svg'], ['blau', 'Blau intens', 'img/icona-blau.svg'], ['vores', 'Negre amb vores', 'img/icona-vores.svg']].map(([k, n, src]) => `<button class="icona-opcio" aria-pressed="${(llegeixPref('icona', 'fosca')) === k}" data-icona="${k}"><img src="${src}" alt=""><span>${n}</span></button>`).join('')}</div>
       <details class="ajuda"><summary>Com es canvia la icona del mòbil</summary>
         <ol class="passos-veu">
           <li>Tria la icona aquí a sobre i prem <b>Copia l'enllaç</b>.</li>
