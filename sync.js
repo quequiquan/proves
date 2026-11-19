@@ -203,6 +203,16 @@ const Sync = (() => {
     desa();
   }
 
+  // Notes de veu: les busca totes al núvol (per si se n'ha perdut alguna) i afegeix les que falten
+  async function notesDelNuvol() {
+    if (!sb || !usuari) throw new Error('Cal haver entrat amb el correu');
+    const { data, error } = await sb.from('registres').select('id,dades,esborrat,actualitzat').eq('propietari', usuari.id).eq('entorn', ENTORN).eq('coleccio', 'notesveu');
+    if (error) throw error;
+    let noves = 0;
+    (data || []).filter((f) => !f.esborrat).forEach((f) => { if (!state.notesveu.some((x) => x.id === f.id)) { state.notesveu.push(f.dades); meta.snap['notesveu:' + f.id] = estable(f.dades); noves++; } });
+    desa(); if (noves) save();
+    return { total: (data || []).length, esborrades: (data || []).filter((f) => f.esborrat).length, noves };
+  }
   /* ---------- Cicle de sincronització ---------- */
   async function sincronitza() {
     if (!sb || !usuari) return;
@@ -433,7 +443,7 @@ const Sync = (() => {
   }
 
   return {
-    enllacCalendari, enllacVeu, pujaDoc, urlDoc, esborraDoc, esAdmin, convidats, convida, desconvida, modeConvidat,
+    enllacCalendari, enllacVeu, notesDelNuvol, pujaDoc, urlDoc, esborraDoc, esAdmin, convidats, convida, desconvida, modeConvidat,
     disponible,
     usuari: () => usuari,
     // Abans de saber si hi ha sessió: n'hi ha alguna de guardada en aquest dispositiu?

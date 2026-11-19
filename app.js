@@ -1834,7 +1834,7 @@ function vistaVeu() {
       </div>`).join('')}</div>` : '<p class="help buit">No tens cap nota de veu. Les que dictis amb el doble toc al darrere del mòbil també arribaran aquí.</p>'}
     ${usuari() ? `<details class="ajuda veu-drecera"><summary>Dictar amb el doble toc al darrere del mòbil</summary>
       <p>Prepara una drecera a l'app <b>Dreceres</b> que escolti en català i enviï el que diguis aquí. Necessitaràs aquest enllaç:</p>
-      <div class="grp"><button class="btn" id="veuNota">Copia l'enllaç per a Notes de veu</button></div></details>` : ''}`;
+      <div class="grp"><button class="btn" id="veuNota">Copia l'enllaç per a Notes de veu</button><button class="btn" id="veuBusca">Busca notes al núvol</button></div></details>` : ''}`;
 }
 // Gravació amb el micròfon (MediaRecorder): un toc comença i un altre acaba; si es manté premut, acaba en deixar-lo anar
 let veuRec = null, veuTros = [], veuRellotge = null, veuPremut = 0;
@@ -1905,6 +1905,13 @@ function treuNota(n, missatge) {
 }
 $('#main').addEventListener('click', async (e) => {
   const t = e.target;
+  if (t.closest('#veuBusca')) {
+    try {
+      const r = await sync().notesDelNuvol(); render();
+      toast(`Al núvol: ${r.total} notes (${r.esborrades} esborrades). Noves aquí: ${r.noves}`, 6000);
+    } catch (x) { toast(navigator.onLine ? "No s'ha pogut consultar el núvol." : 'Cal connexió a internet.'); }
+    return;
+  }
   if (t.closest('#veuNota')) {
     try {
       const url = (await sync().enllacVeu(false)) + '&nota=1';
