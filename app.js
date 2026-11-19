@@ -2368,7 +2368,7 @@ async function obreFotoRec(r, im) {
 const SVG_REC = {
   data: '<svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/><circle cx="8.5" cy="14" r=".6"/><circle cx="12" cy="14" r=".6"/><circle cx="15.5" cy="14" r=".6"/></svg>',
   lloc: '<svg viewBox="0 0 24 24"><path d="M20.5 3.5 3.5 10.5l7 2.5 2.5 7z"/></svg>',
-  imp: '<svg viewBox="0 0 24 24"><path d="M6 21V4M6 4h11l-2.5 4.5L17 13H6"/></svg>',
+  imp: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5.5" class="ple"/></svg>',
   foto: '<svg viewBox="0 0 24 24"><path d="M4 8.5h3l1.6-2.5h6.8L17 8.5h3v10.5H4z"/><circle cx="12" cy="13.5" r="3.3"/></svg>',
 };
 const recNou = () => (ui.recNou ||= { data: '', hora: '', important: false, lloc: '', llocUrl: '', fotos: [] });

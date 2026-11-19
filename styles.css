@@ -1146,3 +1146,7 @@ button.gx-pindola, .gx-pindola { color: color-mix(in srgb, var(--text) 82%, var(
 .demana-caixa .opcio { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: 12px 14px; }
 .demana-caixa .opcio small { color: var(--muted); font-weight: 600; font-size: 13px; }
 .demana-caixa > .enllac { justify-self: center; }
+/* Important: un punt rodó de color en lloc de la bandereta */
+.rec-bandera { width: 10px; height: 10px; border-radius: 50%; clip-path: none; background: #E8590C; }
+.rec-text .rec-bandera { display: inline-block; margin-right: 8px; vertical-align: 1px; }
+.rb svg .ple { fill: currentColor; stroke: none; }
