@@ -1278,6 +1278,8 @@ function filesItems(items, col, lid) {
       <button class="rec-text" data-itedita="${col}|${esc(lid)}|${esc(it.id)}"><span>${esc(it.text)}</span></button></li>`).join('')}</ul>`;
 }
 const formItem = (col, lid, ph) => `<form class="rec-nou" data-formitem="${col}|${esc(lid)}" autocomplete="off"><input name="text" placeholder="${esc(ph)}" maxlength="200" enterkeyhint="done"><button class="btn primary">Afegeix</button></form>`;
+// Ordre de les llistes dins d'una carpeta: el que s'ha triat amb el dit; si no, les més noves a dalt
+const perOrdreLl = (a, b) => (a.ordre ?? 1e12) - (b.ordre ?? 1e12) || String(b.creat || '').localeCompare(String(a.creat || ''));
 function vistaLlista() {
   const l = state.llistes.find((x) => x.id === ui.llista);
   if (!l) {
@@ -1286,13 +1288,13 @@ function vistaLlista() {
       return capSatel('Llista') + `<p class="help">Llistes per a un moment concret, ordenades en carpetes: el que t'has d'endur de viatge, els encàrrecs d'avui…</p>
         ${graellaCarpetes('llista', ['llista', 'llistes'])}`;
     }
-    const llistes = state.llistes.filter((x) => carpetaItem('llista', x) === cid).sort((a, b) => String(b.creat || '').localeCompare(String(a.creat || '')));
+    const llistes = state.llistes.filter((x) => carpetaItem('llista', x) === cid).sort(perOrdreLl);
     return `<div class="sat-cap"><button class="sat-torna" data-cftorna="llista" aria-label="Torna a les carpetes">‹ Carpetes</button><h1>${esc(nomCarpeta('llista', cid))}</h1></div>
       <form id="formLlistaNova" class="rec-nou" autocomplete="off"><input id="llistaNom" placeholder="Nom de la llista nova" maxlength="60" enterkeyhint="done"><button class="btn primary">Crea</button></form>
       ${llistes.length ? `<div class="ll-index">${llistes.map((x) => {
         const n = x.items.filter((i) => !i.fet).length;
-        return `<div class="mur-g"><div class="mur-accions"><button type="button" class="acc-esborra" data-lltreu="${esc(x.id)}">Esborra</button></div><button class="mur-cos ll-fila" data-obrellista="${esc(x.id)}"><b>${esc(x.nom)}</b><small>${n ? (n === 1 ? '1 pendent' : n + ' pendents') : x.items.length ? 'Feta' : 'Buida'}</small></button></div>`;
-      }).join('')}</div>` : '<p class="help buit">Aquesta carpeta encara és buida.</p>'}
+        return `<div class="mur-g cf-mur" data-ordre="llista|${esc(x.id)}"><div class="mur-accions"><button type="button" class="acc-esborra" data-lltreu="${esc(x.id)}">Esborra</button></div><button class="mur-cos ll-fila" data-obrellista="${esc(x.id)}"><b>${esc(x.nom)}</b><small>${n ? (n === 1 ? '1 pendent' : n + ' pendents') : x.items.length ? 'Feta' : 'Buida'}</small></button></div>`;
+      }).join('')}</div>${llistes.length > 1 ? '<p class="help cf-ajuda">Mantén premuda una llista per moure-la amunt o avall. Llisca-la cap a l’esquerra per esborrar-la.</p>' : ''}` : '<p class="help buit">Aquesta carpeta encara és buida.</p>'}
       ${peuCarpeta('llista')}`;
   }
   const pend = l.items.filter((i) => !i.fet), fets = l.items.length - pend.length;
@@ -1455,7 +1457,7 @@ const ampleG = (m) => m.querySelector(':scope > .mur-accions').offsetWidth;
 function iniciGest(m, x, y, tactil) {
   if (murGObert && murGObert !== m) tancaMurG();
   gG = { m, x, y, ini: m.classList.contains('obert') ? -ampleG(m) : 0, mou: false, drag: false, moguda: false, tactil };
-  if (m.dataset.cfreal) {
+  if (m.dataset.cfreal || m.dataset.ordre) {
     gG.timer = setTimeout(() => {
       if (!gG || gG.m !== m || gG.mou) return;
       gG.drag = true; tancaMurG(m);
@@ -1470,7 +1472,7 @@ function mouGest(x, y, ev) {
     if (ev && ev.cancelable) ev.preventDefault();   // mentre s'arrossega, la pantalla no es desplaça
     if (Math.hypot(dx, dy) > 6) gG.moguda = true;
     gG.m.style.pointerEvents = 'none';
-    const sota = document.elementFromPoint(x, y)?.closest('[data-cfreal]');
+    const sota = document.elementFromPoint(x, y)?.closest('[data-cfreal],[data-ordre]');
     gG.m.style.pointerEvents = '';
     if (sota && sota !== gG.m && sota.parentNode === gG.m.parentNode) {
       const endavant = sota.compareDocumentPosition(gG.m) & Node.DOCUMENT_POSITION_PRECEDING;
@@ -1492,6 +1494,12 @@ function fiGest(x) {
   if (g.drag) {
     g.m.classList.remove('arrossega'); g.m.parentNode.classList.remove('ordenant');
     ignoraClicG = true; setTimeout(() => { ignoraClicG = false; }, 450);
+    if (g.m.dataset.ordre) {
+      if (!g.moguda) return;
+      [...g.m.parentNode.querySelectorAll(':scope > [data-ordre]')].forEach((el, i) => { const l = state.llistes.find((x) => x.id === el.dataset.ordre.split('|')[1]); if (l) l.ordre = i; });
+      save(); toast('Ordre desat');
+      return;
+    }
     const [k, id] = g.m.dataset.cfreal.split('|');
     if (g.moguda) {
       const ordre = [...g.m.parentNode.querySelectorAll(':scope > [data-cfreal]')].map((el) => el.dataset.cfreal.split('|')[1]);
@@ -1521,12 +1529,12 @@ $('#main').addEventListener('touchcancel', () => { if (gG?.drag) fiGest(gG.x); e
 // Amb el ratolí (ordinador): mantenir premut el botó per arrossegar una carpeta
 $('#main').addEventListener('mousedown', (e) => {
   if (e.button !== 0 || Date.now() - darrerToc < 1000) return;
-  const m = e.target.closest('.mur-g[data-cfreal]');
+  const m = e.target.closest('.mur-g[data-cfreal], .mur-g[data-ordre]');
   if (m && !e.target.closest('.mur-accions')) iniciGest(m, e.clientX, e.clientY, false);
 });
 document.addEventListener('mousemove', (e) => { if (gG && !gG.tactil) mouGest(e.clientX, e.clientY, e); });
 document.addEventListener('mouseup', (e) => { if (gG && !gG.tactil) fiGest(e.clientX); });
-$('#main').addEventListener('contextmenu', (e) => { if (e.target.closest('.mur-g[data-cfreal]')) e.preventDefault(); });
+$('#main').addEventListener('contextmenu', (e) => { if (e.target.closest('.mur-g[data-cfreal], .mur-g[data-ordre]')) e.preventDefault(); });
 $('#main').addEventListener('click', (e) => {
   if (ignoraClicG && e.target.closest('.mur-g')) { e.stopImmediatePropagation(); e.preventDefault(); return; }
   const tc = e.target.closest('[data-cftreu]');
@@ -3026,7 +3034,8 @@ $('#main').addEventListener('submit', (e) => {
     e.preventDefault();
     const nom = $('#llistaNom').value.trim();
     if (!nom) { $('#llistaNom').focus(); return; }
-    const l = { id: nouId('l'), nom: nom.slice(0, 60), creat: new Date().toISOString(), items: [], carpeta: carpetaOberta('llista') || '' };
+    const germanes = state.llistes.filter((x) => carpetaItem('llista', x) === (carpetaOberta('llista') || '') && typeof x.ordre === 'number');
+    const l = { id: nouId('l'), nom: nom.slice(0, 60), creat: new Date().toISOString(), items: [], carpeta: carpetaOberta('llista') || '', ...(germanes.length ? { ordre: Math.min(...germanes.map((x) => x.ordre)) - 1 } : {}) };
     state.llistes.push(l); ui.llista = l.id; save(); render();
     document.querySelector('[data-formitem] input')?.focus();
     return;

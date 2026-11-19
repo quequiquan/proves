@@ -1190,3 +1190,6 @@ button.gx-pindola, .gx-pindola { color: color-mix(in srgb, var(--text) 82%, var(
 .cf-menu .cf-perill { color: #E03131; }
 /* Triar botiga: llista llarga */
 .demana-caixa { max-height: 86vh; overflow-y: auto; }
+/* Ordenar llistes amb el dit */
+.ll-index.ordenant > .cf-mur:not(.arrossega) { animation: none; opacity: .75; }
+.ll-index .cf-mur.arrossega { transform: scale(1.03); }
