@@ -1188,3 +1188,5 @@ button.gx-pindola, .gx-pindola { color: color-mix(in srgb, var(--text) 82%, var(
 .cf-color { aspect-ratio: 1; border-radius: 50%; border: 3px solid var(--surface); outline: 2px solid transparent; background: var(--c); cursor: pointer; padding: 0; }
 .cf-color.on { outline-color: var(--text); }
 .cf-menu .cf-perill { color: #E03131; }
+/* Triar botiga: llista llarga */
+.demana-caixa { max-height: 86vh; overflow-y: auto; }

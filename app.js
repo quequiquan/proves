@@ -1314,9 +1314,10 @@ function vistaLlista() {
 const CARPETES_INICIALS = {
   llista: [['Avui', '#E8590C'], ['Escapada', '#2F9E44'], ['Vacances', '#1C7ED6'], ['Urgent', '#E03131']],
   docs: [['Personals', '#7048E8'], ['Salut', '#2F9E44'], ['Assegurances', '#1C7ED6'], ['Laborals', '#E8590C']],
+  compres: [['Ametller Origen', '#2F9E44'], ['Esclat', '#E03131'], ['Lidl', '#F59F00'], ['Aldi', '#3B5BDB'], ['Mercadona', '#12B886'], ['Carrefour', '#1C7ED6'], ['Gros Mercat', '#E8590C'], ['Action', '#7048E8']],
 };
-const UI_CARP = { llista: 'llCarpeta', docs: 'docCarpeta' };
-const colCarp = (k) => (k === 'llista' ? state.llistes : state.documents);
+const UI_CARP = { llista: 'llCarpeta', docs: 'docCarpeta', compres: 'compCarpeta' };
+const colCarp = (k) => (k === 'llista' ? state.llistes : k === 'compres' ? state.compres : state.documents);
 function carpetesDe(k) {
   const camp = 'carpetes_' + k;
   if (!Array.isArray(state.ajustos[camp])) {
@@ -1330,8 +1331,8 @@ const carpetaItem = (k, x) => (carpetesDe(k).some((c) => c.id === x.carpeta) ? x
 const carpetaOberta = (k) => { const v = ui[UI_CARP[k]]; return v === 'g' ? '' : carpetesDe(k).some((c) => c.id === v) ? v : null; };
 const nomCarpeta = (k, id) => carpetesDe(k).find((c) => c.id === id)?.nom || 'General';
 function graellaCarpetes(k, unitat) {
-  const compta = (id) => colCarp(k).filter((x) => carpetaItem(k, x) === id).length;
-  const totes = [...carpetesDe(k), ...(compta('') ? [{ id: 'g', nom: 'General', color: '#868E96' }] : [])];
+  const compta = (id) => colCarp(k).filter((x) => carpetaItem(k, x) === id && !(k === 'compres' && x.fet)).length;
+  const totes = [...carpetesDe(k), ...(colCarp(k).some((x) => carpetaItem(k, x) === '') ? [{ id: 'g', nom: 'General', color: '#868E96' }] : [])];
   return `<div class="mem-carpetes" id="carp-${k}">${totes.map((c) => {
     const n = compta(c.id === 'g' ? '' : c.id);
     return murCarpeta(c.id === 'g' ? '' : k, c.id, `<button class="mem-carpeta" data-cfobre="${k}|${esc(c.id)}" style="--c:${esc(c.color)}"><b>${esc(c.nom)}</b><small>${n === 1 ? '1 ' + unitat[0] : n + ' ' + unitat[1]}</small></button>`);
@@ -1401,6 +1402,8 @@ const itemsCarp = (k) => (k === 'mem' ? state.memoria : colCarp(k));
 const murCarpeta = (k, id, html) => (!k ? html
   : `<div class="mur-g cf-mur" data-cfreal="${k}|${esc(id)}"><div class="mur-accions"><button type="button" class="acc-esborra" data-cftreu="${k}|${esc(id)}">Esborra</button></div>${html.replace('class="mem-carpeta', 'class="mur-cos mem-carpeta')}</div>`);
 const AJUDA_CARPETES = '<p class="help cf-ajuda">Mantén premuda una carpeta per moure-la de lloc o canviar-ne el color. Llisca-la cap a l\'esquerra per esborrar-la.</p>';
+// Botiga on es mostra Compres ara mateix ('' = General)
+const botigaAra = () => carpetaOberta('compres') || '';
 function esborraCarpeta(k, id) {
   const arr = carpsDe(k), lloc = arr.findIndex((c) => c.id === id);
   if (lloc < 0) return;
@@ -1585,13 +1588,21 @@ function filesCompres(items) {
   }).join('');
 }
 function vistaCompres() {
-  const pend = state.compres.filter((r) => !r.fet);
+  const cid = carpetaOberta('compres');
+  if (cid === null) {
+    return capSatel('Compres') + `<p class="help">Una llista de la compra per a cada botiga. Entra a la botiga i apunta el que falta: es classifica sol per famílies (fruita, verdura, neteja…).</p>
+      ${graellaCarpetes('compres', ['per comprar', 'per comprar'])}`;
+  }
+  const deLaBotiga = state.compres.filter((r) => carpetaItem('compres', r) === cid);
+  const pend = deLaBotiga.filter((r) => !r.fet);
   const vegades = (r) => r.vegades || 1;
-  const habituals = state.compres.filter((r) => r.fet).sort((a, b) => vegades(b) - vegades(a) || a.text.localeCompare(b.text, 'ca'));
-  return capSatel('Compres') + formItem('compres', '', 'Què falta?') + '<button class="enllac enganxa" data-enganxa="compres">Enganxa una llista d\'una altra app</button>'
+  const habituals = deLaBotiga.filter((r) => r.fet).sort((a, b) => vegades(b) - vegades(a) || a.text.localeCompare(b.text, 'ca'));
+  return `<div class="sat-cap"><button class="sat-torna" data-cftorna="compres" aria-label="Torna a les botigues">‹ Botigues</button><h1>${esc(nomCarpeta('compres', cid))}</h1></div>`
+    + formItem('compres', cid, 'Què falta?') + `<button class="enllac enganxa" data-enganxa="compres|${esc(cid)}">Enganxa una llista d'una altra app</button>`
     + (pend.length ? filesCompres(pend) + '<div class="ll-peu"><button class="btn" data-comprescomparteix>Comparteix la llista</button><button class="btn" data-comprescimprimeix>Imprimeix</button></div>' : '<p class="help buit">No falta res.</p>')
     + (habituals.length ? `<h2 class="ll-titol">Habituals</h2><p class="help">Toca'n un per tornar-lo a posar a la llista. Mantén-lo premut per treure'l dels habituals.</p>
-      ${FAMILIES.map((f) => { const seus = habituals.filter((r) => familiaDe(r) === f.id); return seus.length ? `<div class="ll-chips fam-chips" style="--fc:${f.c}">${seus.map((r) => `<button class="ll-chip${vegades(r) >= 3 ? ' sovint' : ''}" data-torna="${esc(r.id)}">${esc(r.text)}</button>`).join('')}</div>` : ''; }).join('')}` : '');
+      ${FAMILIES.map((f) => { const seus = habituals.filter((r) => familiaDe(r) === f.id); return seus.length ? `<div class="ll-chips fam-chips" style="--fc:${f.c}">${seus.map((r) => `<button class="ll-chip${vegades(r) >= 3 ? ' sovint' : ''}" data-torna="${esc(r.id)}">${esc(r.text)}</button>`).join('')}</div>` : ''; }).join('')}` : '')
+    + peuCarpeta('compres');
 }
 // Memòria: fitxes amb informació per consultar (no contrasenyes)
 // Memòria en carpetes (Restaurants, Vins, Filosofia…). «General» és la carpeta de les fitxes sense carpeta.
@@ -2298,7 +2309,7 @@ $('#main').addEventListener('click', (e) => {
   if (s) {
     const sat = SATEL.find((x) => x.id === s.dataset.sat);
     if (sat?.aviat) { toast(`${sat.nom}: aviat`); return; }
-    ui.view = s.dataset.sat; ui.llista = ''; ui.memEdita = ''; ui.recObert = ''; ui.recTorna = ''; ui.memCarpeta = null; ui.llCarpeta = null; ui.docCarpeta = null; ui.docCerca = ''; render(); window.scrollTo(0, 0); return;
+    ui.view = s.dataset.sat; ui.llista = ''; ui.memEdita = ''; ui.recObert = ''; ui.recTorna = ''; ui.memCarpeta = null; ui.llCarpeta = null; ui.docCarpeta = null; ui.compCarpeta = null; ui.docCerca = ''; render(); window.scrollTo(0, 0); return;
   }
   const f = e.target.closest('[data-fitxa]');
   if (f) { ui.tornaA = ui.view === 'aniversaris' ? 'aniversaris' : ''; ui.view = 'gent'; ui.persona = f.dataset.fitxa; render(); window.scrollTo(0, 0); return; }
@@ -2434,10 +2445,10 @@ $('#main').addEventListener('click', async (e) => {
     const llista = itemsDe(on, lid);
     if (!llista) return;
     linies.forEach((l) => {
-      const igual = llista.find((x) => normal(x.text) === normal(l));
+      const igual = llista.find((x) => normal(x.text) === normal(l) && (on !== 'compres' || carpetaItem('compres', x) === (lid || '')));
       if (igual && !igual.fet) { rep++; return; }
       if (igual) { igual.fet = false; n++; return; }
-      llista.push(on === 'compres' ? { id: nouId('c'), text: l.slice(0, 200), fet: false, creat: new Date().toISOString() } : { id: nouId('i'), text: l.slice(0, 200), fet: false });
+      llista.push(on === 'compres' ? { id: nouId('c'), text: l.slice(0, 200), fet: false, carpeta: lid || '', creat: new Date().toISOString() } : { id: nouId('i'), text: l.slice(0, 200), fet: false });
       n++;
     });
   }
@@ -2921,6 +2932,16 @@ $('#main').addEventListener('click', (e) => {
     const [col, lid, iid] = ed.dataset.itedita.split('|');
     const llista = itemsDe(col, lid), it = llista?.find((x) => x.id === iid);
     if (!it) return;
+    if (col === 'compres' && !ed.dataset.corregeix) {
+      triaOpcio(it.text, [['corregeix', 'Corregeix-ho', 'Canvia el nom o treu-ho de la llista'], ['mou', 'Mou a una altra botiga', 'Ara és a ' + nomCarpeta('compres', carpetaItem('compres', it))]]).then(async (op) => {
+        if (op === 'corregeix') { ed.dataset.corregeix = '1'; ed.click(); delete ed.dataset.corregeix; return; }
+        if (op !== 'mou') return;
+        const on = await triaOpcio('A quina botiga?', [...carpetesDe('compres').map((c) => [c.id, c.nom, '']), ['g', 'General', 'Sense botiga']]);
+        if (!on) return;
+        it.carpeta = on === 'g' ? '' : on; save(); render(); toast(`Ara és a ${nomCarpeta('compres', it.carpeta)}`);
+      });
+      return;
+    }
     demanaText('Corregeix-ho', it.text, { max: 200, ajuda: 'Deixa-ho buit per treure-ho de la llista.' }).then((nou) => {
       if (nou === null || nou.trim() === it.text) return;
       if (!nou.trim()) {
@@ -2951,17 +2972,17 @@ $('#main').addEventListener('click', (e) => {
     return;
   }
   if (t.closest('[data-comprescimprimeix]')) {
-    const pend = state.compres.filter((r) => !r.fet);
+    const pend = state.compres.filter((r) => !r.fet && carpetaItem('compres', r) === botigaAra());
     if (!pend.length) return;
     const blocs = FAMILIES.map((f) => { const seus = pend.filter((r) => familiaDe(r) === f.id); return seus.length ? '<h2>' + esc(f.nom) + '</h2><ul>' + seus.map((r) => '<li><span class="quadret"></span>' + esc(r.text) + '</li>').join('') + '</ul>' : ''; }).join('');
-    imprimeixFull('<div class="llista-full imprès full-llista full-compra"><p class="ll-app">Galàxia</p><h1>Llista de la compra</h1>' + blocs + '</div>');
+    imprimeixFull('<div class="llista-full imprès full-llista full-compra"><p class="ll-app">Galàxia</p><h1>Llista de la compra · ' + esc(nomCarpeta('compres', botigaAra())) + '</h1>' + blocs + '</div>');
     return;
   }
   if (t.closest('[data-comprescomparteix]')) {
-    const pend = state.compres.filter((r) => !r.fet);
+    const pend = state.compres.filter((r) => !r.fet && carpetaItem('compres', r) === botigaAra());
     if (!pend.length) return;
     const blocs = FAMILIES.map((f) => { const seus = pend.filter((r) => familiaDe(r) === f.id); return seus.length ? f.nom + '\n' + seus.map((r) => '- ' + r.text).join('\n') : ''; }).filter(Boolean);
-    const text = 'Llista de la compra\n\n' + blocs.join('\n\n');
+    const text = 'Llista de la compra · ' + nomCarpeta('compres', botigaAra()) + '\n\n' + blocs.join('\n\n');
     (async () => {
       if (navigator.share) { try { await navigator.share({ title: 'Llista de la compra', text }); return; } catch (x) { if (x.name === 'AbortError') return; } }
       try { await navigator.clipboard.writeText(text); toast('Llista copiada: enganxa-la a WhatsApp, a un correu…'); } catch (x) { prompt('Copia la llista:', text); }
@@ -3015,14 +3036,14 @@ $('#main').addEventListener('submit', (e) => {
   const [col, lid] = f.dataset.formitem.split('|');
   const text = f.elements.text.value.trim().slice(0, 200), llista = itemsDe(col, lid);
   if (!text || !llista) { f.elements.text.focus(); return; }
-  const igual = llista.find((x) => normal(x.text) === normal(text));
+  const igual = llista.find((x) => normal(x.text) === normal(text) && (col !== 'compres' || carpetaItem('compres', x) === (lid || '')));
   if (igual && !igual.fet) {
     f.elements.text.value = '';
     jaHiEs(f, igual);
     return;
   }
   if (igual) igual.fet = false;
-  else llista.push(col === 'compres' ? { id: nouId('c'), text, fet: false, creat: new Date().toISOString() } : { id: nouId('i'), text, fet: false });
+  else llista.push(col === 'compres' ? { id: nouId('c'), text, fet: false, carpeta: lid || '', creat: new Date().toISOString() } : { id: nouId('i'), text, fet: false });
   save(); render();
   document.querySelector(`[data-formitem="${f.dataset.formitem}"] input`)?.focus();
 });
