@@ -1265,3 +1265,5 @@ button.gx-pindola, .gx-pindola { color: color-mix(in srgb, var(--text) 82%, var(
 .doc-mur > .mur-accions { left: 42%; }
 .doc-mur > .mur-accions button { width: 100%; min-width: 0; padding: 0 8px; }
 .mem-sel-barra .mem-sel-mou[disabled] { opacity: .5; }
+.mem-form .mem-titol { font: inherit; font-weight: 600; resize: none; overflow: hidden; min-height: 44px; line-height: 1.35; }
+.mem-fitxa b { overflow-wrap: anywhere; }

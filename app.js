@@ -1675,7 +1675,7 @@ function vistaMemoria() {
     const torna = carpetaActual() === null ? 'Carpetes' : cOn ? cOn.nom : 'General';
     return `<div class="sat-cap"><button class="sat-torna" data-memcancela aria-label="Torna">‹ ${esc(torna)}</button><h1>${f ? 'Fitxa' : 'Fitxa nova'}</h1></div>
     <form id="formMem" class="mem-form" autocomplete="off">
-      <label>Títol<input name="titol" data-triatot value="${esc(f?.titol || '')}" placeholder="Nom del restaurant, del vi, de la pòlissa…" maxlength="80" required></label>
+      <label>Títol<textarea name="titol" data-triatot rows="1" class="mem-titol" placeholder="Nom del restaurant, del vi, de la pòlissa, una frase…" maxlength="500" required>${esc(f?.titol || '')}</textarea></label>
       <div class="mem-web"><button type="button" class="btn" data-memcerca-web="google">Cerca a Google</button><button type="button" class="btn" data-memcerca-web="maps">Cerca a Maps</button><button type="button" class="btn" data-memenganxa>Enganxa les dades</button></div>
       <p class="help mem-web-ajuda">Busca el nom a Google o a Maps, copia l'adreça, el telèfon o la web (a Maps: Compartir → Copiar) i torna aquí a prémer «Enganxa les dades».</p>
       <label>Carpeta<select name="carpeta"><option value="">General</option>${carpetesMem().map((c) => `<option value="${esc(c.id)}"${c.id === cSel ? ' selected' : ''}>${esc(c.nom)}</option>`).join('')}</select></label>
@@ -1991,7 +1991,7 @@ $('#main').addEventListener('click', async (e) => {
     const c = await triaOpcio('A quina carpeta?', [['g', 'General', ''], ...carpetesMem().map((k) => [k.id, k.nom, ''])]);
     if (!c) return;
     const [titol, ...resta] = text.split('\n');
-    state.memoria.push({ id: nouId('m'), titol: titol.slice(0, 80), text: (titol.length > 80 ? titol.slice(80) + '\n' : '') + resta.join('\n'), carpeta: c === 'g' ? '' : c, creat: ara });
+    state.memoria.push({ id: nouId('m'), titol: titol.slice(0, 500), text: (titol.length > 500 ? titol.slice(500) +'\n' : '') + resta.join('\n'), carpeta: c === 'g' ? '' : c, creat: ara });
     treuNota(n, 'Enviada a Memòria');
   } else if (on === 'agenda') {
     treuNota(n, 'Nota passada a l\'Agenda');
@@ -3339,6 +3339,10 @@ $('#main').addEventListener('click', (e) => {
   e.stopPropagation();
   mouFitxes([b.dataset.memmou]);
 });
+const ajustaTitolMem = () => { const t = document.querySelector('#formMem [name="titol"]'); if (t) { t.style.height = 'auto'; t.style.height = t.scrollHeight + 2 + 'px'; } };
+$('#main').addEventListener('input', (e) => { if (e.target.matches('#formMem [name="titol"]')) ajustaTitolMem(); });
+$('#main').addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.matches('#formMem [name="titol"]')) { e.preventDefault(); document.querySelector('#formMem [name="text"]')?.focus(); } });
+new MutationObserver(() => { if (document.querySelector('#formMem [name="titol"]')) ajustaTitolMem(); }).observe($('#main'), { childList: true });
 function esborraFitxaMem(f) {
   const lloc = state.memoria.indexOf(f), copia = { ...f };
   state.memoria.splice(lloc, 1); ui.memEdita = ''; save(); render();
@@ -3702,11 +3706,11 @@ const htmlFitxa = (f) => `<div class="mem-imp"><h2>${esc(f.titol)}</h2>${f.text 
 /* ---------- Memòria ---------- */
 $('#main').addEventListener('click', async (e) => {
   const t = e.target;
-  if (t.closest('[data-memnova]')) { ui.memEdita = 'nova'; render(); window.scrollTo(0, 0); $('#formMem input')?.focus(); return; }
+  if (t.closest('[data-memnova]')) { ui.memEdita = 'nova'; render(); window.scrollTo(0, 0); $('#formMem [name="titol"]')?.focus(); return; }
   const ed = t.closest('[data-memedita]');
   if (ed) {
     ui.memEdita = ed.dataset.memedita; render(); window.scrollTo(0, 0);
-    const ti = $('#formMem input');
+    const ti = $('#formMem [name="titol"]');
     if (ti) { ti.focus(); try { ti.setSelectionRange(0, ti.value.length); } catch (x) { /* res */ } }
     return;
   }
@@ -3782,7 +3786,7 @@ $('#main').addEventListener('input', (e) => {
 $('#main').addEventListener('submit', (e) => {
   if (e.target.id !== 'formMem') return;
   e.preventDefault();
-  const titol = e.target.elements.titol.value.trim().slice(0, 80), text = e.target.elements.text.value.trim().slice(0, 3000);
+  const titol = e.target.elements.titol.value.replace(/\s*\n\s*/g, ' ').trim().slice(0, 500), text = e.target.elements.text.value.trim().slice(0, 3000);
   if (!titol) { e.target.elements.titol.focus(); return; }
   const ara = new Date().toISOString();
   const carpeta = carpetesMem().some((c) => c.id === e.target.elements.carpeta?.value) ? e.target.elements.carpeta.value : '';
