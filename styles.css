@@ -1263,3 +1263,4 @@ button.gx-pindola, .gx-pindola { color: color-mix(in srgb, var(--text) 82%, var(
 .veu-mur > .mur-accions button { min-width: 100px; }
 .doc-mur > .mur-accions { left: 42%; }
 .doc-mur > .mur-accions button { width: 100%; min-width: 0; padding: 0 8px; }
+.mem-sel-barra .mem-sel-mou[disabled] { opacity: .5; }

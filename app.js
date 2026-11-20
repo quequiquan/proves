@@ -1661,7 +1661,7 @@ function filaFitxa(x, ambCarpeta) {
   return `<div class="mur-mem" data-memcerca="${esc(normal(x.titol + ' ' + x.text))}"><div class="mur-accions"><button type="button" class="acc-esborra" data-memtreu="${esc(x.id)}">Esborra</button></div><div class="mem-fitxa${ui.memSel ? ' triant' + (ui.memSel.includes(x.id) ? ' triada' : '') : ''}" data-memobre="${esc(x.id)}"${c ? ` style="--c:${esc(c.color)}"` : ''}>
         ${ambCarpeta ? `<small class="mem-de">${esc(c ? c.nom : 'General')}</small>` : ''}<b>${esc(x.titol)}</b>${x.text ? `<p>${ambEnllacos(x.text)}</p>` : ''}
         ${(x.imatges || []).length ? `<div class="mem-imgs">${x.imatges.map((im) => `<button class="rec-img" data-memimg="${esc(x.id)}|${esc(im.id)}"><img src="${esc(im.mini)}" alt=""></button>`).join('')}</div>` : ''}
-        <div class="mem-accions"><button class="enllac" data-memcomparteix="${esc(x.id)}">Comparteix</button>${x.text ? `<button class="enllac" data-memcopia="${esc(x.id)}">Copia</button>` : ''}<button class="enllac" data-memimprimeix="${esc(x.id)}">Imprimeix</button><button class="enllac" data-memedita="${esc(x.id)}">Edita</button></div>
+        <div class="mem-accions"><button class="enllac" data-memcomparteix="${esc(x.id)}">Comparteix</button>${x.text ? `<button class="enllac" data-memcopia="${esc(x.id)}">Copia</button>` : ''}<button class="enllac" data-memimprimeix="${esc(x.id)}">Imprimeix</button><button class="enllac" data-memmou="${esc(x.id)}">Mou a…</button><button class="enllac" data-memedita="${esc(x.id)}">Edita</button></div>
       </div></div>`;
 }
 function vistaMemoria() {
@@ -1708,9 +1708,10 @@ function vistaMemoria() {
   const fitxes = state.memoria.filter((x) => carpetaDe(x) === cid).sort(perOrdre);
   return `<div class="sat-cap"><button class="sat-torna" data-memcarpetes aria-label="Torna a les carpetes">‹ Carpetes</button><h1>${esc(c ? c.nom : 'General')}</h1></div>
     ${ui.memSel ? `<div class="mem-sel-barra"><b id="memSelN">${memSelN(ui.memSel.length)}</b><button class="btn" data-memsel="totes">${ui.memSel.length && ui.memSel.length >= fitxes.length ? 'Desmarca-les totes' : 'Selecciona-les totes'}</button>
+      <button class="btn primary mem-sel-mou" data-memsel="mou"${ui.memSel.length ? '' : ' disabled'}>Mou a…${ui.memSel.length ? ' (' + ui.memSel.length + ')' : ''}</button>
       <button class="btn mem-sel-esborra" data-memsel="esborra"${ui.memSel.length ? '' : ' disabled'}>Esborra${ui.memSel.length ? ' (' + ui.memSel.length + ')' : ''}</button><button class="enllac" data-memsel="surt">Fet</button></div>
-      <p class="help">Toca les fitxes que vulguis esborrar.</p>`
-    : `<div class="mem-barra">${fitxes.length > 3 ? '<input id="cercaMem" type="search" placeholder="Cerca…" autocomplete="off">' : ''}<button class="btn primary" data-memnova>Nova fitxa</button></div><div class="mem-sota-barra"><button class="enllac enganxa" data-enganxa="memoria">Enganxa notes d'una altra app</button>${fitxes.length > 1 ? '<button class="enllac" data-memsel="entra">Selecciona per esborrar</button>' : ''}</div>`}
+      <p class="help">Toca les fitxes que vulguis moure a una altra carpeta o esborrar.</p>`
+    : `<div class="mem-barra">${fitxes.length > 3 ? '<input id="cercaMem" type="search" placeholder="Cerca…" autocomplete="off">' : ''}<button class="btn primary" data-memnova>Nova fitxa</button></div><div class="mem-sota-barra"><button class="enllac enganxa" data-enganxa="memoria">Enganxa notes d'una altra app</button>${fitxes.length > 1 ? '<button class="enllac" data-memsel="entra">Selecciona per moure o esborrar</button>' : ''}</div>`}
     ${fitxes.length ? `<div class="mem-llista">${fitxes.map((x) => filaFitxa(x, false)).join('')}</div><p class="help buit" id="memRes" hidden>No hi ha cap fitxa que hi coincideixi.</p>
       ${fitxes.length > 1 ? '<div class="grp centre"><button class="btn" data-memimprimeix="totes">Imprimeix totes les fitxes</button></div>' : ''}`
       : '<p class="help buit">Aquesta carpeta encara és buida.</p>'}
@@ -3272,6 +3273,7 @@ function actualitzaMemSel() {
   const n = (ui.memSel || []).length, totes = document.querySelectorAll('.mur-mem:not([hidden]) [data-memobre]').length;
   const t = document.getElementById('memSelN'); if (t) t.textContent = memSelN(n);
   const b = document.querySelector('[data-memsel="totes"]'); if (b) b.textContent = n && n >= totes ? 'Desmarca-les totes' : 'Selecciona-les totes';
+  const mo = document.querySelector('[data-memsel="mou"]'); if (mo) { mo.disabled = !n; mo.textContent = n ? `Mou a… (${n})` : 'Mou a…'; }
   const es = document.querySelector('[data-memsel="esborra"]'); if (es) { es.disabled = !n; es.dataset.segur = ''; es.textContent = n ? `Esborra (${n})` : 'Esborra'; }
 }
 $('#main').addEventListener('click', (e) => {
@@ -3299,6 +3301,12 @@ $('#main').addEventListener('click', (e) => {
     actualitzaMemSel();
     return;
   }
+  if (acc === 'mou') {
+    const ids = ui.memSel || [];
+    if (!ids.length) return;
+    mouFitxes(ids);
+    return;
+  }
   if (acc === 'esborra') {
     const ids = ui.memSel || [];
     if (!ids.length) return;
@@ -3310,6 +3318,26 @@ $('#main').addEventListener('click', (e) => {
     // Les fotos s'esborren del núvol quan ja no es pot desfer
     setTimeout(() => treure.forEach((f) => { if (!state.memoria.some((x) => x.id === f.id)) (f.imatges || []).forEach((im) => sync()?.esborraDoc(im.cami).catch(() => {})); }), 7000);
   }
+});
+// Moure fitxes a una altra carpeta sense sortir de la carpeta on ets (per classificar de pressa)
+async function mouFitxes(ids) {
+  const ara = carpetaActual();
+  const opcions = [...(ara === '' ? [] : [['g', 'General', '']]), ...carpetesMem().filter((c) => !c.virtual && c.id !== ara).map((c) => [c.id, c.nom, ''])];
+  const on = await triaOpcio(ids.length === 1 ? 'Mou a…' : `Mou ${ids.length} fitxes a…`, opcions);
+  if (!on) return;
+  const desti = on === 'g' ? '' : on, abans = {};
+  state.memoria.forEach((f) => { if (ids.includes(f.id)) { abans[f.id] = f.carpeta || ''; f.carpeta = desti; } });
+  ui.memSel = null; save(); render();
+  const nom = desti ? (carpetesMem().find((c) => c.id === desti)?.nom || '') : 'General';
+  toastDesfes(ids.length === 1 ? `Moguda a ${nom}` : `${ids.length} fitxes mogudes a ${nom}`, () => {
+    state.memoria.forEach((f) => { if (f.id in abans) f.carpeta = abans[f.id]; }); save(); render();
+  });
+}
+$('#main').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-memmou]');
+  if (!b || ui.memSel) return;
+  e.stopPropagation();
+  mouFitxes([b.dataset.memmou]);
 });
 function esborraFitxaMem(f) {
   const lloc = state.memoria.indexOf(f), copia = { ...f };
@@ -3761,7 +3789,6 @@ $('#main').addEventListener('submit', (e) => {
   const f = state.memoria.find((x) => x.id === ui.memEdita);
   if (f) Object.assign(f, { titol, text, carpeta, modificat: ara });
   else state.memoria.push({ id: nouId('m'), titol, text, carpeta, creat: ara });
-  if (carpetaActual() !== null && carpetaActual() !== carpeta) ui.memCarpeta = carpeta || 'g';
   ui.memEdita = ''; save(); render();
   toast(/contrasenya|password|\bpw\b|\bpin\b/i.test(titol + ' ' + text) ? "Desat. Recorda: les contrasenyes, millor a l'app Contrasenyes de l'iPhone." : 'Desat', 4500);
 });
