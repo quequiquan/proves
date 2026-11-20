@@ -914,7 +914,8 @@ body.mode-galaxia main { padding-bottom: calc(40px + var(--safe-b)); }
 .mem-fitxa[hidden] { display: none; }
 .mem-fitxa b { font-size: 16px; }
 .mem-fitxa p { margin: 6px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; -webkit-user-select: text; user-select: text; }
-.mem-accions { display: flex; gap: 16px; margin-top: 8px; }
+.mem-accions { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 8px; }
+.mem-accions > * { white-space: nowrap; }
 .mem-form { display: grid; gap: 12px; }
 .mem-form label { display: grid; gap: 6px; font-weight: 700; }
 .mem-form textarea { font: inherit; resize: vertical; }
