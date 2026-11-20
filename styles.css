@@ -1255,3 +1255,11 @@ button.gx-pindola, .gx-pindola { color: color-mix(in srgb, var(--text) 82%, var(
 .esc-tira span { position: relative; flex: none; }
 .esc-tira img { height: 54px; border-radius: 3px; background: #fff; display: block; }
 .esc-tira small { position: absolute; right: 2px; bottom: 2px; background: #111; color: #fff; font-size: 10px; font-weight: 800; border-radius: 6px; padding: 0 4px; }
+/* Lliscar documents i notes de veu */
+.mur-g[hidden] { display: none; }
+.doc-mur { border-radius: 14px; }
+.doc-mur > .doc-fitxa { height: 100%; }
+.veu-mur { border-radius: 14px; }
+.veu-mur > .mur-accions button { min-width: 100px; }
+.doc-mur > .mur-accions { left: 42%; }
+.doc-mur > .mur-accions button { width: 100%; min-width: 0; padding: 0 8px; }

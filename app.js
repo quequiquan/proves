@@ -1551,8 +1551,19 @@ $('#main').addEventListener('click', (e) => {
     toastDesfes(`Esborrada: ${l.nom}`, () => { state.llistes.splice(lloc, 0, copia); save(); render(); });
     return;
   }
-  // Tocar una fila oberta la tanca (no l'obre)
-  if (murGObert && e.target.closest('.mur-g') === murGObert) { e.stopImmediatePropagation(); e.preventDefault(); tancaMurG(); }
+  const td = e.target.closest('[data-doctreu]');
+  if (td) {
+    e.stopImmediatePropagation(); murGObert = null;
+    const d = state.documents.find((x) => x.id === td.dataset.doctreu);
+    if (!d) return;
+    const lloc = state.documents.indexOf(d), copia = { ...d };
+    state.documents.splice(lloc, 1); save(); render();
+    toastDesfes(`Esborrat: ${d.titol}`, () => { state.documents.splice(Math.max(0, lloc), 0, copia); save(); render(); });
+    if (copia.cami) setTimeout(() => { if (!state.documents.some((x) => x.id === copia.id)) sync()?.esborraDoc(copia.cami).catch(() => {}); }, 7000);
+    return;
+  }
+  // Tocar una fila oberta la tanca (no l'obre); els botons de darrere sí que funcionen
+  if (murGObert && e.target.closest('.mur-g') === murGObert && !e.target.closest('.mur-accions')) { e.stopImmediatePropagation(); e.preventDefault(); tancaMurG(); }
 }, true);
 // Famílies de la compra: cada producte es classifica sol per paraules clau (i es pot canviar a mà)
 const FAMILIES = [
@@ -1778,9 +1789,9 @@ const etiquetaDoc = (d) => (d.tipus === 'enllac' ? 'WEB' : extDoc(d).toUpperCase
 const domini = (u) => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return u; } };
 const graellaDocs = (docs, q) => `<div class="doc-graella">${docs.map((x) => {
   const cat = CATS_DOC.find((c) => c.id === catDoc(x)), cerca = normal([x.titol, x.nomFitxer, x.url, cat.nom, etiquetaDoc(x), nomCarpeta('docs', carpetaItem('docs', x))].filter(Boolean).join(' '));
-  return `<button class="doc-fitxa" data-docobre="${esc(x.id)}" data-doccerca="${esc(cerca)}"${q && !cerca.includes(q) ? ' hidden' : ''}>
+  return `<div class="mur-g doc-mur" data-doccerca="${esc(cerca)}"${q && !cerca.includes(q) ? ' hidden' : ''}><div class="mur-accions"><button type="button" class="acc-esborra" data-doctreu="${esc(x.id)}">Esborra</button></div><button class="mur-cos doc-fitxa" data-docobre="${esc(x.id)}">
         <span class="doc-mini" style="--fc:${cat.c}">${x.mini ? `<img src="${esc(x.mini)}" alt="">` : `<b>${esc(etiquetaDoc(x))}</b>`}</span>
-        <span class="doc-nom">${esc(x.titol)}</span><small>${esc(x.tipus === 'enllac' ? domini(x.url) : [dataDoc(x.creat), midaText(x.mida)].filter(Boolean).join(' · '))}</small></button>`;
+        <span class="doc-nom">${esc(x.titol)}</span><small>${esc(x.tipus === 'enllac' ? domini(x.url) : [dataDoc(x.creat), midaText(x.mida)].filter(Boolean).join(' · '))}</small></button></div>`;
 }).join('')}</div>`;
 function vistaDocuments() {
   const entrat = Boolean(usuari());
@@ -1827,12 +1838,12 @@ function vistaVeu() {
         <p class="veu-estat" id="veuEstat">${grava ? `<b class="veu-temps" id="veuTemps">${durText((Date.now() - grava.inici) / 1000)}</b> Gravant… toca per acabar` : ui.veuPujant ? 'Desant l\'àudio…' : '<b>Toca per gravar</b> i torna a tocar per acabar. També pots mantenir-lo premut mentre parles.'}</p>
       </div>` : '<p class="help avis-doc">Per gravar àudios cal haver entrat amb el teu correu (toca el logo de Galàxia, a dalt).</p>'}
     <form id="formNotaVeu" class="rec-nou" autocomplete="off"><input id="notaVeuText" placeholder="O escriu-la o dicta-la amb el teclat" maxlength="2000" enterkeyhint="done"><button class="btn primary">Apunta</button></form>
-    ${notes.length ? `<div class="veu-llista">${notes.map((n) => `<div class="veu-nota" data-nota="${esc(n.id)}">
+    ${notes.length ? `<div class="veu-llista">${notes.map((n) => `<div class="mur-g veu-mur"><div class="mur-accions"><button type="button" class="acc-esborra" data-notatreu="${esc(n.id)}">Esborra</button></div><div class="mur-cos veu-nota" data-nota="${esc(n.id)}">
         <small class="veu-de">${n.audio ? 'Àudio' : n.origen === 'dictat' ? 'Dictat' : 'Escrit'} · ${esc(quanNota(n.creat))}${n.audio ? ' · ' + durText(n.audio.durada) : ''}</small>
         ${n.text ? `<p>${ambEnllacos(n.text)}</p>` : '<p class="veu-sense">Sense text: escolta-la i escriu què diu per poder-la enviar.</p>'}
         ${n.audio ? `<div class="veu-audio" id="veuAudio-${esc(n.id)}"><button type="button" class="btn" data-notaescolta="${esc(n.id)}">▶ Escolta</button></div>` : ''}
         <div class="mem-accions"><button class="btn primary" data-notaenvia="${esc(n.id)}">Envia a…</button><button class="enllac" data-notaedita="${esc(n.id)}">${n.text ? 'Corregeix' : 'Escriu què diu'}</button><button class="enllac perill" data-notatreu="${esc(n.id)}">Esborra</button></div>
-      </div>`).join('')}</div>` : '<p class="help buit">No tens cap nota de veu. Les que dictis amb el doble toc al darrere del mòbil també arribaran aquí.</p>'}
+      </div></div>`).join('')}</div>` : '<p class="help buit">No tens cap nota de veu. Les que dictis amb el doble toc al darrere del mòbil també arribaran aquí.</p>'}
     ${usuari() ? `<details class="ajuda veu-drecera"><summary>Dictar amb el doble toc al darrere del mòbil</summary>
       <p>Prepara una drecera a l'app <b>Dreceres</b> que escolti en català i enviï el que diguis aquí. Necessitaràs aquest enllaç:</p>
       <div class="grp"><button class="btn" id="veuNota">Copia l'enllaç per a Notes de veu</button><button class="btn" id="veuBusca">Busca notes al núvol</button></div></details>` : ''}`;
