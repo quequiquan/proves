@@ -1801,7 +1801,8 @@ function vistaDocuments() {
   const docs = filtre ? delaCarpeta.filter((d) => catDoc(d) === filtre) : delaCarpeta;
   return `<div class="sat-cap"><button class="sat-torna" data-cftorna="docs" aria-label="Torna a les carpetes">‹ Carpetes</button><h1>${esc(nomCarpeta('docs', cid))}</h1></div>
     ${entrat ? `<div class="doc-botons">
-        <label class="btn primary doc-afegeix${ui.docPujant ? ' ocupat' : ''}"><input type="file" id="docFoto" accept="image/*" capture="environment" hidden ${ui.docPujant ? 'disabled' : ''}>${ui.docPujant ? 'Pujant…' : 'Fes una foto'}</label>
+        <button class="btn primary" data-escaneja ${ui.docPujant ? 'disabled' : ''}>Escaneja</button>
+        <label class="btn doc-afegeix${ui.docPujant ? ' ocupat' : ''}"><input type="file" id="docFoto" accept="image/*" capture="environment" hidden ${ui.docPujant ? 'disabled' : ''}>${ui.docPujant ? 'Pujant…' : 'Fes una foto'}</label>
         <label class="btn${ui.docPujant ? ' ocupat' : ''}"><input type="file" id="docFitxer" multiple hidden ${ui.docPujant ? 'disabled' : ''}>Afegeix fitxers</label>
         <button class="btn" data-docenllac ${ui.docPujant ? 'disabled' : ''}>Afegeix un enllaç</button></div>
       ${delaCarpeta.length > 3 ? `<input id="cercaDoc" type="search" class="doc-cerca" placeholder="Cerca en aquesta carpeta…" autocomplete="off" value="${esc(ui.docCerca || '')}">` : ''}
@@ -1809,7 +1810,7 @@ function vistaDocuments() {
       : '<p class="help avis-doc">Per guardar documents cal haver entrat amb el teu correu (toca el logo de Galàxia, a dalt).</p>'}
     ${docs.length ? graellaDocs(docs, q) + '<p class="help buit" id="docRes" hidden>No hi ha cap document que hi coincideixi.</p>'
       : '<p class="help buit">Aquesta carpeta encara és buida.</p>'}
-    ${entrat ? '<p class="help doc-consell"><b>Fes una foto</b> obre la càmera: ideal per a receptes, tiquets, informes o targetes. Mida màxima de cada fitxer: 50 MB. Per escanejar diverses pàgines en un sol PDF: a l\'app <b>Arxius</b> de l\'iPhone, toca <b>···</b> → <b>Escanejar documents</b>, desa\'l i després tria\'l amb «Afegeix fitxers».</p>' : ''}
+    ${entrat ? '<p class="help doc-consell"><b>Escaneja</b> fa la foto, troba les vores del full, el posa dret, li treu les ombres i el deixa net, com un escàner; pots fer-ne diverses pàgines i es desa en un sol PDF. <b>Fes una foto</b> la guarda tal qual. Mida màxima de cada fitxer: 50 MB. Per escanejar diverses pàgines en un sol PDF: a l\'app <b>Arxius</b> de l\'iPhone, toca <b>···</b> → <b>Escanejar documents</b>, desa\'l i després tria\'l amb «Afegeix fitxers».</p>' : ''}
     ${peuCarpeta('docs')}`;
 }
 
@@ -1985,6 +1986,274 @@ $('#main').addEventListener('click', async (e) => {
     obreForm(null, { titol: text.slice(0, 120) });
   }
 });
+// ---------- Escàner de documents: troba les vores, endreça la perspectiva, millora la imatge i en fa un PDF ----------
+// Fa servir OpenCV.js (es baixa la primera vegada, uns 10 MB, i després queda guardat)
+let cvPromesa = null;
+// Compte: l'objecte «cv» té un mètode «then» i no es pot passar mai a una promesa (es quedaria en un bucle infinit).
+// Per això la promesa es resol sense valor i després es fa servir window.cv.
+function carregaCV() {
+  if (window.cv && window.cv.Mat) return Promise.resolve(true);
+  if (!cvPromesa) {
+    cvPromesa = carregaScript('https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.10.0-release.1/dist/opencv.js')
+      .then(() => new Promise((ok, ko) => {
+        const t0 = Date.now();
+        (function mira() {
+          const c = window.cv;
+          if (c && c.Mat) { try { delete c.then; } catch (x) { /* res */ } ok(true); return; }
+          if (Date.now() - t0 > 90000) { ko(new Error('OpenCV no arrenca')); return; }
+          setTimeout(mira, 100);
+        })();
+      }))
+      .catch((e) => { cvPromesa = null; throw e; });
+  }
+  return cvPromesa;
+}
+const distP = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+// Ordena quatre punts: dalt-esquerra, dalt-dreta, baix-dreta, baix-esquerra
+function ordenaPunts(p) {
+  const s = p.map((q) => q.x + q.y), d = p.map((q) => q.x - q.y);
+  return [p[s.indexOf(Math.min(...s))], p[d.indexOf(Math.max(...d))], p[s.indexOf(Math.max(...s))], p[d.indexOf(Math.min(...d))]];
+}
+const puntsPerDefecte = (w, h) => [{ x: w * 0.06, y: h * 0.06 }, { x: w * 0.94, y: h * 0.06 }, { x: w * 0.94, y: h * 0.94 }, { x: w * 0.06, y: h * 0.94 }];
+// Busca el quadrilàter més gran de la foto (el full)
+function detectaVores(cv, font) {
+  const petit = redueixCanvas(font, 900), f = font.width / petit.width;
+  const src = cv.imread(petit), gris = new cv.Mat(), vores = new cv.Mat(), cont = new cv.MatVector(), jer = new cv.Mat();
+  let millor = null;
+  try {
+    cv.cvtColor(src, gris, cv.COLOR_RGBA2GRAY);
+    cv.GaussianBlur(gris, gris, new cv.Size(5, 5), 0);
+    cv.Canny(gris, vores, 40, 140);
+    const k = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(5, 5));
+    cv.dilate(vores, vores, k); k.delete();
+    cv.findContours(vores, cont, jer, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE);
+    let area = petit.width * petit.height * 0.12;
+    for (let i = 0; i < cont.size(); i++) {
+      const c = cont.get(i), a = cv.contourArea(c);
+      if (a > area) {
+        const ap = new cv.Mat();
+        cv.approxPolyDP(c, ap, 0.02 * cv.arcLength(c, true), true);
+        if (ap.rows === 4 && cv.isContourConvex(ap)) {
+          area = a;
+          millor = [0, 1, 2, 3].map((j) => ({ x: ap.data32S[j * 2] * f, y: ap.data32S[j * 2 + 1] * f }));
+        }
+        ap.delete();
+      }
+      c.delete();
+    }
+  } finally { [src, gris, vores, cont, jer].forEach((m) => m.delete()); }
+  return millor ? ordenaPunts(millor) : null;
+}
+function redueixCanvas(c, max) {
+  const s = Math.min(1, max / Math.max(c.width, c.height));
+  if (s === 1) return c;
+  const o = document.createElement('canvas');
+  o.width = Math.round(c.width * s); o.height = Math.round(c.height * s);
+  o.getContext('2d').drawImage(c, 0, 0, o.width, o.height);
+  return o;
+}
+function giraCanvas(c) {
+  const o = document.createElement('canvas');
+  o.width = c.height; o.height = c.width;
+  const x = o.getContext('2d');
+  x.translate(o.width, 0); x.rotate(Math.PI / 2); x.drawImage(c, 0, 0);
+  return o;
+}
+// Endreça el full (perspectiva) i el millora: «millorat» (fons blanc, sense ombres), «bn» (blanc i negre) o «color» (tal qual)
+function endrecaFull(cv, font, punts, filtre) {
+  const [tl, tr, br, bl] = punts;
+  let w = Math.max(distP(tl, tr), distP(bl, br)), h = Math.max(distP(tl, bl), distP(tr, br));
+  const s = Math.min(1, 1800 / Math.max(w, h)); w = Math.max(10, Math.round(w * s)); h = Math.max(10, Math.round(h * s));
+  const src = cv.imread(font), dst = new cv.Mat();
+  const a = cv.matFromArray(4, 1, cv.CV_32FC2, [tl.x, tl.y, tr.x, tr.y, br.x, br.y, bl.x, bl.y]);
+  const b = cv.matFromArray(4, 1, cv.CV_32FC2, [0, 0, w, 0, w, h, 0, h]);
+  const M = cv.getPerspectiveTransform(a, b);
+  cv.warpPerspective(src, dst, M, new cv.Size(w, h), cv.INTER_LINEAR, cv.BORDER_REPLICATE);
+  [src, a, b, M].forEach((m) => m.delete());
+  const out = document.createElement('canvas');
+  try {
+    if (filtre === 'color') { cv.imshow(out, dst); return out; }
+    const rgb = new cv.Mat(); cv.cvtColor(dst, rgb, cv.COLOR_RGBA2RGB);
+    const k = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(9, 9));
+    // Treu les ombres: cada canal es divideix pel seu fons (que s'estima esborrant la lletra)
+    const neteja = (ch) => {
+      const fons = new cv.Mat(), dif = new cv.Mat();
+      cv.dilate(ch, fons, k); cv.medianBlur(fons, fons, 21);
+      cv.absdiff(ch, fons, dif); cv.bitwise_not(dif, ch);
+      cv.normalize(ch, ch, 0, 255, cv.NORM_MINMAX);
+      fons.delete(); dif.delete();
+    };
+    if (filtre === 'bn') {
+      const g = new cv.Mat(); cv.cvtColor(rgb, g, cv.COLOR_RGB2GRAY); neteja(g);
+      cv.threshold(g, g, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU);
+      cv.imshow(out, g); g.delete();
+    } else {
+      const canals = new cv.MatVector(); cv.split(rgb, canals);
+      for (let i = 0; i < 3; i++) { const ch = canals.get(i); neteja(ch); canals.set(i, ch); ch.delete(); }
+      cv.merge(canals, rgb); canals.delete();
+      // Una mica més de contrast
+      rgb.convertTo(rgb, -1, 1.15, -20);
+      cv.imshow(out, rgb);
+    }
+    rgb.delete(); k.delete();
+  } finally { dst.delete(); }
+  return out;
+}
+// Pantalla de l'escàner
+const escn = { pagines: [], font: null, punts: null, filtre: 'millorat', pas: 'foto', resultat: null };
+function obreEscaner() {
+  document.querySelector('.escaner')?.remove();
+  Object.assign(escn, { pagines: [], font: null, punts: null, pas: 'foto', resultat: null });
+  const d = document.createElement('div');
+  d.className = 'escaner';
+  d.innerHTML = '<input type="file" id="escFoto" accept="image/*" capture="environment" hidden><div class="esc-cap"><button type="button" class="sat-torna" data-esc="tanca">Cancel·la</button><b id="escTitol">Escaneja</b></div><div class="esc-cos" id="escCos"></div><div class="esc-peu" id="escPeu"></div>';
+  document.body.appendChild(d);
+  d.addEventListener('click', clicEscaner);
+  d.querySelector('#escFoto').addEventListener('change', fotoEscaner);
+  carregaCV().catch(() => {});   // es comença a baixar mentre es fa la foto
+  pintaEscaner();
+  d.querySelector('#escFoto').click();
+}
+function tancaEscaner() { document.querySelector('.escaner')?.remove(); escn.pagines = []; escn.font = null; escn.resultat = null; }
+async function fotoEscaner(e) {
+  const f = e.target.files?.[0]; e.target.value = '';
+  if (!f) return;
+  escn.pas = 'carrega'; pintaEscaner();
+  try {
+    const im = await carregaImg(f);
+    escn.font = redueix(im, 2600);
+    await carregaCV();
+    escn.punts = detectaVores(window.cv, escn.font) || puntsPerDefecte(escn.font.width, escn.font.height);
+    escn.pas = 'ajusta';
+  } catch (x) {
+    toast(navigator.onLine ? "No s'ha pogut preparar l'escàner. Torna-ho a provar." : "La primera vegada cal connexió per preparar l'escàner.", 5000);
+    escn.pas = 'foto';
+  }
+  pintaEscaner();
+}
+function processa() {
+  escn.resultat = endrecaFull(window.cv, escn.font, escn.punts, escn.filtre);
+}
+function pintaEscaner() {
+  const cos = document.getElementById('escCos'), peu = document.getElementById('escPeu'), tit = document.getElementById('escTitol');
+  if (!cos) return;
+  const n = escn.pagines.length;
+  tit.textContent = n ? `Escaneja · pàgina ${n + 1}` : 'Escaneja';
+  const tira = n ? `<div class="esc-tira">${escn.pagines.map((p, i) => `<span><img src="${p.toDataURL('image/jpeg', 0.5)}" alt=""><small>${i + 1}</small></span>`).join('')}</div>` : '';
+  if (escn.pas === 'foto') {
+    cos.innerHTML = `<p class="esc-ajuda">Fes una foto del document sobre una superfície fosca i ben il·luminada, que s'hi vegin les quatre vores.</p>`;
+    peu.innerHTML = tira + `<button type="button" class="btn primary" data-esc="foto">Fes la foto${n ? ' de la pàgina ' + (n + 1) : ''}</button>${n ? `<button type="button" class="btn" data-esc="desa">Desa (${n} ${n === 1 ? 'pàgina' : 'pàgines'})</button>` : ''}`;
+  } else if (escn.pas === 'carrega') {
+    cos.innerHTML = `<p class="esc-ajuda"><b>Preparant l'escàner…</b><br>La primera vegada pot trigar una mica, perquè es baixa l'eina que troba les vores.</p>`;
+    peu.innerHTML = tira;
+  } else if (escn.pas === 'ajusta') {
+    cos.innerHTML = '<div class="esc-foto" id="escFotoCaixa"><canvas id="escVista"></canvas><svg id="escSvg"><polygon id="escPoli"/></svg>'
+      + [0, 1, 2, 3].map((i) => `<span class="esc-punt" data-punt="${i}"></span>`).join('') + '</div>';
+    peu.innerHTML = `<p class="esc-ajuda">Arrossega les cantonades fins a les vores del document.</p>
+      <div class="esc-botons"><button type="button" class="btn" data-esc="gira">Gira ↻</button><button type="button" class="btn" data-esc="refes">Torna a fer la foto</button><button type="button" class="btn primary" data-esc="endavant">Endavant</button></div>`;
+    dibuixaAjust();
+  } else if (escn.pas === 'resultat') {
+    cos.innerHTML = '<div class="esc-res"></div>';
+    cos.firstChild.appendChild(escn.resultat);
+    peu.innerHTML = `<div class="seg esc-filtres">${[['millorat', 'Millorat'], ['bn', 'Blanc i negre'], ['color', 'Color']].map(([k, nom]) => `<button type="button" aria-pressed="${escn.filtre === k}" data-escfiltre="${k}">${nom}</button>`).join('')}</div>
+      <div class="esc-botons"><button type="button" class="btn" data-esc="ajusta">‹ Ajusta</button><button type="button" class="btn" data-esc="mes">+ Una altra pàgina</button><button type="button" class="btn primary" data-esc="desa">Desa${n ? ` (${n + 1} pàgines)` : ''}</button></div>`;
+  }
+}
+// Dibuixa la foto amb les quatre cantonades que es poden arrossegar
+function dibuixaAjust() {
+  const caixa = document.getElementById('escFotoCaixa'), cv = document.getElementById('escVista');
+  if (!caixa || !escn.font) return;
+  const maxW = Math.min(innerWidth - 64, 700), maxH = Math.max(200, innerHeight - 320);
+  const s = Math.min(maxW / escn.font.width, maxH / escn.font.height);
+  const w = Math.round(escn.font.width * s), h = Math.round(escn.font.height * s);
+  const dpr = devicePixelRatio || 1;
+  cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); cv.style.width = w + 'px'; cv.style.height = h + 'px';
+  cv.getContext('2d').drawImage(escn.font, 0, 0, cv.width, cv.height);
+  caixa.style.width = w + 'px'; caixa.style.height = h + 'px';
+  caixa.dataset.escala = s;
+  const svg = document.getElementById('escSvg'); svg.setAttribute('width', w); svg.setAttribute('height', h);
+  posaPunts();
+}
+function posaPunts() {
+  const caixa = document.getElementById('escFotoCaixa');
+  if (!caixa) return;
+  const s = Number(caixa.dataset.escala);
+  document.getElementById('escPoli').setAttribute('points', escn.punts.map((p) => `${p.x * s},${p.y * s}`).join(' '));
+  caixa.querySelectorAll('[data-punt]').forEach((el) => { const p = escn.punts[el.dataset.punt]; el.style.left = p.x * s + 'px'; el.style.top = p.y * s + 'px'; });
+}
+document.addEventListener('pointerdown', (e) => {
+  const el = e.target.closest('.escaner [data-punt]');
+  if (!el) return;
+  e.preventDefault();
+  el.setPointerCapture(e.pointerId);
+  const caixa = document.getElementById('escFotoCaixa'), s = Number(caixa.dataset.escala), i = Number(el.dataset.punt);
+  const r = caixa.getBoundingClientRect();
+  const mou = (ev) => {
+    escn.punts[i] = { x: Math.max(0, Math.min(escn.font.width, (ev.clientX - r.left) / s)), y: Math.max(0, Math.min(escn.font.height, (ev.clientY - r.top) / s)) };
+    posaPunts();
+  };
+  const fi = () => { el.removeEventListener('pointermove', mou); el.removeEventListener('pointerup', fi); el.removeEventListener('pointercancel', fi); el.classList.remove('mou'); };
+  el.classList.add('mou');
+  el.addEventListener('pointermove', mou); el.addEventListener('pointerup', fi); el.addEventListener('pointercancel', fi);
+});
+async function clicEscaner(e) {
+  const fb = e.target.closest('[data-escfiltre]');
+  if (fb) { escn.filtre = fb.dataset.escfiltre; processa(); pintaEscaner(); return; }
+  const b = e.target.closest('[data-esc]');
+  if (!b) return;
+  const acc = b.dataset.esc;
+  if (acc === 'tanca') { if (escn.pagines.length && b.dataset.segur !== '1') { b.dataset.segur = '1'; b.textContent = 'Segur? Es perdran'; return; } tancaEscaner(); return; }
+  if (acc === 'foto' || acc === 'refes') { escn.pas = 'foto'; pintaEscaner(); document.getElementById('escFoto').click(); return; }
+  if (acc === 'gira') {
+    const w = escn.font.height;
+    escn.font = giraCanvas(escn.font);
+    escn.punts = escn.punts.map((p) => ({ x: w - p.y, y: p.x }));
+    escn.punts = ordenaPunts(escn.punts);
+    pintaEscaner(); return;
+  }
+  if (acc === 'endavant') {
+    b.disabled = true; b.textContent = 'Endreçant…';
+    await new Promise((r) => setTimeout(r, 30));
+    try { escn.punts = ordenaPunts(escn.punts); processa(); escn.pas = 'resultat'; } catch (x) { toast("No s'ha pogut endreçar la imatge."); }
+    pintaEscaner(); return;
+  }
+  if (acc === 'ajusta') { escn.pas = 'ajusta'; pintaEscaner(); return; }
+  if (acc === 'mes') { escn.pagines.push(escn.resultat); escn.resultat = null; escn.font = null; escn.pas = 'foto'; pintaEscaner(); document.getElementById('escFoto').click(); return; }
+  if (acc === 'desa') {
+    if (escn.resultat) { escn.pagines.push(escn.resultat); escn.resultat = null; }
+    if (!escn.pagines.length) return;
+    const titol = await demanaText('Nom del document', 'Document ' + new Date().toLocaleDateString('ca-ES'), { max: 80 });
+    if (titol === null) { escn.pas = 'foto'; pintaEscaner(); return; }
+    b.disabled = true; b.textContent = 'Desant…';
+    try { await desaEscaneig(escn.pagines, (titol.trim() || 'Document').slice(0, 80)); tancaEscaner(); render(); toast('Document desat'); }
+    catch (x) { b.disabled = false; b.textContent = 'Desa'; toast(navigator.onLine ? "No s'ha pogut desar. Torna-ho a provar." : 'Cal connexió a internet per desar.', 5000); }
+  }
+}
+// Una pàgina es desa com a imatge (es veu i s'amplia al visor); diverses, com un PDF
+async function desaEscaneig(pagines, titol) {
+  const id = nouId('d'), mini = redueixCanvas(pagines[0], 240).toDataURL('image/jpeg', 0.6);
+  const aBlob = (c) => new Promise((ok) => c.toBlob(ok, 'image/jpeg', 0.85));
+  let blob, tipus, ext;
+  if (pagines.length === 1) { blob = await aBlob(pagines[0]); tipus = 'image/jpeg'; ext = 'jpg'; }
+  else {
+    if (!window.jspdf) await carregaScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+    const { jsPDF } = window.jspdf;
+    let pdf = null;
+    for (const c of pagines) {
+      const amp = 210, alt = Math.round(210 * c.height / c.width);
+      const dades = c.toDataURL('image/jpeg', 0.82);
+      if (!pdf) pdf = new jsPDF({ unit: 'mm', format: [amp, alt], orientation: alt >= amp ? 'portrait' : 'landscape' });
+      else pdf.addPage([amp, alt], alt >= amp ? 'portrait' : 'landscape');
+      pdf.addImage(dades, 'JPEG', 0, 0, amp, alt);
+    }
+    blob = pdf.output('blob'); tipus = 'application/pdf'; ext = 'pdf';
+  }
+  const cami = await sync().pujaDoc(id, blob, tipus, ext);
+  state.documents.push({ id, titol, tipus, cami, nomFitxer: titol + '.' + ext, mida: blob.size, mini, carpeta: carpetaOberta('docs') || '', creat: new Date().toISOString() });
+  save();
+}
+$('#main').addEventListener('click', (e) => { if (e.target.closest('[data-escaneja]')) obreEscaner(); });
+addEventListener('resize', () => { if (escn.pas === 'ajusta') dibuixaAjust(); });
 // Píndoles: la d'avui i les dels dies anteriors, i les preferides (guardades a Ajustos, es sincronitzen)
 const preferides = () => (Array.isArray(state.ajustos.pindoles) ? state.ajustos.pindoles : []);
 function filaPindola(text, data) {
