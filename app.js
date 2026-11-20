@@ -2222,14 +2222,50 @@ async function clicEscaner(e) {
   if (acc === 'desa') {
     if (escn.resultat) { escn.pagines.push(escn.resultat); escn.resultat = null; }
     if (!escn.pagines.length) return;
-    const titol = await demanaText('Nom del document', 'Document ' + new Date().toLocaleDateString('ca-ES'), { max: 80 });
+    // Diverses pàgines: cadascuna en un full (contractes) o totes juntes en un sol full (DNI, targetes)
+    let unFull = false;
+    if (escn.pagines.length > 1) {
+      const op = await triaOpcio('Com el vols desar?', [
+        ['pagines', 'Una pàgina per full', 'Contractes, informes, factures de diversos fulls'],
+        ['unfull', 'Tot en un sol full', 'DNI, targetes: les cares juntes, com una fotocòpia'],
+      ]);
+      if (!op) { escn.pas = 'foto'; pintaEscaner(); return; }
+      unFull = op === 'unfull';
+    }
+    const titol = await demanaText('Nom del document', (unFull ? 'DNI ' : 'Document ') + new Date().toLocaleDateString('ca-ES'), { max: 80 });
     if (titol === null) { escn.pas = 'foto'; pintaEscaner(); return; }
     b.disabled = true; b.textContent = 'Desant…';
-    try { await desaEscaneig(escn.pagines, (titol.trim() || 'Document').slice(0, 80)); tancaEscaner(); render(); toast('Document desat'); }
+    try { await desaEscaneig(unFull ? [muntaFull(escn.pagines)] : escn.pagines, (titol.trim() || 'Document').slice(0, 80)); tancaEscaner(); render(); toast('Document desat'); }
     catch (x) { b.disabled = false; b.textContent = 'Desa'; toast(navigator.onLine ? "No s'ha pogut desar. Torna-ho a provar." : 'Cal connexió a internet per desar.', 5000); }
   }
 }
 // Una pàgina es desa com a imatge (es veu i s'amplia al visor); diverses, com un PDF
+// Totes les pàgines en un full DIN A4, una sota l'altra, com una fotocòpia.
+// Les targetes (DNI, carnet de conduir, targeta sanitària) surten a mida real; la resta, ajustades a l'amplada.
+function muntaFull(pagines) {
+  const PX = 1240 / 210;                     // 150 punts per polzada: un A4 fa 1240 × 1754
+  const full = document.createElement('canvas');
+  full.width = 1240; full.height = 1754;
+  const x = full.getContext('2d');
+  x.fillStyle = '#fff'; x.fillRect(0, 0, full.width, full.height);
+  const marge = 20, separacio = 12, utilAmp = 210 - marge * 2, utilAlt = 297 - marge * 2;
+  const mides = pagines.map((c) => {
+    const r = c.width / c.height, targeta = r > 1.35 && r < 1.8;   // apaïsada i amb la proporció d'una targeta
+    const amp = targeta ? 85.6 : utilAmp;
+    return { c, amp, alt: amp / r };
+  });
+  // Si no hi caben, es redueixen totes igual
+  const total = mides.reduce((n, m) => n + m.alt, 0) + separacio * (mides.length - 1);
+  const k = Math.min(1, utilAlt / total, ...mides.map((m) => utilAmp / m.amp));
+  let y = marge;
+  mides.forEach((m) => {
+    const w = m.amp * k, h = m.alt * k;
+    x.drawImage(m.c, Math.round((210 - w) / 2 * PX), Math.round(y * PX), Math.round(w * PX), Math.round(h * PX));
+    x.strokeStyle = '#ccc'; x.lineWidth = 1; x.strokeRect(Math.round((210 - w) / 2 * PX) + .5, Math.round(y * PX) + .5, Math.round(w * PX), Math.round(h * PX));
+    y += h + separacio;
+  });
+  return full;
+}
 async function desaEscaneig(pagines, titol) {
   const id = nouId('d'), mini = redueixCanvas(pagines[0], 240).toDataURL('image/jpeg', 0.6);
   const aBlob = (c) => new Promise((ok) => c.toBlob(ok, 'image/jpeg', 0.85));
