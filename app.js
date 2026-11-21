@@ -624,7 +624,8 @@ function incorporaContactes(llista, existents, onAfegir) {
   });
 }
 const AJUDA_CONTACTES = `<details class="ajuda"><summary>Com puc afegir gent dels contactes de l'iPhone?</summary>
-    <p><b>Opció 1 (sempre funciona):</b> a l'app <b>Contactes</b>, obre un contacte → <b>Comparteix el contacte</b> → <b>Desa a Arxius</b>.
+    <p><b>Tots de cop:</b> a l'app <b>Contactos</b>, toca <b>‹ Listas</b>, mantén premut <b>Todos los contactos</b> → <b>Exportar</b> → <b>Guardar en Archivos</b>. Després, aquí, prem <b>Importa contactes</b> i tria el fitxer.</p>
+    <p><b>D'un en un:</b> a l'app <b>Contactes</b>, obre un contacte → <b>Comparteix el contacte</b> → <b>Desa a Arxius</b>.
       Després, aquí, prem <b>Importa contactes</b> i tria el fitxer. (També pots seleccionar una llista sencera de contactes i compartir-la de cop.)</p>
     <p><b>Opció 2:</b> a <b>Configuració → Apps → Safari → Avançat → Feature Flags</b>, activa <b>Contact Picker API</b>.
       Tanca i torna a obrir l'app: apareixerà el botó <b>Tria dels contactes</b>.</p>
