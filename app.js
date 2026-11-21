@@ -1711,7 +1711,7 @@ function vistaMemoria() {
       <button class="btn primary mem-sel-mou" data-memsel="mou"${ui.memSel.length ? '' : ' disabled'}>Mou a…${ui.memSel.length ? ' (' + ui.memSel.length + ')' : ''}</button>
       <button class="btn mem-sel-esborra" data-memsel="esborra"${ui.memSel.length ? '' : ' disabled'}>Esborra${ui.memSel.length ? ' (' + ui.memSel.length + ')' : ''}</button><button class="enllac" data-memsel="surt">Fet</button></div>
       <p class="help">Toca les fitxes que vulguis moure a una altra carpeta o esborrar.</p>`
-    : `<div class="mem-barra">${fitxes.length > 3 ? '<input id="cercaMem" type="search" placeholder="Cerca…" autocomplete="off">' : ''}<button class="btn primary" data-memnova>Nova fitxa</button></div><div class="mem-sota-barra"><button class="enllac enganxa" data-enganxa="memoria">Enganxa notes d'una altra app</button>${fitxes.length > 1 ? '<button class="enllac" data-memsel="entra">Selecciona per moure o esborrar</button>' : ''}</div>`}
+    : `<div class="mem-barra">${fitxes.length > 3 ? '<input id="cercaMem" type="search" placeholder="Cerca…" autocomplete="off">' : ''}<button class="btn" data-memcopiat title="Fa una fitxa amb el text que has copiat">Enganxa</button><button class="btn primary" data-memnova>Nova fitxa</button></div><div class="mem-sota-barra"><button class="enllac enganxa" data-enganxa="memoria">Enganxa notes d'una altra app</button>${fitxes.length > 1 ? '<button class="enllac" data-memsel="entra">Selecciona per moure o esborrar</button>' : ''}</div>`}
     ${fitxes.length ? `<div class="mem-llista">${fitxes.map((x) => filaFitxa(x, false)).join('')}</div><p class="help buit" id="memRes" hidden>No hi ha cap fitxa que hi coincideixi.</p>
       ${fitxes.length > 1 ? '<div class="grp centre"><button class="btn" data-memimprimeix="totes">Imprimeix totes les fitxes</button></div>' : ''}`
       : '<p class="help buit">Aquesta carpeta encara és buida.</p>'}
@@ -3343,6 +3343,25 @@ const ajustaTitolMem = () => { const t = document.querySelector('#formMem [name=
 $('#main').addEventListener('input', (e) => { if (e.target.matches('#formMem [name="titol"]')) ajustaTitolMem(); });
 $('#main').addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.matches('#formMem [name="titol"]')) { e.preventDefault(); document.querySelector('#formMem [name="text"]')?.focus(); } });
 new MutationObserver(() => { if (document.querySelector('#formMem [name="titol"]')) ajustaTitolMem(); }).observe($('#main'), { childList: true });
+// «Enganxa»: el text que has copiat (d'una nota, de Recordatorios, de WhatsApp…) es converteix en una fitxa nova
+// de la carpeta on ets. La primera línia fa de títol (hi cap una frase llarga) i la resta va a sota.
+$('#main').addEventListener('click', async (e) => {
+  if (!e.target.closest('[data-memcopiat]')) return;
+  let text = '';
+  try { text = await navigator.clipboard.readText(); } catch (x) { /* l'aparell no deixa llegir el porta-retalls */ }
+  if (!text || !text.trim()) {
+    text = await enganxaText('Enganxa el text', "Mantén el dit a la casella i tria «Enganxar». La primera línia serà el títol.");
+    if (!text || !text.trim()) return;
+  }
+  const ls = text.replace(/\r/g, '').split('\n').map((l) => l.trim());
+  while (ls.length && !ls[0]) ls.shift();
+  let titol = ls.shift() || 'Nota', resta = ls.join('\n').trim();
+  if (titol.length > 500) { resta = titol.slice(500) + (resta ? '\n' + resta : ''); titol = titol.slice(0, 500); }
+  titol = titol.charAt(0).toUpperCase() + titol.slice(1);
+  const f = { id: nouId('m'), titol, text: resta.slice(0, 3000), carpeta: carpetaActual() || '', creat: new Date().toISOString() };
+  state.memoria.push(f); save(); render();
+  toastDesfes(`Fitxa nova: ${titol.length > 40 ? titol.slice(0, 40) + '…' : titol}`, () => { state.memoria = state.memoria.filter((x) => x.id !== f.id); save(); render(); });
+});
 function esborraFitxaMem(f) {
   const lloc = state.memoria.indexOf(f), copia = { ...f };
   state.memoria.splice(lloc, 1); ui.memEdita = ''; save(); render();
