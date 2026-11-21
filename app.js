@@ -3356,6 +3356,27 @@ const ajustaTitolMem = () => { const t = document.querySelector('#formMem [name=
 $('#main').addEventListener('input', (e) => { if (e.target.matches('#formMem [name="titol"]')) ajustaTitolMem(); });
 $('#main').addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.matches('#formMem [name="titol"]')) { e.preventDefault(); document.querySelector('#formMem [name="text"]')?.focus(); } });
 new MutationObserver(() => { if (document.querySelector('#formMem [name="titol"]')) ajustaTitolMem(); }).observe($('#main'), { childList: true });
+// Fitxes repetides: el mateix títol o el mateix enllaç (sense «www», la barra final ni els paràmetres de seguiment)
+const urlNetaApp = (u) => {
+  try {
+    const x = new URL(u);
+    [...x.searchParams.keys()].forEach((k) => { if (/^(igsh|igshid|si|fbclid|gclid|ref|s|t)$/i.test(k) || /^utm_/i.test(k)) x.searchParams.delete(k); });
+    return (x.hostname.replace(/^www\./, '') + x.pathname.replace(/\/+$/, '') + x.search).toLowerCase();
+  } catch (e) { return String(u).toLowerCase(); }
+};
+const urlsDeText = (t) => (String(t || '').match(/https?:\/\/\S+/g) || []).map(urlNetaApp);
+function fitxaRepetida(titol, text, excepte) {
+  const t = normal(titol || '').trim(), urls = urlsDeText(text);
+  return state.memoria.find((f) => f.id !== excepte && (normal(f.titol || '').trim() === t || (urls.length && urlsDeText(f.text).some((u) => urls.includes(u)))));
+}
+async function confirmaRepetida(f) {
+  const nom = carpetesMem().find((c) => c.id === carpetaDe(f))?.nom || 'General';
+  const op = await triaOpcio('Aquesta fitxa ja la tens', [
+    ['no', "No l'afegeixis", `Ja hi ha «${f.titol.length > 50 ? f.titol.slice(0, 50) + '…' : f.titol}» a ${nom}`],
+    ['si', 'Afegeix-la igualment', ''],
+  ]);
+  return op === 'si';
+}
 // «Enganxa»: el text que has copiat (d'una nota, de Recordatorios, de WhatsApp…) es converteix en una fitxa nova
 // de la carpeta on ets. La primera línia fa de títol (hi cap una frase llarga) i la resta va a sota.
 $('#main').addEventListener('click', async (e) => {
@@ -3371,6 +3392,8 @@ $('#main').addEventListener('click', async (e) => {
   let titol = ls.shift() || 'Nota', resta = ls.join('\n').trim();
   if (titol.length > 500) { resta = titol.slice(500) + (resta ? '\n' + resta : ''); titol = titol.slice(0, 500); }
   titol = titol.charAt(0).toUpperCase() + titol.slice(1);
+  const rep = fitxaRepetida(titol, resta);
+  if (rep && !(await confirmaRepetida(rep))) return;
   const f = { id: nouId('m'), titol, text: resta.slice(0, 3000), carpeta: carpetaActual() || '', creat: new Date().toISOString() };
   state.memoria.push(f); save(); render();
   toastDesfes(`Fitxa nova: ${titol.length > 40 ? titol.slice(0, 40) + '…' : titol}`, () => { state.memoria = state.memoria.filter((x) => x.id !== f.id); save(); render(); });
@@ -3815,7 +3838,7 @@ $('#main').addEventListener('input', (e) => {
   document.querySelectorAll('[data-memcerca]').forEach((el) => { const si = !q || el.dataset.memcerca.includes(q); el.hidden = !si; if (si) n++; });
   const r = document.getElementById('memRes'); if (r) r.hidden = n > 0;
 });
-$('#main').addEventListener('submit', (e) => {
+$('#main').addEventListener('submit', async (e) => {
   if (e.target.id !== 'formMem') return;
   e.preventDefault();
   const titol = e.target.elements.titol.value.replace(/\s*\n\s*/g, ' ').trim().slice(0, 500), text = e.target.elements.text.value.trim().slice(0, 3000);
@@ -3823,6 +3846,7 @@ $('#main').addEventListener('submit', (e) => {
   const ara = new Date().toISOString();
   const carpeta = carpetesMem().some((c) => c.id === e.target.elements.carpeta?.value) ? e.target.elements.carpeta.value : '';
   const f = state.memoria.find((x) => x.id === ui.memEdita);
+  if (!f) { const rep = fitxaRepetida(titol, text); if (rep && !(await confirmaRepetida(rep))) return; }
   if (f) Object.assign(f, { titol, text, carpeta, modificat: ara });
   else state.memoria.push({ id: nouId('m'), titol, text, carpeta, creat: ara });
   ui.memEdita = ''; save(); render();
