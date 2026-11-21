@@ -402,8 +402,8 @@ const Sync = (() => {
     if (error) throw error;
     return cami;
   }
-  async function urlDoc(cami, nomDescarrega) {
-    const { data, error } = await sb.storage.from('documents').createSignedUrl(cami, 3600, nomDescarrega ? { download: nomDescarrega } : undefined);
+  async function urlDoc(cami, nomDescarrega, segons = 3600) {
+    const { data, error } = await sb.storage.from('documents').createSignedUrl(cami, segons, nomDescarrega ? { download: nomDescarrega } : undefined);
     if (error) throw error;
     return data.signedUrl;
   }

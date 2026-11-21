@@ -888,6 +888,7 @@ function vistaGent() {
         ${camp('empresa', 'Feina / empresa')}
         <label class="camp">Notes<textarea data-pcamp="notes" rows="3" placeholder="Al·lèrgies, gustos, el nom dels fills…">${esc(pe.notes || '')}</textarea></label>
         <p class="help">Els canvis es desen sols.</p>
+        <button class="btn" id="pEnvia">Envia una còpia del contacte</button>
         <button class="btn perill" id="pEsborra">Esborra aquesta persona</button>
       </div>
       <h3 class="sub">Propers</h3>
@@ -1369,7 +1370,7 @@ function graellaCarpetes(k, unitat) {
 }
 function peuCarpeta(k) {
   const c = carpetesDe(k).find((x) => x.id === carpetaOberta(k));
-  return c ? `<div class="ll-peu"><button class="enllac" data-cfnom="${k}">Canvia el nom</button><button class="enllac" data-cfcolor="${k}">Canvia el color</button><button class="enllac perill" data-cfesborra="${k}">Esborra la carpeta</button></div>` : '';
+  return c ? `<div class="ll-peu"><button class="enllac" data-envcarp="${k}">Envia una còpia</button><button class="enllac" data-cfnom="${k}">Canvia el nom</button><button class="enllac" data-cfcolor="${k}">Canvia el color</button><button class="enllac perill" data-cfesborra="${k}">Esborra la carpeta</button></div>` : '';
 }
 // Desplegable per moure una llista o un document a una altra carpeta
 const triaCarpeta = (k, x) => `<label class="cf-mou">Carpeta <select data-cfmou="${k}|${esc(x.id)}"><option value="">General</option>${carpetesDe(k).map((c) => `<option value="${esc(c.id)}"${c.id === carpetaItem(k, x) ? ' selected' : ''}>${esc(c.nom)}</option>`).join('')}</select></label>`;
@@ -1454,6 +1455,7 @@ function menuCarpeta(k, id) {
   d.className = 'demana';
   d.innerHTML = `<div class="demana-caixa cf-menu"><b>${esc(c.nom)}</b><span class="cf-menu-t">Color</span>
     <div class="cf-colors">${COLORS_CARPETA.map((col) => `<button type="button" class="cf-color${col === c.color ? ' on' : ''}" data-col="${col}" style="--c:${col}" aria-label="Color"></button>`).join('')}</div>
+    <button type="button" class="btn" data-op="envia">Envia una còpia…</button>
     <button type="button" class="btn" data-op="nom">Canvia el nom</button>
     <button type="button" class="btn cf-perill" data-op="esborra">Esborra la carpeta</button>
     <p class="help">Per canviar-la de lloc, mantén-la premuda i arrossega-la on vulguis.</p>
@@ -1475,6 +1477,7 @@ function menuCarpeta(k, id) {
       if (nom && nom.trim()) { posaCarps(k, carpsDe(k).map((x) => (x.id === id ? { ...x, nom: nom.trim().slice(0, 40) } : x))); render(); }
     }
     if (b?.dataset.op === 'esborra') esborraCarpeta(k, id);
+    if (b?.dataset.op === 'envia') enviaCarpeta(k, id);
   });
 }
 let gG = null, murGObert = null, ignoraClicG = false, darrerToc = 0;
@@ -1650,7 +1653,6 @@ function vistaCompres() {
     + (pend.length ? filesCompres(pend) + '<div class="ll-peu"><button class="btn" data-comprescomparteix>Comparteix la llista</button><button class="btn" data-comprescimprimeix>Imprimeix</button></div>' : '<p class="help buit">No falta res.</p>')
     + (habituals.length ? `<h2 class="ll-titol">Habituals</h2><p class="help">Toca'n un per tornar-lo a posar a la llista. Mantén-lo premut per treure'l dels habituals.</p>
       ${FAMILIES.map((f) => { const seus = habituals.filter((r) => familiaDe(r) === f.id); return seus.length ? `<div class="ll-chips fam-chips" style="--fc:${f.c}">${seus.map((r) => `<button class="ll-chip${vegades(r) >= 3 ? ' sovint' : ''}" data-torna="${esc(r.id)}">${esc(r.text)}</button>`).join('')}</div>` : ''; }).join('')}` : '')
-    + (carpetesDe('compres').some((k) => k.id === cid) ? '<div class="cf-peu"><button class="enllac" data-envcompres>Envia una còpia d\'aquesta botiga</button></div>' : '')
     + peuCarpeta('compres');
 }
 // Memòria: fitxes amb informació per consultar (no contrasenyes)
@@ -3002,6 +3004,10 @@ function descEnviament(x) {
   if (x.tipus === 'memoria') return `la carpeta «${x.titol}» de Memòria (${nFitxes((c.fitxes || []).length)})`;
   if (x.tipus === 'fitxes') return `${nFitxes((c.fitxes || []).length)} de Memòria`;
   if (x.tipus === 'llista') return `la llista «${x.titol}» (${(c.items || []).length} coses)`;
+  if (x.tipus === 'llistes') return `la carpeta de llistes «${x.titol}» (${(c.llistes || []).length === 1 ? '1 llista' : (c.llistes || []).length + ' llistes'})`;
+  if (x.tipus === 'docs') return `${c.carpeta ? `la carpeta de documents «${x.titol}»` : 'un document'} (${(c.docs || []).length === 1 ? '1 document' : (c.docs || []).length + ' documents'})`;
+  if (x.tipus === 'recordatoris') return `el recordatori «${x.titol}»`;
+  if (x.tipus === 'contactes') return `el contacte ${x.titol}`;
   return `la llista de la compra de «${x.titol}» (${(c.items || []).length} productes)`;
 }
 function avisosEnviaments() {
@@ -3010,8 +3016,9 @@ function avisosEnviaments() {
   return llista.map((x) => `<div class="env-avis"><p><b>${esc(x.de_nom || x.de_email || 'Algú')}</b> t'ha enviat ${esc(descEnviament(x))}.</p>
     <div class="grp"><button class="btn primary" data-envaccepta="${esc(x.id)}">Accepta</button><button class="btn" data-envrebutja="${esc(x.id)}">No, gràcies</button></div></div>`).join('');
 }
-function acceptaEnviament(x) {
+async function acceptaEnviament(x) {
   const c = x.contingut || {}, ara = new Date().toISOString();
+  if (['llistes', 'docs', 'recordatoris', 'contactes'].includes(x.tipus)) { const r = await acceptaMes(x, c); save(); return r; }
   let n = 0, rep = 0, on = '';
   if (x.tipus === 'memoria' || x.tipus === 'fitxes') {
     let carpeta = 'perclass';
@@ -3061,16 +3068,129 @@ $('#main').addEventListener('click', async (e) => {
   (ac || rb).disabled = true;
   try {
     let r = null;
-    if (ac) r = acceptaEnviament(x);
+    if (ac) r = await acceptaEnviament(x);
     await sync().responEnviament(id, ac ? 'acceptat' : 'rebutjat');
     ui.enviaments = (ui.enviaments || []).filter((y) => y.id !== id);
     render();
-    if (r) toast(`Copiat a «${r.on}»: ${r.n} ${r.n === 1 ? 'element' : 'elements'}${r.rep ? ` (${r.rep} ja els tenies)` : ''}`, 5000);
+    if (r) toast(`Copiat a «${r.on}»: ${r.n} ${r.n === 1 ? 'element' : 'elements'}${r.rep ? ` (${r.rep} ja els tenies)` : ''}${r.errors ? ` · ${r.errors} no s'han pogut copiar` : ''}`, 6000);
   } catch (x2) {
     (ac || rb).disabled = false;
     toast(navigator.onLine ? "No s'ha pogut fer. Torna-ho a provar." : 'Cal connexió a internet.');
   }
 });
+// «Envia una còpia» igual a tot arreu: qualsevol carpeta (Memòria, Llista, Compres, Documents), un document, un recordatori o un contacte
+async function docsPerEnviar(docs) {
+  const out = [];
+  for (const d of docs) {
+    const x = { titol: d.titol, tipus: d.tipus, nomFitxer: d.nomFitxer || '', mida: d.mida || 0, mini: d.mini || '' };
+    if (d.tipus === 'enllac') x.url = d.url;
+    else if (d.cami) { try { x.fitxer = await sync().urlDoc(d.cami, null, 7 * 86400); } catch (e) { continue; } }
+    out.push(x);
+  }
+  return out;
+}
+async function enviaCarpeta(k, id) {
+  if (!usuari()) { toast('Per enviar còpies cal haver entrat amb el teu correu.'); return; }
+  if (k === 'mem') {
+    const c = carpetesMem().find((x) => x.id === id), fitxes = state.memoria.filter((f) => carpetaDe(f) === id);
+    if (!c || !fitxes.length) { toast('Aquesta carpeta és buida.'); return; }
+    return enviaCopia('memoria', c.nom, { carpeta: { nom: c.nom, color: c.color }, fitxes: fitxesPerEnviar(fitxes) }, `«${c.nom}» (${nFitxes(fitxes.length)})`);
+  }
+  const c = carpetesDe(k).find((x) => x.id === id);
+  if (!c) return;
+  if (k === 'llista') {
+    const ll = state.llistes.filter((l) => carpetaItem('llista', l) === id).sort(perOrdreLl);
+    if (!ll.length) { toast('Aquesta carpeta és buida.'); return; }
+    return enviaCopia('llistes', c.nom, { carpeta: { nom: c.nom, color: c.color }, llistes: ll.map((l) => ({ nom: l.nom, items: l.items.map((i) => ({ text: i.text, fet: Boolean(i.fet) })) })) },
+      `la carpeta «${c.nom}» (${ll.length === 1 ? '1 llista' : ll.length + ' llistes'})`);
+  }
+  if (k === 'compres') {
+    const items = state.compres.filter((r) => carpetaItem('compres', r) === id).map((r) => ({ text: r.text, fet: Boolean(r.fet), familia: r.familia || '', vegades: r.vegades || 0 }));
+    if (!items.length) { toast('Aquesta botiga és buida.'); return; }
+    return enviaCopia('compres', c.nom, { botiga: { nom: c.nom, color: c.color }, items }, `la botiga «${c.nom}»`);
+  }
+  if (k === 'docs') {
+    const docs = state.documents.filter((d) => carpetaItem('docs', d) === id);
+    if (!docs.length) { toast('Aquesta carpeta és buida.'); return; }
+    toast('Preparant els documents…', 2500);
+    return enviaCopia('docs', c.nom, { carpeta: { nom: c.nom, color: c.color }, docs: await docsPerEnviar(docs) }, `la carpeta «${c.nom}» (${docs.length === 1 ? '1 document' : docs.length + ' documents'})`);
+  }
+}
+const recPerEnviar = (r) => ({ text: r.text, notes: r.notes || '', url: r.url || '', data: r.data || '', hora: r.hora || '', avis: r.avis || '', important: Boolean(r.important),
+  lloc: r.lloc || '', llocUrl: r.llocUrl || '', subtasques: (r.subtasques || []).map((s) => ({ text: s.text, fet: Boolean(s.fet) })) });
+const personaPerEnviar = (pe) => Object.fromEntries([['nom', pe.nom], ...CAMPS_CONTACTE.map((k) => [k, pe[k] || ''])].filter(([, v]) => v));
+$('#main').addEventListener('click', async (e) => {
+  const t = e.target;
+  const ec = t.closest('[data-envcarp]');
+  if (ec) {
+    const k = ec.dataset.envcarp, id = k === 'mem' ? carpetaActual() : carpetaOberta(k);
+    if (id) await enviaCarpeta(k, id);
+    return;
+  }
+  if (t.closest('[data-envrec]')) {
+    const r = state.recordatoris.find((x) => x.id === ui.recObert);
+    if (r) await enviaCopia('recordatoris', r.text, { items: [recPerEnviar(r)] }, `el recordatori «${r.text}»`);
+    return;
+  }
+  if (t.closest('#pEnvia')) {
+    const pe = pers(ui.persona);
+    if (pe) await enviaCopia('contactes', pe.nom, { persones: [personaPerEnviar(pe)] }, `el contacte ${pe.nom}`);
+  }
+});
+// Acceptar els tipus nous
+async function acceptaMes(x, c) {
+  const ara = new Date().toISOString();
+  let n = 0, rep = 0, on = '', errors = 0;
+  const carpetaPerNom = (k, info, camp, pref) => {
+    if (!info) return '';
+    let f = carpetesDe(k).find((y) => normal(y.nom) === normal(info.nom));
+    if (!f) { f = { id: nouId(pref), nom: String(info.nom).slice(0, 40), color: info.color || COLORS_CARPETA[0] }; state.ajustos[camp] = [...carpetesDe(k), f]; }
+    return f;
+  };
+  if (x.tipus === 'llistes') {
+    const f = carpetaPerNom('llista', c.carpeta, 'carpetes_llista', 'cl');
+    on = f ? f.nom : 'Llista';
+    (c.llistes || []).forEach((ll) => {
+      let l = state.llistes.find((y) => carpetaItem('llista', y) === (f ? f.id : '') && normal(y.nom) === normal(ll.nom));
+      if (!l) { l = { id: nouId('l'), nom: String(ll.nom).slice(0, 60), creat: ara, items: [], carpeta: f ? f.id : '' }; state.llistes.push(l); }
+      (ll.items || []).forEach((i) => {
+        if (!i || !i.text) return;
+        if (l.items.some((y) => normal(y.text) === normal(i.text))) { rep++; return; }
+        l.items.push({ id: nouId('i'), text: String(i.text).slice(0, 200), fet: Boolean(i.fet) }); n++;
+      });
+    });
+  } else if (x.tipus === 'docs') {
+    const f = carpetaPerNom('docs', c.carpeta, 'carpetes_docs', 'cd');
+    const carpeta = f ? f.id : '';
+    on = f ? f.nom : 'Documents';
+    for (const d of (c.docs || [])) {
+      if (state.documents.some((y) => carpetaItem('docs', y) === carpeta && normal(y.titol) === normal(d.titol))) { rep++; continue; }
+      if (d.tipus === 'enllac') { state.documents.push({ id: nouId('d'), titol: d.titol, tipus: 'enllac', url: d.url, carpeta, creat: ara }); n++; continue; }
+      try {
+        const blob = await (await fetch(d.fitxer)).blob();
+        const id = nouId('d'), ext = ((d.nomFitxer || '').match(/\.([a-z0-9]{1,8})$/i) || [])[1] || (d.tipus === 'application/pdf' ? 'pdf' : 'jpg');
+        const cami = await sync().pujaDoc(id, blob, d.tipus || blob.type, ext);
+        state.documents.push({ id, titol: d.titol, tipus: d.tipus || blob.type, cami, nomFitxer: d.nomFitxer || '', mida: blob.size, mini: d.mini || '', carpeta, creat: ara }); n++;
+      } catch (err) { errors++; }
+    }
+  } else if (x.tipus === 'recordatoris') {
+    on = 'Recordatoris';
+    (c.items || []).forEach((r) => {
+      if (!r || !r.text) return;
+      if (state.recordatoris.some((y) => !y.fet && normal(y.text) === normal(r.text))) { rep++; return; }
+      state.recordatoris.push({ ...r, id: nouId('r'), text: String(r.text).slice(0, 300), subtasques: (r.subtasques || []).map((s) => ({ id: nouId('s'), text: s.text, fet: Boolean(s.fet) })), creat: ara }); n++;
+    });
+  } else if (x.tipus === 'contactes') {
+    on = 'Contactes';
+    (c.persones || []).forEach((p) => {
+      if (!p || !p.nom) return;
+      let pe = state.persones.find((y) => (p.email && normal(y.email || '') === normal(p.email)) || normal(y.nom) === normal(p.nom));
+      if (pe) { let canvi = false; CAMPS_CONTACTE.forEach((k) => { if (p[k] && !pe[k]) { pe[k] = p[k]; canvi = true; } }); if (canvi) n++; else rep++; return; }
+      state.persones.push({ id: 'pe-' + uid(), ...personaPerEnviar(p) }); n++;
+    });
+  }
+  return { n, rep, on, errors };
+}
 /* ---------- Enganxar llistes d'altres apps ---------- */
 async function textCopiat(titol, ajuda) {
   try { const t = await navigator.clipboard.readText(); if (t && t.trim()) return t; } catch (x) { /* l'aparell no deixa llegir el porta-retalls */ }
@@ -3211,7 +3331,7 @@ function vistaRecFitxa(r) {
         ${entrat ? `<label class="btn rec-afoto${ui.recPujant ? ' ocupat' : ''}"><input type="file" id="recFoto" accept="image/*" multiple hidden ${ui.recPujant ? 'disabled' : ''}>${ui.recPujant ? 'Pujant…' : 'Afegeix fotos'}</label>`
           : '<p class="help">Per afegir fotos cal haver entrat amb el teu correu.</p>'}
       </div>
-      <div class="ll-peu"><button class="btn primary" data-recfitxafet>Fet</button><button class="enllac perill" data-recesborra>Esborra</button></div>
+      <div class="ll-peu"><button class="btn primary" data-recfitxafet>Fet</button><button class="enllac" data-envrec>Envia una còpia</button><button class="enllac perill" data-recesborra>Esborra</button></div>
     </div>`;
 }
 const AVISOS_REC = [
@@ -4273,13 +4393,18 @@ async function obreVisor(doc) {
     <div class="doc-visor-cos"><p class="help">Carregant…</p></div>
     <div class="doc-visor-peu"><a class="btn primary" data-visor="obre" target="_blank" rel="noopener" hidden>${esEnllac ? 'Obre la pàgina' : 'Obre / Comparteix'}</a>
       ${esEnllac ? '<button type="button" class="btn" data-visor="comparteix">Comparteix</button>' : '<button type="button" class="btn" data-visor="imprimeix" hidden>Imprimeix</button>'}
-      ${triaCarpeta('docs', doc)}<button type="button" class="enllac" data-visor="nom">Canvia el nom</button><button type="button" class="enllac perill" data-visor="esborra">Esborra</button></div>`;
+      ${triaCarpeta('docs', doc)}<button type="button" class="enllac" data-visor="envia">Envia una còpia</button><button type="button" class="enllac" data-visor="nom">Canvia el nom</button><button type="button" class="enllac perill" data-visor="esborra">Esborra</button></div>`;
   document.body.appendChild(v);
   v.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-visor]');
     if (!b) return;
     const acc = b.dataset.visor;
     if (acc === 'tanca') { tancaVisor(); return; }
+    if (acc === 'envia') {
+      if (!usuari()) { toast('Per enviar còpies cal haver entrat amb el teu correu.'); return; }
+      await enviaCopia('docs', doc.titol, { docs: await docsPerEnviar([doc]) }, `«${doc.titol}»`);
+      return;
+    }
     if (acc === 'comparteix') {
       if (navigator.share) { try { await navigator.share({ title: doc.titol, url: doc.url }); return; } catch (x) { if (x.name === 'AbortError') return; } }
       try { await navigator.clipboard.writeText(doc.url); toast('Enllaç copiat'); } catch (x) { prompt("Copia l'enllaç:", doc.url); }
