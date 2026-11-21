@@ -1631,9 +1631,12 @@ function filesCompres(items) {
   }).join('');
 }
 function vistaCompres() {
+  if (ui.compTot) return vistaTotaCompra();
   const cid = carpetaOberta('compres');
   if (cid === null) {
+    const total = state.compres.filter((r) => !r.fet).length;
     return capSatel('Compres') + `<p class="help">Una llista de la compra per a cada botiga. Entra a la botiga i apunta el que falta: es classifica sol per famílies (fruita, verdura, neteja…).</p>
+      <button class="tc-tot" data-comptot><b>Tota la compra</b><small>${total === 1 ? '1 cosa per comprar' : total + ' coses per comprar'} · totes les botigues juntes, per imprimir o compartir</small></button>
       ${graellaCarpetes('compres', ['per comprar', 'per comprar'])}`;
   }
   const deLaBotiga = state.compres.filter((r) => carpetaItem('compres', r) === cid);
@@ -2854,7 +2857,7 @@ $('#main').addEventListener('click', (e) => {
   if (s) {
     const sat = SATEL.find((x) => x.id === s.dataset.sat);
     if (sat?.aviat) { toast(`${sat.nom}: aviat`); return; }
-    ui.view = s.dataset.sat; ui.llista = ''; ui.memEdita = ''; ui.recObert = ''; ui.recTorna = ''; ui.memCarpeta = null; ui.memSel = null; ui.llCarpeta = null; ui.docCarpeta = null; ui.compCarpeta = null; ui.docCerca = ''; render(); window.scrollTo(0, 0); return;
+    ui.view = s.dataset.sat; ui.llista = ''; ui.memEdita = ''; ui.recObert = ''; ui.recTorna = ''; ui.memCarpeta = null; ui.memSel = null; ui.compTot = false; ui.llCarpeta = null; ui.docCarpeta = null; ui.compCarpeta = null; ui.docCerca = ''; render(); window.scrollTo(0, 0); return;
   }
   const f = e.target.closest('[data-fitxa]');
   if (f) { ui.tornaA = ui.view === 'aniversaris' ? 'aniversaris' : ''; ui.view = 'gent'; ui.persona = f.dataset.fitxa; render(); window.scrollTo(0, 0); return; }
@@ -2899,6 +2902,48 @@ $('#main').addEventListener('submit', (e) => {
   if (fotos.length) pujaFotosRecNou(id, fotos);
 });
 
+// «Tota la compra»: el que falta de totes les botigues junt, per imprimir-ho o compartir-ho en un sol full
+const botiguesAmbPendents = () => [...carpetesDe('compres'), { id: '', nom: 'General', color: '#868E96' }]
+  .map((c) => ({ c, items: state.compres.filter((r) => !r.fet && carpetaItem('compres', r) === c.id) }))
+  .filter((x) => x.items.length);
+function vistaTotaCompra() {
+  const grups = botiguesAmbPendents(), total = grups.reduce((n, g) => n + g.items.length, 0);
+  return `<div class="sat-cap"><button class="sat-torna" data-comptotsurt aria-label="Torna a les botigues">‹ Botigues</button><h1 class="h1-curt">Tota la compra</h1></div>
+    <p class="help">Tot el que tens per comprar, botiga per botiga. Per afegir coses, entra a cada botiga.</p>
+    ${total ? grups.map((g) => `<h3 class="fam-titol tc-botiga" style="--fc:${esc(g.c.color)}">${esc(g.c.nom)} <small>${g.items.length}</small></h3>
+      <ul class="rec-llista">${g.items.map((it) => `<li data-item="${esc(it.id)}">
+        <button class="rec-check" data-chk="compres||${esc(it.id)}" aria-label="Comprat"></button>
+        <button class="rec-text" data-itedita="compres||${esc(it.id)}"><span>${esc(it.text)}</span></button></li>`).join('')}</ul>`).join('')
+      + '<div class="ll-peu"><button class="btn primary" data-comprescomparteix>Comparteix-ho tot</button><button class="btn" data-comprescimprimeix>Imprimeix-ho tot</button></div>'
+      : '<p class="help buit">No falta res a cap botiga.</p>'}`;
+}
+// Text i full d'impressió de la compra: d'una botiga (per famílies) o de totes (per botigues)
+function compraPerCompartir() {
+  if (ui.compTot) {
+    const grups = botiguesAmbPendents();
+    return { titol: 'Llista de la compra', grups: grups.map((g) => ({ nom: g.c.nom, items: g.items.map((r) => r.text) })) };
+  }
+  const pend = state.compres.filter((r) => !r.fet && carpetaItem('compres', r) === botigaAra());
+  return { titol: 'Llista de la compra · ' + nomCarpeta('compres', botigaAra()),
+    grups: FAMILIES.map((f) => ({ nom: f.nom, items: pend.filter((r) => familiaDe(r) === f.id).map((r) => r.text) })).filter((g) => g.items.length) };
+}
+$('#main').addEventListener('click', (e) => {
+  if (e.target.closest('[data-comptot]')) { ui.compTot = true; render(); window.scrollTo(0, 0); return; }
+  if (e.target.closest('[data-comptotsurt]')) { ui.compTot = false; render(); window.scrollTo(0, 0); }
+});
+// Abans d'afegir un producte: si ja és per comprar a una altra botiga, es pregunta què fer
+async function repetitAltraBotiga(text, botiga) {
+  const altra = state.compres.find((x) => !x.fet && normal(x.text) === normal(text) && carpetaItem('compres', x) !== botiga);
+  if (!altra) return 'afegeix';
+  const on = nomCarpeta('compres', carpetaItem('compres', altra)), aqui = nomCarpeta('compres', botiga);
+  const op = await triaOpcio(`«${text}» ja és a la llista`, [
+    ['no', "No l'afegeixis", `Ja és per comprar a ${on}`],
+    ['mou', 'Mou-lo aquí', `Passa de ${on} a ${aqui}`],
+    ['si', 'Afegeix-lo igualment', 'Quedarà a totes dues botigues'],
+  ]);
+  if (op === 'mou') { altra.carpeta = botiga; save(); render(); toast(`Ara és a ${aqui}`); return 'fet'; }
+  return op === 'si' ? 'afegeix' : 'fet';
+}
 /* ---------- Enganxar llistes d'altres apps ---------- */
 async function textCopiat(titol, ajuda) {
   try { const t = await navigator.clipboard.readText(); if (t && t.trim()) return t; } catch (x) { /* l'aparell no deixa llegir el porta-retalls */ }
@@ -2993,13 +3038,19 @@ $('#main').addEventListener('click', async (e) => {
   } else {
     const llista = itemsDe(on, lid);
     if (!llista) return;
+    const altres = [];
     linies.forEach((l) => {
       const igual = llista.find((x) => normal(x.text) === normal(l) && (on !== 'compres' || carpetaItem('compres', x) === (lid || '')));
       if (igual && !igual.fet) { rep++; return; }
+      if (on === 'compres' && !igual) {
+        const altra = state.compres.find((x) => !x.fet && normal(x.text) === normal(l) && carpetaItem('compres', x) !== (lid || ''));
+        if (altra) { altres.push(`${l} (${nomCarpeta('compres', carpetaItem('compres', altra))})`); return; }
+      }
       if (igual) { igual.fet = false; n++; return; }
       llista.push(on === 'compres' ? { id: nouId('c'), text: l.slice(0, 200), fet: false, carpeta: lid || '', creat: new Date().toISOString() } : { id: nouId('i'), text: l.slice(0, 200), fet: false });
       n++;
     });
+    if (altres.length) { save(); render(); toast((n ? (n === 1 ? '1 afegit. ' : n + ' afegits. ') : '') + 'Ja els tenies a una altra botiga: ' + altres.join(', '), 7000); return; }
   }
   save(); render();
   toast(n ? (n === 1 ? '1 element afegit' : `${n} elements afegits`) + (rep ? ` (${rep} ja hi eren)` : '') : 'Ja els tenies tots', 4000);
@@ -3639,19 +3690,18 @@ $('#main').addEventListener('click', (e) => {
     return;
   }
   if (t.closest('[data-comprescimprimeix]')) {
-    const pend = state.compres.filter((r) => !r.fet && carpetaItem('compres', r) === botigaAra());
-    if (!pend.length) return;
-    const blocs = FAMILIES.map((f) => { const seus = pend.filter((r) => familiaDe(r) === f.id); return seus.length ? '<h2>' + esc(f.nom) + '</h2><ul>' + seus.map((r) => '<li><span class="quadret"></span>' + esc(r.text) + '</li>').join('') + '</ul>' : ''; }).join('');
-    imprimeixFull('<div class="llista-full imprès full-llista full-compra"><p class="ll-app">Galàxia</p><h1>Llista de la compra · ' + esc(nomCarpeta('compres', botigaAra())) + '</h1>' + blocs + '</div>');
+    const { titol, grups } = compraPerCompartir();
+    if (!grups.length) return;
+    const blocs = grups.map((g) => '<h2>' + esc(g.nom) + '</h2><ul>' + g.items.map((x) => '<li><span class="quadret"></span>' + esc(x) + '</li>').join('') + '</ul>').join('');
+    imprimeixFull('<div class="llista-full imprès full-llista full-compra"><p class="ll-app">Galàxia</p><h1>' + esc(titol) + '</h1>' + blocs + '</div>');
     return;
   }
   if (t.closest('[data-comprescomparteix]')) {
-    const pend = state.compres.filter((r) => !r.fet && carpetaItem('compres', r) === botigaAra());
-    if (!pend.length) return;
-    const blocs = FAMILIES.map((f) => { const seus = pend.filter((r) => familiaDe(r) === f.id); return seus.length ? f.nom + '\n' + seus.map((r) => '- ' + r.text).join('\n') : ''; }).filter(Boolean);
-    const text = 'Llista de la compra · ' + nomCarpeta('compres', botigaAra()) + '\n\n' + blocs.join('\n\n');
+    const { titol, grups } = compraPerCompartir();
+    if (!grups.length) return;
+    const text = titol + '\n\n' + grups.map((g) => g.nom + '\n' + g.items.map((x) => '- ' + x).join('\n')).join('\n\n');
     (async () => {
-      if (navigator.share) { try { await navigator.share({ title: 'Llista de la compra', text }); return; } catch (x) { if (x.name === 'AbortError') return; } }
+      if (navigator.share) { try { await navigator.share({ title: titol, text }); return; } catch (x) { if (x.name === 'AbortError') return; } }
       try { await navigator.clipboard.writeText(text); toast('Llista copiada: enganxa-la a WhatsApp, a un correu…'); } catch (x) { prompt('Copia la llista:', text); }
     })();
     return;
@@ -3687,7 +3737,7 @@ $('#main').addEventListener('change', (e) => {
   r.familia = e.target.value; save(); render();
   toast(`Ara és a ${FAMILIES.find((f) => f.id === r.familia)?.nom || 'Altres'}`);
 });
-$('#main').addEventListener('submit', (e) => {
+$('#main').addEventListener('submit', async (e) => {
   const f = e.target;
   if (f.id === 'formLlistaNova') {
     e.preventDefault();
@@ -3709,6 +3759,10 @@ $('#main').addEventListener('submit', (e) => {
     f.elements.text.value = '';
     jaHiEs(f, igual);
     return;
+  }
+  if (col === 'compres' && !(igual && igual.fet)) {
+    const r = await repetitAltraBotiga(text, lid || '');
+    if (r === 'fet') { f.elements.text.value = ''; document.querySelector(`[data-formitem="${f.dataset.formitem}"] input`)?.focus(); return; }
   }
   if (igual) igual.fet = false;
   else llista.push(col === 'compres' ? { id: nouId('c'), text, fet: false, carpeta: lid || '', creat: new Date().toISOString() } : { id: nouId('i'), text, fet: false });
