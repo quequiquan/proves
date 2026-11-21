@@ -1024,24 +1024,46 @@ function vistaAjustos() {
         : '<p class="help">Primer has d\'entrar amb el teu correu (a dalt, a «Compte»).</p>'}
     </div>` : ''}
     ${sync()?.disponible ? `<div class="section" id="seccioVeu">
-      <h2>Plans per veu (Siri)</h2>
-      <p class="help">Per apuntar plans parlant, per exemple mentre condueixes: <b>«Ei Siri, nou pla»</b> i després dius el pla,
-        com <i>«Sopar amb la Mamen dijous a les nou del vespre a Cal Ton»</i>. Es desa com a <b>Per confirmar</b> perquè el revisis després.</p>
+      <h2>Dreceres de l'iPhone</h2>
+      <p class="help">Dues dreceres per guardar coses a Galàxia sense obrir l'app. Es preparen un sol cop a l'app <b>Atajos</b> de l'iPhone. Cada persona ha de fer servir <b>el seu enllaç</b> (el d'aquests botons): així tot va a la seva Galàxia.</p>
       ${usuari()
-        ? `<div class="grp"><button class="btn primary" id="veuCopia">Copia el meu enllaç de veu</button><button class="btn" id="veuDesa">Copia l'enllaç per a «Desa a Galàxia»</button></div>
-          <details class="ajuda"><summary>Com es prepara la Drecera (un sol cop)</summary>
+        ? `<div class="grp"><button class="btn primary" id="veuDesa">Copia l'enllaç per a «Desa a Galàxia»</button><button class="btn primary" id="veuNota">Copia l'enllaç per a «Nota de veu»</button></div>
+          <details class="ajuda"><summary>1. «Desa a Galàxia» (menú Compartir)</summary>
+            <p>Des de Notes, Safari, Instagram, Google, Maps… toques <b>Compartir → Desa a Galàxia</b> i es crea una fitxa a <b>Memòria → Per classificar</b>. Si ja la tens, t'avisa i no la repeteix.</p>
             <ol class="passos-veu">
-              <li>Prem <b>Copia el meu enllaç de veu</b>.</li>
-              <li>Obre l'app <b>Dreceres</b> i prem <b>+</b>. Posa-li de nom <b>Nou pla</b>.</li>
-              <li>Afegeix l'acció <b>Dictar text</b>. A «Idioma», tria <b>Català</b>.</li>
-              <li>Afegeix l'acció <b>Obtenir el contingut de l'URL</b>. Enganxa-hi l'enllaç. Toca la fletxa: Mètode <b>POST</b>,
-                Cos <b>Formulari</b>, afegeix un camp de text amb clau <b>text</b> i com a valor la variable <b>Text dictat</b>.</li>
-              <li>Afegeix l'acció <b>Parlar text</b> (o «Mostrar resultat») amb <b>Contingut de l'URL</b>.</li>
-              <li>Prova-ho: <b>«Ei Siri, nou pla»</b>.</li>
+              <li>Aquí, prem <b>Copia l'enllaç per a «Desa a Galàxia»</b>.</li>
+              <li>Obre <b>Atajos</b>, pestanya <b>Atajos</b>, i toca <b>+</b>. A dalt, toca el nom i posa-li <b>Desa a Galàxia</b>.</li>
+              <li>Toca el nom de nou → <b>Detalles</b> (o la ⓘ) → activa <b>Mostrar en el panel de compartir</b>. Torna enrere.</li>
+              <li>A la primera caixa, <b>Recibir … de Panel de compartir</b>: deixa marcats tots els tipus. A <b>Si no hay datos de entrada</b>, tria <b>Obtener portapapeles</b>.</li>
+              <li>Afegeix l'acció <b>Texto</b>. Toca dins de la caixa i tria la variable <b>Entrada de atajo</b>.</li>
+              <li>Afegeix l'acció <b>Obtener contenido de URL</b>. Toca <b>URL</b> i enganxa-hi l'enllaç (acaba en <b>&amp;desa=1</b>). Toca la fletxa <b>›</b>: Método <b>POST</b>, Cuerpo de la solicitud <b>Formulario</b>, <b>Añadir nuevo campo → Texto</b>, clau <b>text</b> i valor la variable <b>Texto</b>.</li>
+              <li>Afegeix l'acció <b>Mostrar notificación</b> amb la variable <b>Contenido de URL</b>. Toca <b>OK</b>.</li>
+              <li>Prova-ho: a Notes, selecciona un text → <b>Compartir → Desa a Galàxia</b>. Ha de sortir «Desat a Galàxia: …».</li>
+              <li>Perquè surti la primera del menú Compartir: al final del menú, <b>Editar acciones…</b> → <b>+</b> a «Desa a Galàxia» i arrossega-la a dalt de <b>Favoritos</b>.</li>
             </ol>
-            <p>L'enllaç és privat: qui el tingui pot afegir plans a la teva agenda. Si l'has compartit sense voler,
-              <button class="enllac" id="veuNou">fes-ne un de nou</button> i torna'l a posar a la Drecera.</p>
-          </details>`
+          </details>
+          <details class="ajuda"><summary>2. «Nota de veu» (dictar sense obrir l'app)</summary>
+            <p>Toques la icona (o fas dos tocs al darrere del mòbil), parles en català i la nota arriba a la micro-app <b>Veu</b>.</p>
+            <ol class="passos-veu">
+              <li>Aquí, prem <b>Copia l'enllaç per a «Nota de veu»</b>.</li>
+              <li>A <b>Atajos</b>, toca <b>+</b> i posa-li de nom <b>Nota de veu</b>.</li>
+              <li>Afegeix l'acció <b>Dictar texto</b>. A <b>Idioma</b>, tria <b>Catalán</b>; a <b>Dejar de escuchar</b>, <b>Tras pausa</b>.</li>
+              <li>Afegeix l'acció <b>Obtener contenido de URL</b>. Si l'iPhone hi posa sol «Texto dictado» com a adreça, esborra-ho. Toca <b>URL</b> i enganxa-hi l'enllaç: ha d'acabar exactament en <b>&amp;nota=1</b> (amb el signe =).</li>
+              <li>Toca la fletxa <b>›</b>: Método <b>POST</b>, Cuerpo de la solicitud <b>Formulario</b>, <b>Añadir nuevo campo → Texto</b>, clau <b>text</b> i valor la variable <b>Texto dictado</b>.</li>
+              <li>Afegeix l'acció <b>Mostrar notificación</b> amb <b>Contenido de URL</b>. Toca <b>OK</b>.</li>
+              <li>Prova-ho amb ▶: parla i calla. Ha de sortir <b>«Apuntat»</b> (si surt «Apuntat per confirmar…», a l'enllaç li falta «&amp;nota=1»).</li>
+              <li>Per tenir-la a un toc: mantén-la premuda → <b>Compartir → Añadir a pantalla de inicio</b>. O bé a <b>Ajustes → Accesibilidad → Tocar → Tocar atrás → Doble toque → Nota de veu</b>.</li>
+            </ol>
+          </details>
+          <details class="ajuda"><summary>Plans per veu amb Siri (opcional)</summary>
+            <p>Per apuntar un pla a l'Agenda dient <b>«Ei Siri, nou pla»</b> (Siri només entén el castellà; l'app ho tradueix). Es desa com a <b>Per confirmar</b>.</p>
+            <ol class="passos-veu">
+              <li><button class="enllac" id="veuCopia">Copia l'enllaç per a plans</button>.</li>
+              <li>Fes una drecera igual que «Nota de veu», però amb aquest enllaç (sense «&amp;nota=1») i de nom <b>Nou pla</b>.</li>
+            </ol>
+          </details>
+          <p class="help">Els enllaços són privats: qui els tingui pot afegir coses a la teva Galàxia. Si n'has compartit un sense voler,
+            <button class="enllac" id="veuNou">fes-ne un de nou</button> i torna'l a posar a les dreceres.</p>`
         : '<p class="help">Primer has d\'entrar amb el teu correu (a dalt, a «Compte»).</p>'}
     </div>` : ''}
     ${sync()?.disponible && rebuts().length ? `<div class="section" id="seccioAuto">

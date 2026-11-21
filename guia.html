@@ -222,6 +222,7 @@ section.final h2 { font-size: clamp(24px, 4vw, 30px); }
     <a href="#memoria">Memòria</a>
     <a href="#memoria">Documents</a>
     <a href="#veu">Notes de veu</a>
+    <a href="#dreceres">Dreceres</a>
     <a href="#aniversaris">Aniversaris</a>
     <a href="#nou-pla">Crear un pla</a>
     <a href="#etiquetes">Etiquetes</a>
@@ -459,7 +460,7 @@ section.final h2 { font-size: clamp(24px, 4vw, 30px); }
         <li style="--c:#0B7285"><b>Escrivint-la</b> a la casella (o dictant-la amb el micròfon del teclat).</li>
       </ul>
       <p style="margin-top:10px"><b>Envia a…</b> passa cada nota a <b>Recordatoris</b>, a una <b>llista</b>, a <b>Compres</b> (a la botiga que triïs: «piles, llet i tomàquets» en fa tres productes), a <b>Memòria</b> (a la carpeta que triïs) o a l'<b>Agenda</b> com a pla nou. En enviar-la, surt de Veu (amb <b>Desfés</b>).</p>
-      <p class="consell"><b>Per preparar la drecera</b> (un sol cop): a Veu, obre <b>Dictar amb el doble toc al darrere del mòbil</b> i copia l'enllaç. A l'app <b>Atajos</b>: <b>Dictar texto</b> (idioma Català, dejar de escuchar «Tras pausa») → <b>Obtener contenido de URL</b> (l'enllaç, que acaba en <b>&amp;nota=1</b>; método POST; formulario amb el camp <b>text</b> = Texto dictado) → <b>Mostrar notificación</b>. Després, <b>Añadir a pantalla de inicio</b>, o assigna-la a Ajustes → Accesibilidad → Tocar → <b>Tocar atrás</b>.</p>
+      <p class="consell"><b>Per preparar la drecera</b> (un sol cop), mira l'apartat <a href="#dreceres">Dreceres de l'iPhone</a>.</p>
       <p class="consell"><b>Si una nota no surt</b>, a Veu prem <b>Busca notes al núvol</b>. I tanca i torna a obrir Galàxia als altres aparells (l'ordinador, l'iPad…), perquè tots tinguin la versió nova.</p>
     </div>
     <div class="mobil" aria-hidden="true">
@@ -470,6 +471,39 @@ section.final h2 { font-size: clamp(24px, 4vw, 30px); }
         <div class="m-card veu"><span><small>Dictat · 19 nov. · 20:41</small><b>Trucar al lampista</b><small class="acc">Envia a… · Corregeix · Esborra</small></span></div>
         <div class="m-card veu"><span><small>Àudio · 19 nov. · 18:05 · 0:23</small><b>▶ Escolta</b><small class="acc">Envia a… · Escriu què diu · Esborra</small></span></div>
       </div>
+    </div>
+  </section>
+
+  <!-- Dreceres -->
+  <section class="ap" id="dreceres">
+    <div class="text">
+      <span class="etiq">Es fa una sola vegada a cada mòbil</span>
+      <h2>Dreceres de l'iPhone</h2>
+      <p>Dues dreceres de l'app <b>Atajos</b> per guardar coses a Galàxia sense obrir-la. Cada persona les ha de fer al <b>seu</b> mòbil amb el <b>seu</b> enllaç, que trobarà a <b>Agenda → Ajustos → Dreceres de l'iPhone</b>. Allà hi ha els botons per copiar l'enllaç i tots els passos.</p>
+      <ul class="punts">
+        <li style="--c:#7048E8"><b>Desa a Galàxia</b>: des de Notes, Safari, Instagram, Google o Maps, <b>Compartir → Desa a Galàxia</b>. Es crea una fitxa a <b>Memòria → Per classificar</b>. Si ja la tens (mateix enllaç o mateix nom), t'avisa «Ja el tenies a Galàxia» i no la repeteix.</li>
+        <li style="--c:#0B7285"><b>Nota de veu</b>: toques la icona (o dos tocs al darrere del mòbil), parles en català i surt «Apuntat». La nota arriba a <b>Veu</b>.</li>
+      </ul>
+      <ol class="passos">
+        <li><span>A Galàxia: <b>Agenda → Ajustos → Dreceres de l'iPhone</b> → <b>Copia l'enllaç per a «Desa a Galàxia»</b>.</span></li>
+        <li><span>A <b>Atajos</b>: <b>+</b>, nom <b>Desa a Galàxia</b>, i a Detalles activa <b>Mostrar en el panel de compartir</b>.</span></li>
+        <li><span>Primera caixa: si no hi ha dades d'entrada, <b>Obtener portapapeles</b>. Acció <b>Texto</b> amb <b>Entrada de atajo</b>.</span></li>
+        <li><span><b>Obtener contenido de URL</b>: l'enllaç; POST, Formulario, camp <b>text</b> = <b>Texto</b>. Després <b>Mostrar notificación</b> amb <b>Contenido de URL</b>.</span></li>
+        <li><span>Per a <b>Nota de veu</b>, el mateix però amb <b>Dictar texto</b> (Catalán, Tras pausa) i el camp <b>text</b> = <b>Texto dictado</b>; l'enllaç acaba en <b>&amp;nota=1</b>.</span></li>
+      </ol>
+      <p class="consell"><b>Els enllaços són privats.</b> Si la teva dona fes servir el teu, el que desés aniria a la teva Galàxia. Si en comparteixes un sense voler, a Ajustos pots fer-ne un de nou.</p>
+    </div>
+    <div class="mobil" aria-hidden="true">
+      <div class="m-barra">Ajustos</div>
+      <div class="m-cos">
+        <div class="m-tit">Dreceres de l'iPhone</div>
+        <div class="boto">Copia l'enllaç per a «Desa a Galàxia»</div>
+        <div class="boto">Copia l'enllaç per a «Nota de veu»</div>
+        <div class="m-card"><span><b>1. «Desa a Galàxia»</b><small>Passos per fer la drecera</small></span></div>
+        <div class="m-card"><span><b>2. «Nota de veu»</b><small>Passos per fer la drecera</small></span></div>
+        <div class="m-card"><span><b>Plans per veu amb Siri</b><small>Opcional</small></span></div>
+      </div>
+      <div class="m-tabs"><span>Galàxia</span><span>Plans</span><span>Calendari</span><span>Contactes</span><span class="on">Ajustos</span></div>
     </div>
   </section>
 
@@ -769,6 +803,7 @@ section.final h2 { font-size: clamp(24px, 4vw, 30px); }
         <li><b>Qui pot fer servir l'app</b> (només l'administrador): la llista de persones convidades i, per a cadascuna, si comença amb Galàxia o amb Agenda.</li>
         <li><b>Altres calendaris</b>: hi afegeixes el calendari de l'app de gravacions, amb el color que vulguis.</li>
         <li><b>Calendari de l'iPhone</b>: les subscripcions per etiqueta.</li>
+        <li><b>Dreceres de l'iPhone</b>: els enllaços privats i els passos per a «Desa a Galàxia» i «Nota de veu».</li>
         <li><b>Plans que t'envien</b>: tries de qui s'accepten sols els plans.</li>
         <li><b>El teu nom</b>: el que surt als missatges que envies.</li>
         <li><b>Etiquetes</b>: crea, canvia el color o l'ordre, i passa-les a Principals.</li>
