@@ -213,6 +213,23 @@ const Sync = (() => {
     desa(); if (noves) save();
     return { total: (data || []).length, esborrades: (data || []).filter((f) => f.esborrat).length, noves };
   }
+  /* ---------- Còpies enviades a una altra persona (carpetes, llistes, botigues, fitxes) ---------- */
+  async function enviaCopia(perEmail, tipus, titol, contingut) {
+    if (!sb || !usuari) throw new Error('Cal haver entrat amb el correu');
+    const { error } = await sb.from('enviaments').insert({ de: usuari.id, de_nom: nomPropi(), de_email: usuari.email, per_email: perEmail.trim().toLowerCase(), entorn: ENTORN, tipus, titol: String(titol).slice(0, 120), contingut });
+    if (error) throw error;
+  }
+  async function enviamentsRebuts() {
+    if (!sb || !usuari) return [];
+    const { data, error } = await sb.from('enviaments').select('id,de_nom,de_email,tipus,titol,contingut,creat')
+      .eq('per_email', (usuari.email || '').toLowerCase()).eq('entorn', ENTORN).eq('estat', 'pendent').order('creat');
+    if (error) throw error;
+    return data || [];
+  }
+  async function responEnviament(id, estat) {
+    const { error } = await sb.from('enviaments').update({ estat }).eq('id', id);
+    if (error) throw error;
+  }
   /* ---------- Cicle de sincronització ---------- */
   async function sincronitza() {
     if (!sb || !usuari) return;
@@ -225,6 +242,11 @@ const Sync = (() => {
         else { await puja(); canvi = await baixa(); }
         await pujaComp();
         canvi = (await baixaComp()) || canvi;
+        // Còpies que m'han enviat i encara no he respost
+        try {
+          const env = await enviamentsRebuts();
+          if (env.map((x) => x.id).join() !== (ui.enviaments || []).map((x) => x.id).join()) { ui.enviaments = env; canvi = true; }
+        } catch (x) { /* encara no hi ha la taula d'enviaments */ }
         posaEstat('ok');
         if (canvi && !document.querySelector('#dlg[open]')) render();
         setTimeout(aplicaModeConvidat, 0);
@@ -443,7 +465,7 @@ const Sync = (() => {
   }
 
   return {
-    enllacCalendari, enllacVeu, notesDelNuvol, pujaDoc, urlDoc, esborraDoc, esAdmin, convidats, convida, desconvida, modeConvidat,
+    enllacCalendari, enllacVeu, notesDelNuvol, enviaCopia, enviamentsRebuts, responEnviament, pujaDoc, urlDoc, esborraDoc, esAdmin, convidats, convida, desconvida, modeConvidat,
     disponible,
     usuari: () => usuari,
     // Abans de saber si hi ha sessió: n'hi ha alguna de guardada en aquest dispositiu?

@@ -1276,3 +1276,7 @@ button.gx-pindola, .gx-pindola { color: color-mix(in srgb, var(--text) 82%, var(
 .tc-tot small { color: var(--muted); font-weight: 700; }
 .tc-botiga small { color: var(--muted); font-weight: 700; margin-left: 4px; }
 .sat-cap h1.h1-curt { font-size: 20px; white-space: normal; }
+/* Còpies rebudes */
+.env-avis { background: var(--surface); border: 1.5px solid var(--accent); border-radius: 16px; padding: 12px 14px; margin: 14px auto 0; max-width: 420px; text-align: left; }
+.env-avis p { margin: 0 0 10px; }
+.mem-sel-barra .mem-sel-envia[disabled] { opacity: .5; }
