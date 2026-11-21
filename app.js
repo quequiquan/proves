@@ -1248,7 +1248,7 @@ function vistaRecordatoris() {
   return capSatel('Recordatoris') + `<p class="help">Coses pendents que no vols oblidar. Toca un recordatori per afegir-hi notes, fotos, un enllaç o passos. Quan el facis, toca el cercle: passa a «Fets», on es guarda 30 dies.</p>
     <form id="formRec" class="rec-nou" autocomplete="off"><input id="recText" placeholder="Què has de recordar?" maxlength="300" enterkeyhint="done" value="${esc(ui.recNouText || '')}"><button class="btn primary">Afegeix</button></form>
     ${barraRecNou()}
-    <button class="enllac enganxa" data-enganxa="recordatoris">Enganxa una llista d'una altra app</button>
+    <button class="enllac enganxa" data-enganxa="recordatoris">Enganxa el que has copiat</button>
     ${llista.length > 3 ? '<input id="cercaRec" type="search" class="doc-cerca" placeholder="Cerca un recordatori…" autocomplete="off">' : ''}
     ${llista.length ? `<ul class="rec-llista recs">${llista.map((r) => `<li class="mur-rec" data-rec="${esc(r.id)}" data-reccerca="${esc(normal([r.text, r.notes, r.lloc, ...(r.subtasques || []).map((x) => x.text)].filter(Boolean).join(' ')))}">
         <div class="mur-accions"><button type="button" class="acc-esborra" data-rectreu="${esc(r.id)}">Esborra</button></div>
@@ -1303,7 +1303,7 @@ function vistaLlista() {
   const tornaA = carpetaOberta('llista') === null ? 'Carpetes' : nomCarpeta('llista', carpetaOberta('llista'));
   return `<div class="sat-cap"><button class="sat-torna" data-llistes aria-label="Torna">‹ ${esc(tornaA)}</button><h1>${esc(l.nom)}</h1></div>
     ${formItem('llista', l.id, 'Afegeix a la llista')}
-    <button class="enllac enganxa" data-enganxa="llista|${esc(l.id)}">Enganxa una llista d'una altra app</button>
+    <button class="enllac enganxa" data-enganxa="llista|${esc(l.id)}">Enganxa el que has copiat</button>
     ${pend.length ? filesItems(pend, 'llista', l.id) : `<p class="help buit">${fets ? 'Llista feta.' : 'La llista és buida.'}</p>`}
     <div class="ll-peu">
       ${fets ? `<button class="btn" data-omple="${esc(l.id)}">Torna-la a omplir (${fets})</button>` : ''}
@@ -1619,7 +1619,7 @@ function vistaCompres() {
   const vegades = (r) => r.vegades || 1;
   const habituals = deLaBotiga.filter((r) => r.fet).sort((a, b) => vegades(b) - vegades(a) || a.text.localeCompare(b.text, 'ca'));
   return `<div class="sat-cap"><button class="sat-torna" data-cftorna="compres" aria-label="Torna a les botigues">‹ Botigues</button><h1>${esc(nomCarpeta('compres', cid))}</h1></div>`
-    + formItem('compres', cid, 'Què falta?') + `<button class="enllac enganxa" data-enganxa="compres|${esc(cid)}">Enganxa una llista d'una altra app</button>`
+    + formItem('compres', cid, 'Què falta?') + `<button class="enllac enganxa" data-enganxa="compres|${esc(cid)}">Enganxa el que has copiat</button>`
     + (pend.length ? filesCompres(pend) + '<div class="ll-peu"><button class="btn" data-comprescomparteix>Comparteix la llista</button><button class="btn" data-comprescimprimeix>Imprimeix</button></div>' : '<p class="help buit">No falta res.</p>')
     + (habituals.length ? `<h2 class="ll-titol">Habituals</h2><p class="help">Toca'n un per tornar-lo a posar a la llista. Mantén-lo premut per treure'l dels habituals.</p>
       ${FAMILIES.map((f) => { const seus = habituals.filter((r) => familiaDe(r) === f.id); return seus.length ? `<div class="ll-chips fam-chips" style="--fc:${f.c}">${seus.map((r) => `<button class="ll-chip${vegades(r) >= 3 ? ' sovint' : ''}" data-torna="${esc(r.id)}">${esc(r.text)}</button>`).join('')}</div>` : ''; }).join('')}` : '')
@@ -1839,6 +1839,7 @@ function vistaVeu() {
         <p class="veu-estat" id="veuEstat">${grava ? `<b class="veu-temps" id="veuTemps">${durText((Date.now() - grava.inici) / 1000)}</b> Gravant… toca per acabar` : ui.veuPujant ? 'Desant l\'àudio…' : '<b>Toca per gravar</b> i torna a tocar per acabar. També pots mantenir-lo premut mentre parles.'}</p>
       </div>` : '<p class="help avis-doc">Per gravar àudios cal haver entrat amb el teu correu (toca el logo de Galàxia, a dalt).</p>'}
     <form id="formNotaVeu" class="rec-nou" autocomplete="off"><input id="notaVeuText" placeholder="O escriu-la o dicta-la amb el teclat" maxlength="2000" enterkeyhint="done"><button class="btn primary">Apunta</button></form>
+    <button class="enllac enganxa" data-veucopiat>Enganxa el que has copiat</button>
     ${notes.length ? `<div class="veu-llista">${notes.map((n) => `<div class="mur-g veu-mur"><div class="mur-accions"><button type="button" class="acc-esborra" data-notatreu="${esc(n.id)}">Esborra</button></div><div class="mur-cos veu-nota" data-nota="${esc(n.id)}">
         <small class="veu-de">${n.audio ? 'Àudio' : n.origen === 'dictat' ? 'Dictat' : 'Escrit'} · ${esc(quanNota(n.creat))}${n.audio ? ' · ' + durText(n.audio.durada) : ''}</small>
         ${n.text ? `<p>${ambEnllacos(n.text)}</p>` : '<p class="veu-sense">Sense text: escolta-la i escriu què diu per poder-la enviar.</p>'}
@@ -1909,6 +1910,14 @@ $('#main').addEventListener('submit', (e) => {
   if (!text) { i.focus(); return; }
   state.notesveu.push({ id: nouId('nv'), text: text.slice(0, 2000), origen: 'escrit', creat: new Date().toISOString() });
   save(); render(); document.getElementById('notaVeuText')?.focus();
+});
+$('#main').addEventListener('click', async (e) => {
+  if (!e.target.closest('[data-veucopiat]')) return;
+  const text = await textCopiat('Enganxa el text', "Mantén el dit a la casella i tria «Enganxar».");
+  if (!text || !text.trim()) return;
+  const n = { id: nouId('nv'), text: text.trim().slice(0, 2000), origen: 'escrit', creat: new Date().toISOString() };
+  state.notesveu.push(n); save(); render();
+  toastDesfes('Nota afegida', () => { state.notesveu = state.notesveu.filter((x) => x.id !== n.id); save(); render(); });
 });
 function treuNota(n, missatge) {
   const lloc = state.notesveu.indexOf(n), copia = { ...n };
@@ -2327,7 +2336,7 @@ function vistaPindoles() {
     const llista = frasesMeves().slice().reverse();
     return capSatel('Píndoles') + pestanyes + `<p class="help">Escriu les frases que t'agradin i sortiran barrejades amb les altres com a frase del dia: la primera vegada, l'endemà d'afegir-la.</p>
       <form id="formFrase" class="rec-nou" autocomplete="off"><input id="fraseText" placeholder="Escriu una frase…" maxlength="200" enterkeyhint="done"><button class="btn primary">Afegeix</button></form>
-      <button class="enllac enganxa" data-enganxa="frases">Enganxa diverses frases de cop</button>
+      <button class="enllac enganxa" data-enganxa="frases">Enganxa les frases que has copiat</button>
       ${llista.length ? `<div class="pd-llista">${llista.map((f) => `<div class="pd-fila pd-meva"><p>${esc(f.text)}</p>
         <div class="mem-accions"><button class="enllac" data-frasedita="${esc(f.id)}">Edita</button><button class="enllac perill" data-frasetreu="${esc(f.id)}">Treu</button></div></div>`).join('')}</div>`
         : '<p class="help buit">Encara no n\'has afegit cap.</p>'}`;
@@ -2869,6 +2878,10 @@ $('#main').addEventListener('submit', (e) => {
 });
 
 /* ---------- Enganxar llistes d'altres apps ---------- */
+async function textCopiat(titol, ajuda) {
+  try { const t = await navigator.clipboard.readText(); if (t && t.trim()) return t; } catch (x) { /* l'aparell no deixa llegir el porta-retalls */ }
+  return enganxaText(titol, ajuda);
+}
 $('#main').addEventListener('click', async (e) => {
   const b = e.target.closest('[data-enganxa]');
   if (!b) return;
@@ -2906,7 +2919,7 @@ $('#main').addEventListener('click', async (e) => {
     return;
   }
   if (on === 'frases') {
-    const text = await enganxaText('Enganxa les frases', 'Una frase a cada línia. Sortiran com a frase del dia, una cada dia a partir de demà, i després de tant en tant.');
+    const text = await textCopiat('Enganxa les frases', 'Una frase a cada línia. Sortiran com a frase del dia, una cada dia a partir de demà, i després de tant en tant.');
     if (!text || !text.trim()) return;
     const clauF = (t) => normal(t).replace(/[^a-z0-9]/g, '');
     const ja = new Set([...frasesMeves().map((f) => clauF(f.text)), ...PINDOLES.map(clauF)]);
@@ -2924,7 +2937,7 @@ $('#main').addEventListener('click', async (e) => {
     toast(n ? (n === 1 ? '1 frase afegida' : `${n} frases afegides`) + (rep ? ` (${rep} ja hi eren)` : '') : 'Ja les tenies totes', 4000);
     return;
   }
-  const text = await enganxaText('Enganxa la llista', AJUDA_ENGANXA);
+  const text = await textCopiat('Enganxa la llista', AJUDA_ENGANXA);
   if (!text || !text.trim()) return;
   const linies = liniesNetes(text);
   let n = 0, rep = 0;
