@@ -4061,12 +4061,28 @@ async function fullAPdf(el, nom) {
     return new File([pdf.output('blob')], nom, { type: 'application/pdf' });
   } finally { caixa.remove(); }
 }
+// Si el PDF ha trigat a fer-se, l'iPhone ja no deixa obrir el menú Compartir sol: es mostra un botó per obrir-lo
+function botoCompartirPdf(f) {
+  document.querySelector('.demana')?.remove();
+  const d = document.createElement('div');
+  d.className = 'demana';
+  d.innerHTML = '<div class="demana-caixa"><b>El PDF ja està a punt</b><button type="button" class="btn primary" data-pdf="comparteix">Envia o desa el PDF</button><p class="help">Surt el menú de l\'iPhone: WhatsApp, Correu, Imprimir, Desar a Arxius…</p><button type="button" class="enllac" data-pdf="">Tanca</button></div>';
+  document.body.appendChild(d);
+  d.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-pdf]');
+    if (!b && e.target !== d) return;
+    if (b?.dataset.pdf === 'comparteix') { try { await navigator.share({ files: [f] }); } catch (x) { /* ha cancel·lat */ } }
+    d.remove();
+  });
+}
 async function imprimeixAlMobil(nom) {
   toast('Preparant el PDF…', 2500);
   try {
     const f = await fullAPdf($('#impressio'), nom);
     if (navigator.canShare && navigator.canShare({ files: [f] })) {
-      try { await navigator.share({ files: [f], title: nom.replace(/\.pdf$/, '') }); } catch (x) { /* ha cancel·lat */ }
+      // Només el fitxer: si s'hi afegeix un títol o un text, WhatsApp no l'accepta
+      try { await navigator.share({ files: [f] }); }
+      catch (x) { if (x.name !== 'AbortError') botoCompartirPdf(f); }   // l'iPhone no l'ha deixat obrir sol: es fa amb un toc
       return;
     }
     window.open(URL.createObjectURL(f), '_blank');
