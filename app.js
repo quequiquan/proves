@@ -5030,12 +5030,20 @@ $('#main').addEventListener('touchend', (e) => {
 
 /* ---------- Diàleg ---------- */
 const dlg = $('#dlg'), dlgForm = $('#dlgForm');
-function tancaDlg() { if (dlg.open) dlg.close(); }
+function tancaDlg() {
+  if (!dlg.open) return;
+  // El formulari obert pot voler desar abans de tancar (el pla es desa sol); si torna false, no es tanca
+  const abans = dlgForm.abansDeTancar;
+  if (abans) { dlgForm.abansDeTancar = null; if (abans() === false) { if (!dlgForm.abansDeTancar) dlgForm.abansDeTancar = abans; return; } }
+  if (dlg.open) dlg.close();
+}
+// La tecla Esc també passa per tancaDlg
+dlg.addEventListener('cancel', (e) => { if (dlgForm.abansDeTancar) { e.preventDefault(); tancaDlg(); } });
 dlg.addEventListener('click', (e) => {
   if (e.target === dlg || e.target.closest('[data-tanca]')) tancaDlg();
 });
 function obreDlg(html, classe = '') {
-  dlgForm.onsubmit = null; dlgForm.onclick = null; dlgForm.onchange = null; dlgForm.oninput = null;
+  dlgForm.onsubmit = null; dlgForm.onclick = null; dlgForm.onchange = null; dlgForm.oninput = null; dlgForm.abansDeTancar = null;
   dlgForm.className = classe;
   dlgForm.innerHTML = html;
   if (!dlg.open) dlg.showModal();
@@ -5421,8 +5429,8 @@ function obreForm(p, base = {}) {
     <footer class="dlg-peu">
       ${nou ? '' : '<button type="button" class="btn perill" id="fEsborra">Esborra</button>'}
       <span class="flex"></span>
-      <button type="button" class="btn" data-tanca>Cancel·la</button>
-      <button class="btn primary">Desa</button>
+      <span class="help desa-sol">Es desa sol en tancar</span>
+      <button class="btn primary">Fet</button>
     </footer>`, 'form');
 
   const afegeixPersona = () => {
@@ -5503,8 +5511,9 @@ function obreForm(p, base = {}) {
     }
     if (e.target.id === 'ntCrea') { creaTipus(); return; }
     if (e.target.id === 'tGestiona') {
-      if (!confirm("Vols anar a Ajustos per canviar els tipus? Aquest pla encara no s'ha desat.")) return;
-      tancaDlg(); ui.view = 'ajustos'; desaPref('view', ui.view); render();
+      if (!confirm('Vols anar a Ajustos per canviar els tipus? El pla es desarà tal com està.')) return;
+      tancaDlg(); if (dlg.open) return;
+      ui.view = 'ajustos'; desaPref('view', ui.view); render();
       $('#seccioTipus')?.scrollIntoView({ block: 'start' });
       return;
     }
@@ -5528,6 +5537,7 @@ function obreForm(p, base = {}) {
     if (e.target.id === 'fEsborra') {
       if (!confirm(`Esborrar «${titolPla(p)}»?`)) return;
       state.plans = state.plans.filter((x) => x.id !== p.id);
+      dlgForm.abansDeTancar = null;
       save(); tancaDlg(); render(); toast('Pla esborrat');
     }
   };
@@ -5566,12 +5576,19 @@ function obreForm(p, base = {}) {
       dlgForm.elements.horaFi.disabled = e.target.checked;
     }
   };
-  dlgForm.onsubmit = (e) => {
-    e.preventDefault();
+  // Desa el pla. Torna true si s'ha desat (o no hi havia res a desar) i false si falta alguna cosa.
+  // tancant = s'ha tocat ×, fora de la finestra o Esc: un pla nou buit es descarta i no s'obre el detall
+  const desaPla = (tancant) => {
     const f = dlgForm.elements;
-    if (!d.tipusId && !f.titol.value.trim()) { toast('Escriu què faràs o tria un tipus'); f.titol.focus(); return; }
-    if (!f.data.value) { toast('Falta el dia'); f.data.focus(); return; }
-    if (f.dataFi.value && f.dataFi.value < f.data.value) { toast("«Fins al dia» ha de ser després del primer dia"); f.dataFi.focus(); return; }
+    if (!f || !f.titol) return true;
+    if (tancant && nou && !f.titol.value.trim() && !tipusAMa && !f.notes.value.trim() && !f.lloc.value.trim() && !d.qui.length) return true;
+    const falta = !d.tipusId && !f.titol.value.trim() ? ['Escriu què faràs o tria un tipus', f.titol]
+      : !f.data.value ? ['Falta el dia', f.data]
+      : f.dataFi.value && f.dataFi.value < f.data.value ? ["«Fins al dia» ha de ser després del primer dia", f.dataFi] : null;
+    if (falta) {
+      if (tancant && confirm(`${falta[0]}.\n\nVols sortir sense desar ${nou ? 'aquest pla' : 'els canvis'}?`)) return true;
+      toast(falta[0]); falta[1].focus(); return false;
+    }
     // Coincideix amb una altra activitat amb hora el mateix dia?
     if (!f.totElDia.checked && f.hora.value && !dlgForm.dataset.solapOk) {
       const min = (h) => { const [a, b] = h.split(':').map(Number); return a * 60 + b; };
@@ -5580,7 +5597,7 @@ function obreForm(p, base = {}) {
         .filter((x) => { const a = min(x.hora), b = x.horaFi && min(x.horaFi) > a ? min(x.horaFi) : a + 60; return a < fi && ini < b; });
       if (xoc.length) {
         const llista = xoc.map((x) => `• ${titolPla(x)} (${horaText(x)})`).join('\n');
-        if (!confirm(`Aquest pla coincideix amb:\n${llista}\n\nVols desar-lo igualment?`)) return;
+        if (!confirm(`Aquest pla coincideix amb:\n${llista}\n\nVols desar-lo igualment?`)) return false;
       }
     }
     const dades = {
@@ -5591,6 +5608,12 @@ function obreForm(p, base = {}) {
       lloc: f.lloc.value.trim(), llocUrl: esUrl(f.llocUrl.value) ? f.llocUrl.value.trim() : '', notes: f.notes.value.trim(), estat: f.estat.value || 'confirmat',
       qui: d.qui.filter((id) => totes().some((x) => x.id === id)),
     };
+    const nv = (v) => (v === false || v == null ? '' : String(v));
+    // Un pla que ja existia i no ha canviat: no es toca (ni s'envia res als altres)
+    if (!nou && Object.keys(dades).every((k) => (k === 'qui' ? dades.qui.join() === (p.qui || []).join() : nv(dades[k]) === nv(p[k])))) {
+      if (!tancant) { render(); obreDetall(p); }
+      return true;
+    }
     nousPers.filter((pe) => dades.qui.includes(pe.id)).forEach((pe) => state.persones.push(pe));
     // Compartir: s'afegeixen els correus de la gent nova de «Qui» i es treuen els de qui ja no hi és
     const correuDe = (id) => normal(pers(id)?.email);
@@ -5607,11 +5630,14 @@ function obreForm(p, base = {}) {
     ui.diaSel = desat.data;
     ui.cursor = new Date(parseYmd(desat.data).getFullYear(), parseYmd(desat.data).getMonth(), 1);
     render();
-    obreDetall(desat);
+    if (!tancant) obreDetall(desat);
     const perWa = dades.qui.map(pers).filter((pe) => pe && pe.tel && !(usuari() && teApp(pe)));
     toast((nou ? 'Pla afegit' : 'Canvis desats') + (usuari() && perApp.length && dades.data >= avui() ? ` i enviat a l'app de ${llistaNoms(perApp.map((pe) => pe.nom))}` : '')
-      + (nou && perWa.length ? `. Per avisar ${perWa.length === 1 ? perWa[0].nom : 'els altres'} per WhatsApp, toca el seu nom aquí sota.` : ''), perWa.length ? 6000 : 3200);
+      + (nou && perWa.length && !tancant ? `. Per avisar ${perWa.length === 1 ? perWa[0].nom : 'els altres'} per WhatsApp, toca el seu nom aquí sota.` : ''), perWa.length ? 6000 : 3200);
+    return true;
   };
+  dlgForm.onsubmit = (e) => { e.preventDefault(); if (desaPla(false)) dlgForm.abansDeTancar = null; };
+  dlgForm.abansDeTancar = () => desaPla(true);
 }
 
 /* ---------- Còpia de seguretat ---------- */
