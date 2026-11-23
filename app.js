@@ -1717,7 +1717,7 @@ function vistaMemoria() {
     const cOn = carpetaActual() === null ? null : carpetesMem().find((c) => c.id === carpetaActual());
     const torna = carpetaActual() === null ? 'Carpetes' : cOn ? cOn.nom : 'General';
     return `<div class="sat-cap"><button class="sat-torna" data-memcancela aria-label="Torna">‹ ${esc(torna)}</button><h1>${f ? 'Fitxa' : 'Fitxa nova'}</h1></div>
-    <form id="formMem" class="mem-form" autocomplete="off">
+    <form id="formMem" class="mem-form" autocomplete="off" data-memid="${esc(f ? f.id : 'nova')}">
       <label>Títol<textarea name="titol" data-triatot rows="1" class="mem-titol" placeholder="Nom del restaurant, del vi, de la pòlissa, una frase…" maxlength="500" required>${esc(f?.titol || '')}</textarea></label>
       <div class="mem-web"><button type="button" class="btn" data-memcerca-web="google">Cerca a Google</button><button type="button" class="btn" data-memcerca-web="maps">Cerca a Maps</button><button type="button" class="btn" data-memenganxa>Enganxa les dades</button></div>
       <p class="help mem-web-ajuda">Busca el nom a Google o a Maps, copia l'adreça, el telèfon o la web (a Maps: Compartir → Copiar) i torna aquí a prémer «Enganxa les dades».</p>
@@ -1725,11 +1725,11 @@ function vistaMemoria() {
       <label>Què has de recordar<textarea name="text" rows="6" maxlength="3000" placeholder="Adreça, telèfon, enllaç, el que calgui…">${esc(f?.text || '')}</textarea></label>
       <div class="rec-bloc"><span>Fotos</span>
         ${f && (f.imatges || []).length ? `<div class="rec-imgs">${f.imatges.map((im) => `<button type="button" class="rec-img" data-memimg="${esc(f.id)}|${esc(im.id)}"><img src="${esc(im.mini)}" alt=""></button>`).join('')}</div>` : ''}
-        ${!f ? '<p class="help">Desa la fitxa i després, amb «Edita», hi podràs afegir fotos.</p>'
+        ${!f ? '<p class="help">Toca «Fet» i després, amb «Edita», hi podràs afegir fotos.</p>'
           : usuari() ? `<label class="btn rec-afoto${ui.memPujant ? ' ocupat' : ''}"><input type="file" id="memFoto" accept="image/*" multiple hidden ${ui.memPujant ? 'disabled' : ''}>${ui.memPujant ? 'Pujant…' : 'Afegeix fotos'}</label>`
           : '<p class="help">Per afegir fotos cal haver entrat amb el teu correu.</p>'}
       </div>
-      <div class="grp"><button class="btn primary">Desa</button><button type="button" class="btn" data-memcancela>Cancel·la</button>
+      <div class="grp"><button class="btn primary">Fet</button><span class="mem-desat help">Els canvis es desen sols</span>
         ${f ? `<button type="button" class="enllac perill" data-memesborra="${esc(f.id)}">Esborra</button>` : ''}</div>
     </form>`;
   }
@@ -2443,7 +2443,10 @@ function aplicaTema() {
   const fosc = t === 'fosc' || (t !== 'clar' && matchMedia('(prefers-color-scheme: dark)').matches);
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', fosc ? '#0E0B09' : '#221C18');
 }
+let tempsDesaMem = null;
 function render() {
+  // Abans de redibuixar, la fitxa de Memòria oberta es desa (així no es perd res en sortir-ne)
+  if (document.getElementById('formMem')) { clearTimeout(tempsDesaMem); desaFormMem(document.getElementById('formMem')); }
   aplicaTema();
   if (!VISTES[ui.view]) ui.view = 'propers';
   if (modeAgenda() && SATEL.some((x) => x.id === ui.view) && ui.view !== 'aniversaris' && !(ui.view === 'recordatoris' && ui.recObert)) ui.view = 'inici';
@@ -4315,7 +4318,7 @@ $('#main').addEventListener('change', async (e) => {
   const f = state.memoria.find((x) => x.id === ui.memEdita);
   if (!f || !files.length) return;
   const form = document.getElementById('formMem');
-  if (form) { const ti = form.elements.titol.value.trim(); if (ti) f.titol = ti.slice(0, 80); f.text = form.elements.text.value.trim().slice(0, 3000); save(); }
+  desaFormMem(document.getElementById('formMem'));
   ui.memPujant = true; render();
   let errors = 0;
   for (const file of files) {
@@ -4336,18 +4339,55 @@ $('#main').addEventListener('input', (e) => {
   document.querySelectorAll('[data-memcerca]').forEach((el) => { const si = !q || el.dataset.memcerca.includes(q); el.hidden = !si; if (si) n++; });
   const r = document.getElementById('memRes'); if (r) r.hidden = n > 0;
 });
+// La fitxa es desa sola mentre s'escriu, i també en sortir-ne (fletxa enrere, una altra pantalla, tancar l'app)
+function desaFormMem(form) {
+  if (!form || !form.isConnected) return null;
+  const titol = form.elements.titol.value.replace(/\s*\n\s*/g, ' ').trim().slice(0, 500), text = form.elements.text.value.trim().slice(0, 3000);
+  if (!titol) return null;
+  const carpeta = carpetesMem().some((c) => c.id === form.elements.carpeta?.value) ? form.elements.carpeta.value : '';
+  const id = form.dataset.memid === 'nova' ? form.dataset.creada : form.dataset.memid;
+  const ara = new Date().toISOString();
+  let f = id && state.memoria.find((x) => x.id === id);
+  if (f) {
+    if (f.titol === titol && (f.text || '') === text && (f.carpeta || '') === carpeta) return f;
+    Object.assign(f, { titol, text, carpeta, modificat: ara });
+  } else if (form.dataset.memid === 'nova' && !form.dataset.creada) {
+    f = { id: nouId('m'), titol, text, carpeta, creat: ara };
+    state.memoria.push(f); form.dataset.creada = f.id;
+    if (ui.memEdita === 'nova') ui.memEdita = f.id;   // si la pantalla es redibuixa, continua sent aquesta fitxa
+  } else return null;   // la fitxa s'ha esborrat mentrestant
+  save();
+  const av = form.querySelector('.mem-desat'); if (av) av.textContent = 'Desat ✓';
+  return f;
+}
+$('#main').addEventListener('input', (e) => {
+  const form = e.target.closest('#formMem');
+  if (!form) return;
+  const av = form.querySelector('.mem-desat'); if (av) av.textContent = 'Desant…';
+  clearTimeout(tempsDesaMem); tempsDesaMem = setTimeout(() => desaFormMem(form), 700);
+});
+$('#main').addEventListener('change', (e) => { const form = e.target.closest('#formMem'); if (form && e.target.name === 'carpeta') desaFormMem(form); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) { clearTimeout(tempsDesaMem); desaFormMem(document.getElementById('formMem')); } });
+addEventListener('pagehide', () => desaFormMem(document.getElementById('formMem')));
 $('#main').addEventListener('submit', async (e) => {
   if (e.target.id !== 'formMem') return;
   e.preventDefault();
-  const titol = e.target.elements.titol.value.replace(/\s*\n\s*/g, ' ').trim().slice(0, 500), text = e.target.elements.text.value.trim().slice(0, 3000);
-  if (!titol) { e.target.elements.titol.focus(); return; }
-  const ara = new Date().toISOString();
-  const carpeta = carpetesMem().some((c) => c.id === e.target.elements.carpeta?.value) ? e.target.elements.carpeta.value : '';
-  const f = state.memoria.find((x) => x.id === ui.memEdita);
-  if (!f) { const rep = fitxaRepetida(titol, text); if (rep && !(await confirmaRepetida(rep))) return; }
-  if (f) Object.assign(f, { titol, text, carpeta, modificat: ara });
-  else state.memoria.push({ id: nouId('m'), titol, text, carpeta, creat: ara });
-  ui.memEdita = ''; save(); render();
+  const form = e.target;
+  clearTimeout(tempsDesaMem);
+  const nova = form.dataset.memid === 'nova', jaCreada = form.dataset.creada;
+  const titol = form.elements.titol.value.replace(/\s*\n\s*/g, ' ').trim(), text = form.elements.text.value.trim();
+  if (!titol) { form.elements.titol.focus(); return; }
+  // Fitxa nova: es mira si ja n'hi ha una d'igual
+  if (nova) {
+    const rep = fitxaRepetida(titol, text, jaCreada);
+    if (rep && !(await confirmaRepetida(rep))) {
+      if (jaCreada) { state.memoria = state.memoria.filter((x) => x.id !== jaCreada); save(); }
+      form.dataset.memid = 'descartada'; ui.memEdita = ''; render(); return;
+    }
+  }
+  desaFormMem(form);
+  form.dataset.memid = 'feta';
+  ui.memEdita = ''; render();
   toast(/contrasenya|password|\bpw\b|\bpin\b/i.test(titol + ' ' + text) ? "Desat. Recorda: les contrasenyes, millor a l'app Contrasenyes de l'iPhone." : 'Desat', 4500);
 });
 
