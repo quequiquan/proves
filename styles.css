@@ -1299,3 +1299,11 @@ button.gx-pindola, .gx-pindola { color: color-mix(in srgb, var(--text) 82%, var(
 .tria-fitxa .opcio > span, .tria-fitxa .opcio > small { grid-column: 2; }
 .tria-fitxa .opcio > img { grid-row: 1 / span 2; width: 44px; height: 44px; object-fit: cover; border-radius: 8px; }
 .tria-fitxa .opcio[hidden] { display: none; }
+/* Fotos d'una fitxa: passar d'una a l'altra */
+.foto-fletxa { position: absolute; top: 50%; transform: translateY(-50%); z-index: 2; width: 40px; height: 40px; border-radius: 50%; border: 0; background: rgba(0,0,0,.45); color: #fff; font-size: 26px; line-height: 1; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.foto-fletxa.esq { left: 6px; } .foto-fletxa.dre { right: 6px; }
+.foto-fletxa[hidden] { display: none; }
+.foto-compte { position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); z-index: 2; background: rgba(0,0,0,.6); color: #fff; font-weight: 700; font-size: 12px; border-radius: 10px; padding: 3px 9px; }
+.doc-zoomcaixa.entra-dreta { animation: fotoDreta .2s ease; } .doc-zoomcaixa.entra-esquerra { animation: fotoEsquerra .2s ease; }
+@keyframes fotoDreta { from { transform: translateX(40px); opacity: .3; } to { transform: none; opacity: 1; } }
+@keyframes fotoEsquerra { from { transform: translateX(-40px); opacity: .3; } to { transform: none; opacity: 1; } }

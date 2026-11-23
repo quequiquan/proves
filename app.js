@@ -3510,32 +3510,59 @@ $('#main').addEventListener('click', async (e) => {
     if (im) obreFotoRec(r, im);
   }
 });
-async function obreFoto(titol, im, treu, mou) {
+// Fotos d'una fitxa en gran: amb zoom i, si n'hi ha més d'una, lliscant el dit es passa a la següent
+async function obreFoto(titol, fotos, inici, { treu, mou } = {}) {
   tancaVisor();
+  let i = Math.max(0, Math.min(fotos.length - 1, inici)), urls = {};
   const v = document.createElement('div');
   v.className = 'doc-visor';
+  const diverses = fotos.length > 1;
   v.innerHTML = `<div class="doc-visor-cap"><button type="button" class="sat-torna" data-fv="tanca">‹ Tanca</button><b>${esc(titol)}</b></div>
-    <div class="doc-visor-cos"><img src="${esc(im.mini)}" alt="" draggable="false"></div>
+    ${diverses ? '<p class="help doc-zoom">Llisca el dit cap als costats per veure les altres fotos</p>' : ''}
+    <div class="doc-visor-cos"></div>
     <div class="doc-visor-peu"><a class="btn primary" data-fv="obre" target="_blank" rel="noopener" hidden>Obre / Comparteix</a>${mou ? '<button type="button" class="btn" data-fv="mou">Mou a una altra fitxa</button>' : ''}<button type="button" class="enllac perill" data-fv="treu">Treu la foto</button></div>`;
   document.body.appendChild(v);
   const cos = v.querySelector('.doc-visor-cos');
-  ampliable(cos, cos.querySelector('img'));
+  const mostra = async (dir = 0) => {
+    const im = fotos[i];
+    cos.innerHTML = `<div class="doc-zoomcaixa${dir ? (dir > 0 ? ' entra-dreta' : ' entra-esquerra') : ''}"><img src="${esc(im.mini)}" alt="" draggable="false"></div>`
+      + (diverses ? `<button type="button" class="foto-fletxa esq" data-fv="ant" aria-label="Foto anterior"${i === 0 ? ' hidden' : ''}>‹</button><button type="button" class="foto-fletxa dre" data-fv="seg" aria-label="Foto següent"${i === fotos.length - 1 ? ' hidden' : ''}>›</button><span class="foto-compte">${i + 1} / ${fotos.length}</span>` : '');
+    const img = cos.querySelector('img');
+    ampliable(cos.firstChild, img);
+    const tr = v.querySelector('[data-fv="treu"]'); tr.dataset.segur = ''; tr.textContent = 'Treu la foto';
+    const o = v.querySelector('[data-fv="obre"]'); o.hidden = true;
+    try {
+      const url = urls[im.id] || (urls[im.id] = await sync().urlDoc(im.cami));
+      if (!document.body.contains(v) || fotos[i] !== im) return;
+      img.src = url; o.href = url; o.hidden = false;
+    } catch (err) { /* es queda la miniatura */ }
+  };
+  const passa = (dir) => { const n = i + dir; if (n < 0 || n >= fotos.length) return; i = n; mostra(dir); };
+  // Lliscar: només si la foto no està ampliada
+  let ini = null;
+  cos.addEventListener('touchstart', (e) => { ini = e.touches.length === 1 ? { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() } : null; }, { passive: true });
+  cos.addEventListener('touchend', (e) => {
+    if (!ini || !diverses || e.touches.length) { ini = null; return; }
+    const t = e.changedTouches[0], dx = t.clientX - ini.x, dy = t.clientY - ini.y;
+    const img = cos.querySelector('img'), ampliada = /scale\((?!1\))/.test(img?.style.transform || '');
+    ini = null;
+    if (!ampliada && Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) passa(dx < 0 ? 1 : -1);
+  });
+  const tecla = (e) => { if (!document.body.contains(v)) { removeEventListener('keydown', tecla); return; } if (e.key === 'ArrowRight') passa(1); else if (e.key === 'ArrowLeft') passa(-1); else if (e.key === 'Escape') tancaVisor(); };
+  addEventListener('keydown', tecla);
   v.addEventListener('click', (e) => {
     const b = e.target.closest('[data-fv]');
     if (!b) return;
     if (b.dataset.fv === 'tanca') { tancaVisor(); return; }
-    if (b.dataset.fv === 'mou') { tancaVisor(); mou(); return; }
+    if (b.dataset.fv === 'ant') { passa(-1); return; }
+    if (b.dataset.fv === 'seg') { passa(1); return; }
+    if (b.dataset.fv === 'mou') { tancaVisor(); mou(fotos[i]); return; }
     if (b.dataset.fv === 'treu') {
       if (b.dataset.segur !== '1') { b.dataset.segur = '1'; b.textContent = "Segur? Toca'l un altre cop"; return; }
-      tancaVisor(); treu(); toast('Foto treta');
+      tancaVisor(); treu(fotos[i]); toast('Foto treta');
     }
   });
-  try {
-    const url = await sync().urlDoc(im.cami);
-    if (!document.body.contains(v)) return;
-    v.querySelector('.doc-visor-cos img').src = url;
-    const o = v.querySelector('[data-fv="obre"]'); o.href = url; o.hidden = false;
-  } catch (err) { /* es queda la miniatura */ }
+  mostra();
 }
 // Foto en gran, amb zoom, i opció de treure-la
 async function obreFotoRec(r, im) {
@@ -4252,7 +4279,10 @@ $('#main').addEventListener('click', async (e) => {
   if (mi) {
     const [fid, iid] = mi.dataset.memimg.split('|');
     const f = state.memoria.find((x) => x.id === fid), im = f && (f.imatges || []).find((x) => x.id === iid);
-    if (im) obreFoto(f.titol, im, () => { f.imatges = f.imatges.filter((x) => x.id !== iid); save(); sync()?.esborraDoc(im.cami).catch(() => {}); render(); }, () => mouFotoMem(f.id, iid));
+    if (im) obreFoto(f.titol, f.imatges.slice(), f.imatges.indexOf(im), {
+      treu: (x) => { f.imatges = f.imatges.filter((y) => y.id !== x.id); save(); sync()?.esborraDoc(x.cami).catch(() => {}); render(); },
+      mou: (x) => mouFotoMem(f.id, x.id),
+    });
     return;
   }
   const ip = t.closest('[data-memimprimeix]');
