@@ -3510,13 +3510,13 @@ $('#main').addEventListener('click', async (e) => {
     if (im) obreFotoRec(r, im);
   }
 });
-async function obreFoto(titol, im, treu) {
+async function obreFoto(titol, im, treu, mou) {
   tancaVisor();
   const v = document.createElement('div');
   v.className = 'doc-visor';
   v.innerHTML = `<div class="doc-visor-cap"><button type="button" class="sat-torna" data-fv="tanca">‹ Tanca</button><b>${esc(titol)}</b></div>
     <div class="doc-visor-cos"><img src="${esc(im.mini)}" alt="" draggable="false"></div>
-    <div class="doc-visor-peu"><a class="btn primary" data-fv="obre" target="_blank" rel="noopener" hidden>Obre / Comparteix</a><button type="button" class="enllac perill" data-fv="treu">Treu la foto</button></div>`;
+    <div class="doc-visor-peu"><a class="btn primary" data-fv="obre" target="_blank" rel="noopener" hidden>Obre / Comparteix</a>${mou ? '<button type="button" class="btn" data-fv="mou">Mou a una altra fitxa</button>' : ''}<button type="button" class="enllac perill" data-fv="treu">Treu la foto</button></div>`;
   document.body.appendChild(v);
   const cos = v.querySelector('.doc-visor-cos');
   ampliable(cos, cos.querySelector('img'));
@@ -3524,6 +3524,7 @@ async function obreFoto(titol, im, treu) {
     const b = e.target.closest('[data-fv]');
     if (!b) return;
     if (b.dataset.fv === 'tanca') { tancaVisor(); return; }
+    if (b.dataset.fv === 'mou') { tancaVisor(); mou(); return; }
     if (b.dataset.fv === 'treu') {
       if (b.dataset.segur !== '1') { b.dataset.segur = '1'; b.textContent = "Segur? Toca'l un altre cop"; return; }
       tancaVisor(); treu(); toast('Foto treta');
@@ -3796,6 +3797,54 @@ $('#main').addEventListener('click', async (e) => {
   state.memoria.push(f); save(); render();
   toastDesfes(`Fitxa nova: ${titol.length > 40 ? titol.slice(0, 40) + '…' : titol}`, () => { state.memoria = state.memoria.filter((x) => x.id !== f.id); save(); render(); });
 });
+// Triar una fitxa de Memòria (amb cercador): les més noves primer
+function triaFitxa(titol, excepte) {
+  document.querySelector('.demana')?.remove();
+  return new Promise((resol) => {
+    const d = document.createElement('div');
+    d.className = 'demana';
+    const fitxes = state.memoria.filter((f) => f.id !== excepte).slice().sort((a, b) => String(b.creat || '').localeCompare(String(a.creat || '')));
+    const nomC = (f) => carpetesMem().find((c) => c.id === carpetaDe(f))?.nom || 'General';
+    d.innerHTML = `<div class="demana-caixa tria-fitxa"><b>${esc(titol)}</b><input type="search" placeholder="Busca la fitxa…" autocomplete="off">
+      <div class="tria-llista">${fitxes.map((f) => `<button type="button" class="btn opcio" data-op="${esc(f.id)}" data-cerca="${esc(normal(f.titol + ' ' + (f.text || '') + ' ' + nomC(f)))}">${(f.imatges || [])[0]?.mini ? `<img src="${esc(f.imatges[0].mini)}" alt="">` : ''}<span>${esc(f.titol.length > 80 ? f.titol.slice(0, 80) + '…' : f.titol)}</span><small>${esc(nomC(f))}${(f.imatges || []).length ? ' · ' + (f.imatges.length === 1 ? '1 foto' : f.imatges.length + ' fotos') : ''}</small></button>`).join('')
+      || '<p class="help">No hi ha cap altra fitxa.</p>'}<p class="help" hidden>Cap fitxa amb aquest nom.</p></div>
+      <button type="button" class="enllac" data-op="">Cancel·la</button></div>`;
+    document.body.appendChild(d);
+    const inp = d.querySelector('input'), cap = d.querySelector('.tria-llista > p[hidden], .tria-llista > p:last-child');
+    inp.addEventListener('input', () => {
+      const q = normal(inp.value.trim()); let n = 0;
+      d.querySelectorAll('[data-cerca]').forEach((b) => { const si = !q || b.dataset.cerca.includes(q); b.hidden = !si; if (si) n++; });
+      if (cap) cap.hidden = n > 0 || !fitxes.length;
+    });
+    d.addEventListener('click', (e) => { const b = e.target.closest('[data-op]'); if (b || e.target === d) { d.remove(); resol(b ? b.dataset.op : ''); } });
+  });
+}
+// Moure una foto d'una fitxa a una altra (si la fitxa d'origen queda buida, es pot esborrar)
+async function mouFotoMem(deId, fotoId) {
+  const de = state.memoria.find((x) => x.id === deId), im = de && (de.imatges || []).find((x) => x.id === fotoId);
+  if (!im) return;
+  const aId = await triaFitxa('Mou la foto a…', deId);
+  const a = aId && state.memoria.find((x) => x.id === aId);
+  if (!a) return;
+  de.imatges = de.imatges.filter((x) => x.id !== fotoId);
+  a.imatges = [...(a.imatges || []), im];
+  save(); render();
+  const buida = !de.imatges.length && !String(de.text || '').trim();
+  const desfes = () => {
+    const aa = state.memoria.find((x) => x.id === aId), dd = state.memoria.find((x) => x.id === deId);
+    if (aa) aa.imatges = (aa.imatges || []).filter((x) => x.id !== fotoId);
+    if (dd) dd.imatges = [...(dd.imatges || []), im];
+    save(); render();
+  };
+  if (buida) {
+    const op = await triaOpcio(`La fitxa «${de.titol.length > 50 ? de.titol.slice(0, 50) + '…' : de.titol}» s'ha quedat buida`, [
+      ['esborra', 'Esborra-la', 'Ja no hi queda cap foto ni cap text'],
+      ['deixa', 'Deixa-la', ''],
+    ]);
+    if (op === 'esborra') { esborraFitxaMem(de); return; }
+  }
+  toastDesfes(`Foto moguda a ${a.titol.length > 40 ? a.titol.slice(0, 40) + '…' : a.titol}`, desfes);
+}
 function esborraFitxaMem(f) {
   const lloc = state.memoria.indexOf(f), copia = { ...f };
   state.memoria.splice(lloc, 1); ui.memEdita = ''; save(); render();
@@ -4203,7 +4252,7 @@ $('#main').addEventListener('click', async (e) => {
   if (mi) {
     const [fid, iid] = mi.dataset.memimg.split('|');
     const f = state.memoria.find((x) => x.id === fid), im = f && (f.imatges || []).find((x) => x.id === iid);
-    if (im) obreFoto(f.titol, im, () => { f.imatges = f.imatges.filter((x) => x.id !== iid); save(); sync()?.esborraDoc(im.cami).catch(() => {}); render(); });
+    if (im) obreFoto(f.titol, im, () => { f.imatges = f.imatges.filter((x) => x.id !== iid); save(); sync()?.esborraDoc(im.cami).catch(() => {}); render(); }, () => mouFotoMem(f.id, iid));
     return;
   }
   const ip = t.closest('[data-memimprimeix]');
