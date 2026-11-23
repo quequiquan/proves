@@ -1063,7 +1063,7 @@ function vistaAjustos() {
               <li>Aquí, prem <b>Copia l'enllaç per a «Desa document»</b>.</li>
               <li>A <b>Atajos</b>, toca <b>+</b> i posa-li de nom <b>Desa document a Galàxia</b>. A <b>Detalles</b>, activa <b>Mostrar en el panel de compartir</b>.</li>
               <li>A la primera caixa, <b>Recibir</b>: deixa només <b>Archivos</b>, <b>PDF</b> i <b>Imágenes</b>.</li>
-              <li>Afegeix l'acció <b>Obtener contenido de URL</b>. Enganxa-hi l'enllaç (acaba en <b>&amp;doc=1</b>). Toca la fletxa <b>›</b>: Método <b>POST</b>, Cuerpo <b>Formulario</b>, <b>Añadir nuevo campo → Archivo</b>, clau <b>fitxer</b> i valor la variable <b>Entrada de atajo</b>.</li>
+              <li>Afegeix l'acció <b>Obtener contenido de URL</b>. Enganxa-hi l'enllaç (acaba en <b>&amp;doc=1</b>). Toca la fletxa <b>›</b>: Método <b>POST</b> i Cuerpo de la solicitud <b>Archivo</b>; a <b>Archivo</b>, tria la variable <b>Entrada de atajo</b>.</li>
               <li>Afegeix <b>Mostrar notificación</b> amb <b>Contenido de URL</b>. <b>OK</b>.</li>
               <li>Prova-ho: a <b>Arxius</b>, mantén premut un PDF → <b>Compartir → Desa document a Galàxia</b>. Ha de sortir «Desat a Galàxia: …».</li>
             </ol>
