@@ -1045,7 +1045,7 @@ function vistaAjustos() {
             </ol>
           </details>
           <details class="ajuda"><summary>2. «Nota de veu» (dictar sense obrir l'app)</summary>
-            <p>Toques la icona (o fas dos tocs al darrere del mòbil), parles en català i la nota arriba a la micro-app <b>Veu</b>.</p>
+            <p>Toques la icona (o fas dos tocs al darrere del mòbil), parles en català i la nota arriba a la micro-app <b>Notes de veu</b>.</p>
             <ol class="passos-veu">
               <li>Aquí, prem <b>Copia l'enllaç per a «Nota de veu»</b>.</li>
               <li>A <b>Atajos</b>, toca <b>+</b> i posa-li de nom <b>Nota de veu</b>.</li>
@@ -1174,10 +1174,10 @@ const SATEL = [
   { id: 'recordatoris', nom: 'Recordatoris', color: '#E8590C' },
   { id: 'memoria', nom: 'Memòria', color: '#7048E8' },
   { id: 'aniversaris', nom: 'Aniversaris', color: '#E64980' },
-  { id: 'llista', nom: 'Llista', color: '#1C7ED6' },
+  { id: 'llista', nom: 'Llistes', color: '#1C7ED6' },
   { id: 'compres', nom: 'Compres', color: '#2F9E44' },
   { id: 'documents', nom: 'Documents', color: '#FFC300' },
-  { id: 'veu', nom: 'Veu', color: '#0B7285' },
+  { id: 'veu', nom: 'Notes de veu', color: '#0B7285' },
 ];
 let gxAnimat = false;
 const modeAgenda = () => state.ajustos.mode === 'agenda';   // l'animació d'entrada només es fa el primer cop que s'obre l'app
@@ -1324,7 +1324,7 @@ function vistaLlista() {
   if (!l) {
     const cid = carpetaOberta('llista');
     if (cid === null) {
-      return capSatel('Llista') + `<p class="help">Llistes per a un moment concret, ordenades en carpetes: el que t'has d'endur de viatge, els encàrrecs d'avui…</p>
+      return capSatel('Llistes') + `<p class="help">Llistes per a un moment concret, ordenades en carpetes: el que t'has d'endur de viatge, els encàrrecs d'avui…</p>
         ${graellaCarpetes('llista', ['llista', 'llistes'])}`;
     }
     const llistes = state.llistes.filter((x) => carpetaItem('llista', x) === cid).sort(perOrdreLl);
@@ -2024,7 +2024,7 @@ $('#main').addEventListener('click', async (e) => {
     treuNota(n, 'Enviada a Recordatoris');
   } else if (on === 'llista') {
     const ll = state.llistes.slice().sort(perOrdreLl);
-    if (!ll.length) { toast('Encara no tens cap llista. Crea\'n una a Llista.'); return; }
+    if (!ll.length) { toast('Encara no tens cap llista. Crea\'n una a Llistes.'); return; }
     const lid = await triaOpcio('A quina llista?', ll.map((l) => [l.id, l.nom, nomCarpeta('llista', carpetaItem('llista', l))]));
     const l = state.llistes.find((x) => x.id === lid);
     if (!l) return;
@@ -3222,7 +3222,7 @@ async function acceptaMes(x, c) {
   };
   if (x.tipus === 'llistes') {
     const f = carpetaPerNom('llista', c.carpeta, 'carpetes_llista', 'cl');
-    on = f ? f.nom : 'Llista';
+    on = f ? f.nom : 'Llistes';
     (c.llistes || []).forEach((ll) => {
       let l = state.llistes.find((y) => carpetaItem('llista', y) === (f ? f.id : '') && normal(y.nom) === normal(ll.nom));
       if (!l) { l = { id: nouId('l'), nom: String(ll.nom).slice(0, 60), creat: ara, items: [], carpeta: f ? f.id : '' }; state.llistes.push(l); }
