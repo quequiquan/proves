@@ -1110,7 +1110,7 @@ function vistaAjustos() {
     </div>
     <div class="section">
       <h2>Còpia de seguretat</h2>
-      <p class="help">Desa en un fitxer <b>tot</b> el que tens a Galàxia: agenda, contactes, recordatoris, llistes, compres, Memòria, notes de veu, la llista de documents i els ajustos. Desa'l a <b>Arxius → iCloud Drive</b> o envia-te'l per correu. Les fotos, els àudios i els fitxers de Documents es queden al teu núvol privat i no van dins de la còpia.</p>
+      <p class="help">Desa en un fitxer <b>tot</b> el que tens a Galàxia: agenda, contactes, recordatoris, llistes, compres, Memòria, notes de veu, la llista de documents i els ajustos. En prémer <b>Desa una còpia</b> tries on: <b>al mòbil</b>, <b>al núvol (iCloud Drive)</b> o <b>a l'ordinador</b>. El més segur és iCloud Drive: si perds el mòbil, la còpia hi continua. Les fotos, els àudios i els fitxers de Documents es queden al teu núvol privat i no van dins de la còpia.</p>
       ${(() => { const u = llegeixPref('ultimaCopia', ''); if (!u) return '<p class="help"><b>Encara no has fet cap còpia en aquest aparell.</b></p>'; const dies = Math.round((Date.now() - new Date(u).getTime()) / 86400000); return `<p class="help">Última còpia en aquest aparell: <b>${dies <= 0 ? 'avui' : dies === 1 ? 'ahir' : 'fa ' + dies + ' dies'}</b>.${dies > 30 ? ' Ja tocaria fer-ne una de nova.' : ''}</p>`; })()}
       <div class="grp">
         <button class="btn" id="btnExporta">Desa una còpia</button>
@@ -2610,7 +2610,7 @@ $('#main').addEventListener('click', (e) => {
     state.tipus = state.tipus.filter((x) => x.id !== tt.id);
     save(); render(); return;
   }
-  if (t.id === 'btnExporta') exporta();
+  if (t.id === 'btnExporta') triaOnCopia();
 });
 
 $('#main').addEventListener('input', (e) => {
@@ -5648,6 +5648,34 @@ function obreForm(p, base = {}) {
 }
 
 /* ---------- Còpia de seguretat ---------- */
+// On es desa la còpia. Al mòbil, el lloc es tria al menú Compartir de l'iPhone: aquí es diu què s'ha de tocar.
+async function triaOnCopia() {
+  if (!esIOS()) {
+    // A l'ordinador es descarrega a la carpeta Baixades
+    const op = await triaOpcio('On vols desar la còpia?', [
+      ['ordinador', "A l'ordinador", 'Es desa a la carpeta Baixades'],
+      ['icloud', 'A iCloud Drive', "Es desa a Baixades i després l'arrossegues a la carpeta iCloud Drive"],
+    ]);
+    if (!op) return;
+    await exporta();
+    toast(op === 'icloud' ? "Desada a Baixades. Ara arrossega-la a la carpeta iCloud Drive." : 'Còpia desada a la carpeta Baixades', 6000);
+    return;
+  }
+  const op = await triaOpcio('On vols desar la còpia?', [
+    ['mobil', 'Al mòbil', 'Al menú que surt: Desar a Arxius → En el meu iPhone → Desa'],
+    ['icloud', 'Al núvol (iCloud Drive)', "Al menú que surt: Desar a Arxius → iCloud Drive → Desa. També la tindràs a l'ordinador i als altres aparells"],
+    ['ordinador', "A l'ordinador", "Te l'envies per correu o la fas des de l'ordinador"],
+  ]);
+  if (!op) return;
+  if (op === 'ordinador') {
+    const com = await triaOpcio("Com la vols passar a l'ordinador?", [
+      ['correu', "Envia-te-la per correu", "Al menú que surt: Mail → posa el teu correu. A l'ordinador, obre el correu i desa el fitxer adjunt"],
+      ['alla', "Fes-la des de l'ordinador", "Obre Galàxia a l'ordinador (quequiquan.github.io), entra amb el teu correu i, a Ajustos, prem «Desa una còpia»: es desarà a Baixades"],
+    ]);
+    if (com !== 'correu') { if (com === 'alla') toast("Obre Galàxia a l'ordinador i, a Ajustos, prem «Desa una còpia».", 7000); return; }
+  }
+  await exporta();
+}
 async function exporta() {
   const blob = new Blob([JSON.stringify({ app: 'que-qui-quan', versio: 1, data: new Date().toISOString(), ...state }, null, 2)], { type: 'application/json' });
   const nom = `Galaxia-copia-${avui()}.json`;
