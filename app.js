@@ -1038,7 +1038,7 @@ function vistaAjustos() {
               <li>Toca el nom de nou → <b>Detalles</b> (o la ⓘ) → activa <b>Mostrar en el panel de compartir</b>. Torna enrere.</li>
               <li>A la primera caixa, <b>Recibir … de Panel de compartir</b>: deixa marcats tots els tipus. A <b>Si no hay datos de entrada</b>, tria <b>Obtener portapapeles</b>.</li>
               <li>Afegeix l'acció <b>Texto</b>. Toca dins de la caixa i tria la variable <b>Entrada de atajo</b>.</li>
-              <li>Afegeix l'acció <b>Obtener contenido de URL</b>. Toca <b>URL</b> i enganxa-hi l'enllaç (acaba en <b>&amp;desa=1</b>). Toca la fletxa <b>›</b>: Método <b>POST</b>, Cuerpo de la solicitud <b>Formulario</b>, <b>Añadir nuevo campo → Texto</b>, clau <b>text</b> i valor la variable <b>Texto</b>.</li>
+              <li>Afegeix l'acció <b>Obtener contenido de URL</b>. Toca <b>URL</b> i enganxa-hi l'enllaç (acaba en <b>&amp;desa=1</b>). Toca la fletxa <b>›</b>: Método <b>POST</b>, Cuerpo de la solicitud <b>Formulario</b>, <b>Añadir nuevo campo → Texto</b>, clau <b>text</b> i valor la variable <b>Texto</b>. Després, <b>Añadir nuevo campo → Archivo</b>, clau <b>fitxer</b> i valor la variable <b>Entrada de atajo</b> (així també desa les imatges).</li>
               <li>Afegeix l'acció <b>Mostrar notificación</b> amb la variable <b>Contenido de URL</b>. Toca <b>OK</b>.</li>
               <li>Prova-ho: a Notes, selecciona un text → <b>Compartir → Desa a Galàxia</b>. Ha de sortir «Desat a Galàxia: …».</li>
               <li>Perquè surti la primera del menú Compartir: al final del menú, <b>Editar acciones…</b> → <b>+</b> a «Desa a Galàxia» i arrossega-la a dalt de <b>Favoritos</b>.</li>
@@ -2462,6 +2462,30 @@ function render() {
   if (focus !== null && $('#cerca')) { $('#cerca').focus(); $('#cerca').setSelectionRange(focus, focus); }
   if (ui.view === 'ajustos' && sync()) sync().bind();
   if (ui.view === 'entrada') $('.entrada input')?.focus();
+  completaMinis();
+}
+// Les fotos que arriben per la drecera «Desa a Galàxia» no porten miniatura: es fa aquí, un sol cop
+const minisProvades = new Set();
+let minisEnCurs = false;
+async function completaMinis() {
+  if (minisEnCurs || !usuari() || !navigator.onLine) return;
+  const falten = [];
+  (state.memoria || []).forEach((f) => (f.imatges || []).forEach((im) => { if (!im.mini && im.cami && !minisProvades.has(im.id)) falten.push([f, im]); }));
+  if (!falten.length) return;
+  minisEnCurs = true;
+  let fet = false;
+  for (const [f, im] of falten) {
+    minisProvades.add(im.id);
+    try {
+      const url = await sync().urlDoc(im.cami);
+      const img = await new Promise((ok, ko) => { const i = new Image(); i.crossOrigin = 'anonymous'; i.onload = () => ok(i); i.onerror = ko; i.src = url; });
+      const mini = redueix(img, 240).toDataURL('image/jpeg', 0.6);
+      const ara = state.memoria.find((x) => x.id === f.id), ii = ara && (ara.imatges || []).find((x) => x.id === im.id);
+      if (ii) { ii.mini = mini; fet = true; }
+    } catch (err) { /* es tornarà a provar el proper cop que s'obri l'app */ }
+  }
+  minisEnCurs = false;
+  if (fet) { save(); render(); }
 }
 const fiEntrada = () => { ui.view = 'inici'; render(); };
 
