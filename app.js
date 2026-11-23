@@ -1108,7 +1108,8 @@ function vistaAjustos() {
     </div>
     <div class="section">
       <h2>Còpia de seguretat</h2>
-      <p class="help">Desa tots els plans en un fitxer, o recupera'ls d'una còpia.</p>
+      <p class="help">Desa en un fitxer <b>tot</b> el que tens a Galàxia: agenda, contactes, recordatoris, llistes, compres, Memòria, notes de veu, la llista de documents i els ajustos. Desa'l a <b>Arxius → iCloud Drive</b> o envia-te'l per correu. Les fotos, els àudios i els fitxers de Documents es queden al teu núvol privat i no van dins de la còpia.</p>
+      ${(() => { const u = llegeixPref('ultimaCopia', ''); if (!u) return '<p class="help"><b>Encara no has fet cap còpia en aquest aparell.</b></p>'; const dies = Math.round((Date.now() - new Date(u).getTime()) / 86400000); return `<p class="help">Última còpia en aquest aparell: <b>${dies <= 0 ? 'avui' : dies === 1 ? 'ahir' : 'fa ' + dies + ' dies'}</b>.${dies > 30 ? ' Ja tocaria fer-ne una de nova.' : ''}</p>`; })()}
       <div class="grp">
         <button class="btn" id="btnExporta">Desa una còpia</button>
         <label class="btn">Recupera una còpia<input type="file" id="fitxerImporta" accept=".json,application/json" hidden></label>
@@ -5471,11 +5472,20 @@ function obreForm(p, base = {}) {
 }
 
 /* ---------- Còpia de seguretat ---------- */
-function exporta() {
+async function exporta() {
   const blob = new Blob([JSON.stringify({ app: 'que-qui-quan', versio: 1, data: new Date().toISOString(), ...state }, null, 2)], { type: 'application/json' });
+  const nom = `Galaxia-copia-${avui()}.json`;
+  desaPref('ultimaCopia', new Date().toISOString());
+  // Al mòbil: menú Compartir (Desar a Arxius, iCloud Drive, Correu…); a l'ordinador: es descarrega
+  const f = new File([blob], nom, { type: 'application/json' });
+  if (esIOS() && navigator.canShare && navigator.canShare({ files: [f] })) {
+    try { await navigator.share({ files: [f] }); toast('Còpia preparada'); render(); return; }
+    catch (x) { if (x.name === 'AbortError') return; }
+  }
+  setTimeout(render, 500);
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `que-qui-quan-copia-${avui()}.json`;
+  a.download = nom;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
 }
