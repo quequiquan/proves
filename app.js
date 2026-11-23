@@ -2070,32 +2070,61 @@ function ordenaPunts(p) {
 const puntsPerDefecte = (w, h) => [{ x: w * 0.06, y: h * 0.06 }, { x: w * 0.94, y: h * 0.06 }, { x: w * 0.94, y: h * 0.94 }, { x: w * 0.06, y: h * 0.94 }];
 // Busca el quadrilàter més gran de la foto (el full)
 function detectaVores(cv, font) {
-  const petit = redueixCanvas(font, 900), f = font.width / petit.width;
-  const src = cv.imread(petit), gris = new cv.Mat(), vores = new cv.Mat(), cont = new cv.MatVector(), jer = new cv.Mat();
-  let millor = null;
-  try {
-    cv.cvtColor(src, gris, cv.COLOR_RGBA2GRAY);
-    cv.GaussianBlur(gris, gris, new cv.Size(5, 5), 0);
-    cv.Canny(gris, vores, 40, 140);
-    const k = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(5, 5));
-    cv.dilate(vores, vores, k); k.delete();
-    cv.findContours(vores, cont, jer, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE);
-    let area = petit.width * petit.height * 0.12;
+  // Es proven diverses maneres de trobar el full (vores, contrast amb el fons, llum desigual)
+  // i es queda el quadrilàter més gran que no sigui la foto sencera.
+  const petit = redueixCanvas(font, 900), f = font.width / petit.width, W = petit.width, H = petit.height;
+  const src = cv.imread(petit), gris = new cv.Mat();
+  cv.cvtColor(src, gris, cv.COLOR_RGBA2GRAY);
+  let millor = null, millorArea = W * H * 0.1;
+  const prova = (bin) => {
+    const cont = new cv.MatVector(), jer = new cv.Mat();
+    cv.findContours(bin, cont, jer, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE);
     for (let i = 0; i < cont.size(); i++) {
       const c = cont.get(i), a = cv.contourArea(c);
-      if (a > area) {
-        const ap = new cv.Mat();
-        cv.approxPolyDP(c, ap, 0.02 * cv.arcLength(c, true), true);
-        if (ap.rows === 4 && cv.isContourConvex(ap)) {
-          area = a;
-          millor = [0, 1, 2, 3].map((j) => ({ x: ap.data32S[j * 2] * f, y: ap.data32S[j * 2 + 1] * f }));
+      if (a > millorArea && a < W * H * 0.985) {
+        // Primer el contorn tal qual; si no fa quatre cantonades, el seu contorn convex
+        const hull = new cv.Mat(); cv.convexHull(c, hull, false, true);
+        for (const forma of [c, hull]) {
+          const peri = cv.arcLength(forma, true);
+          for (const eps of [0.02, 0.03, 0.045, 0.06]) {
+            const ap = new cv.Mat(); cv.approxPolyDP(forma, ap, eps * peri, true);
+            if (ap.rows === 4 && cv.isContourConvex(ap)) {
+              const pts = [0, 1, 2, 3].map((j) => ({ x: ap.data32S[j * 2], y: ap.data32S[j * 2 + 1] }));
+              const ar = Math.abs(cv.contourArea(ap));
+              if (ar > millorArea) { millorArea = ar; millor = pts; }
+              ap.delete(); break;
+            }
+            ap.delete();
+          }
         }
-        ap.delete();
+        hull.delete();
       }
       c.delete();
     }
-  } finally { [src, gris, vores, cont, jer].forEach((m) => m.delete()); }
-  return millor ? ordenaPunts(millor) : null;
+    cont.delete(); jer.delete();
+  };
+  const tmp = new cv.Mat(), k = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(5, 5)), k2 = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(9, 9));
+  try {
+    // 1) Vores (Canny) amb dues sensibilitats
+    for (const [b, t1, t2] of [[5, 40, 140], [7, 20, 80]]) {
+      cv.GaussianBlur(gris, tmp, new cv.Size(b, b), 0);
+      cv.Canny(tmp, tmp, t1, t2);
+      cv.dilate(tmp, tmp, k);
+      prova(tmp);
+      if (millor) break;   // el mètode més precís primer: si ja l'ha trobat, no cal provar els altres
+    }
+    // 2) El full és més clar que el fons: llindar automàtic (Otsu) i tancament
+    cv.GaussianBlur(gris, tmp, new cv.Size(7, 7), 0);
+    cv.threshold(tmp, tmp, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU);
+    cv.morphologyEx(tmp, tmp, cv.MORPH_CLOSE, k2);
+    if (!millor) prova(tmp);
+    // 3) Llum desigual: llindar adaptatiu
+    cv.GaussianBlur(gris, tmp, new cv.Size(7, 7), 0);
+    cv.adaptiveThreshold(tmp, tmp, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, 51, 5);
+    cv.morphologyEx(tmp, tmp, cv.MORPH_CLOSE, k2);
+    if (!millor) prova(tmp);
+  } finally { [src, gris, tmp, k, k2].forEach((m) => m.delete()); }
+  return millor ? ordenaPunts(millor.map((p) => ({ x: p.x * f, y: p.y * f }))) : null;
 }
 function redueixCanvas(c, max) {
   const s = Math.min(1, max / Math.max(c.width, c.height));
@@ -2176,8 +2205,10 @@ async function fotoEscaner(e) {
     const im = await carregaImg(f);
     escn.font = redueix(im, 2600);
     await carregaCV();
-    escn.punts = detectaVores(window.cv, escn.font) || puntsPerDefecte(escn.font.width, escn.font.height);
-    escn.pas = 'ajusta';
+    const trobats = detectaVores(window.cv, escn.font);
+    escn.punts = trobats || puntsPerDefecte(escn.font.width, escn.font.height);
+    escn.auto = Boolean(trobats); escn.trobat = Boolean(trobats);
+    if (trobats) { processa(); escn.pas = 'resultat'; } else escn.pas = 'ajusta';
   } catch (x) {
     toast(navigator.onLine ? "No s'ha pogut preparar l'escàner. Torna-ho a provar." : "La primera vegada cal connexió per preparar l'escàner.", 5000);
     escn.pas = 'foto';
@@ -2202,11 +2233,11 @@ function pintaEscaner() {
   } else if (escn.pas === 'ajusta') {
     cos.innerHTML = '<div class="esc-foto" id="escFotoCaixa"><canvas id="escVista"></canvas><svg id="escSvg"><polygon id="escPoli"/></svg>'
       + [0, 1, 2, 3].map((i) => `<span class="esc-punt" data-punt="${i}"></span>`).join('') + '</div>';
-    peu.innerHTML = `<p class="esc-ajuda">Arrossega les cantonades fins a les vores del document.</p>
+    peu.innerHTML = `<p class="esc-ajuda">${escn.trobat === false ? "No he trobat les vores soles: a" : 'A'}rrossega les cantonades fins a les vores del document.</p>
       <div class="esc-botons"><button type="button" class="btn" data-esc="gira">Gira ↻</button><button type="button" class="btn" data-esc="refes">Torna a fer la foto</button><button type="button" class="btn primary" data-esc="endavant">Endavant</button></div>`;
     dibuixaAjust();
   } else if (escn.pas === 'resultat') {
-    cos.innerHTML = '<div class="esc-res"></div>';
+    cos.innerHTML = '<div class="esc-res"></div>' + (escn.auto ? '<p class="esc-ajuda esc-auto">Vores trobades soles. Si el full no ha quedat bé, toca <b>‹ Ajusta</b>.</p>' : '');
     cos.firstChild.appendChild(escn.resultat);
     peu.innerHTML = `<div class="seg esc-filtres">${[['millorat', 'Millorat'], ['bn', 'Blanc i negre'], ['color', 'Color']].map(([k, nom]) => `<button type="button" aria-pressed="${escn.filtre === k}" data-escfiltre="${k}">${nom}</button>`).join('')}</div>
       <div class="esc-botons"><button type="button" class="btn" data-esc="ajusta">‹ Ajusta</button><button type="button" class="btn" data-esc="mes">+ Una altra pàgina</button><button type="button" class="btn primary" data-esc="desa">Desa${n ? ` (${n + 1} pàgines)` : ''}</button></div>`;
@@ -2270,7 +2301,7 @@ async function clicEscaner(e) {
     try { escn.punts = ordenaPunts(escn.punts); processa(); escn.pas = 'resultat'; } catch (x) { toast("No s'ha pogut endreçar la imatge."); }
     pintaEscaner(); return;
   }
-  if (acc === 'ajusta') { escn.pas = 'ajusta'; pintaEscaner(); return; }
+  if (acc === 'ajusta') { escn.pas = 'ajusta'; escn.auto = false; pintaEscaner(); return; }
   if (acc === 'mes') { escn.pagines.push(escn.resultat); escn.resultat = null; escn.font = null; escn.pas = 'foto'; pintaEscaner(); document.getElementById('escFoto').click(); return; }
   if (acc === 'desa') {
     if (escn.resultat) { escn.pagines.push(escn.resultat); escn.resultat = null; }
@@ -4401,6 +4432,51 @@ function ampliable(cos, img) {
   // A l'ordinador: roda del ratolí
   cos.addEventListener('wheel', (e) => { e.preventDefault(); s = Math.max(1, Math.min(6, s * (e.deltaY < 0 ? 1.15 : 0.87))); if (s === 1) { x = 0; y = 0; } limita(); aplica(false); }, { passive: false });
 }
+// Els PDF es veuen dins de l'app: totes les pàgines una sota l'altra; tocant-ne una, s'amplia
+let pdfjsPromesa = null;
+function carregaPdfjs() {
+  if (!pdfjsPromesa) {
+    pdfjsPromesa = carregaScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js').then(() => {
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      return true;
+    }).catch((e) => { pdfjsPromesa = null; throw e; });
+  }
+  return pdfjsPromesa;
+}
+async function mostraPdf(cos, url, v) {
+  await carregaPdfjs();
+  const pdf = await window.pdfjsLib.getDocument({ url }).promise;
+  if (!document.body.contains(v)) return;
+  const amp = Math.min(1600, Math.round((cos.clientWidth || innerWidth) * (devicePixelRatio || 1)));
+  const pagines = [];
+  for (let i = 1; i <= Math.min(pdf.numPages, 40); i++) {
+    const p = await pdf.getPage(i), vp0 = p.getViewport({ scale: 1 }), vp = p.getViewport({ scale: amp / vp0.width });
+    const c = document.createElement('canvas'); c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+    await p.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+    pagines.push(c.toDataURL('image/jpeg', 0.85));
+    if (!document.body.contains(v)) return;
+  }
+  const ampliaPagina = (i) => {
+    cos.classList.remove('pagines');
+    // El zoom va dins d'una caixa pròpia: en tornar a la llista de pàgines desapareix i es pot tornar a lliscar
+    cos.innerHTML = `<div class="doc-zoomcaixa"><img src="${pagines[i]}" alt="Pàgina ${i + 1}" draggable="false"></div>`;
+    ampliable(cos.firstChild, cos.querySelector('img'));
+    if (pagines.length > 1) {
+      const torna = document.createElement('button');
+      torna.type = 'button'; torna.className = 'btn doc-totes'; torna.textContent = `‹ Totes les pàgines (${pagines.length})`;
+      torna.onclick = (e) => { e.stopPropagation(); mostraTotes(); };
+      cos.appendChild(torna);
+    }
+  };
+  const mostraTotes = () => {
+    cos.classList.add('pagines');
+    cos.innerHTML = pagines.map((src, i) => `<button type="button" class="doc-pagina" data-pag="${i}"><img src="${src}" alt="Pàgina ${i + 1}"><small>${i + 1} / ${pagines.length}</small></button>`).join('');
+    cos.querySelectorAll('[data-pag]').forEach((b) => { b.onclick = () => ampliaPagina(Number(b.dataset.pag)); });
+  };
+  if (pagines.length === 1) ampliaPagina(0); else mostraTotes();
+  v.querySelector('.doc-zoom')?.remove();
+  v.querySelector('.doc-visor-cap').insertAdjacentHTML('afterend', `<p class="help doc-zoom">${pagines.length > 1 ? 'Toca una pàgina per ampliar-la' : 'Pessiga amb dos dits o toca dues vegades per ampliar'}</p>`);
+}
 function tancaVisor() { document.querySelector('.doc-visor')?.remove(); }
 // Visor a pantalla completa: la foto (amb zoom), o una fitxa amb el tipus i el botó per obrir-lo
 async function obreVisor(doc) {
@@ -4470,6 +4546,9 @@ async function obreVisor(doc) {
       cos.innerHTML = `<img src="${esc(url)}" alt="${esc(doc.titol)}" draggable="false">`;
       ampliable(cos, cos.querySelector('img'));
       v.querySelector('.doc-visor-cap').insertAdjacentHTML('afterend', '<p class="help doc-zoom">Pessiga amb dos dits o toca dues vegades per ampliar</p>');
+    } else if (cat === 'pdf') {
+      try { await mostraPdf(cos, url, v); }
+      catch (e2) { cos.innerHTML = fitxa(`${esc(doc.nomFitxer || '')}<br><span class="help">Toca «Obre / Comparteix» per veure'l.</span>`); }
     } else {
       cos.innerHTML = fitxa(`${esc(doc.nomFitxer || '')}${doc.mida ? '<br>' + esc(midaText(doc.mida)) : ''}<br><span class="help">Toca «Obre / Comparteix» per veure'l, desar-lo o enviar-lo.</span>`);
     }
