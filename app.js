@@ -1029,7 +1029,7 @@ function vistaAjustos() {
       <h2>Dreceres de l'iPhone</h2>
       <p class="help">Dues dreceres per guardar coses a Galàxia sense obrir l'app. Es preparen un sol cop a l'app <b>Atajos</b> de l'iPhone. Cada persona ha de fer servir <b>el seu enllaç</b> (el d'aquests botons): així tot va a la seva Galàxia.</p>
       ${usuari()
-        ? `<div class="grp"><button class="btn primary" id="veuDesa">Copia l'enllaç per a «Desa a Galàxia»</button><button class="btn primary" id="veuNota">Copia l'enllaç per a «Nota de veu»</button></div>
+        ? `<div class="grp"><button class="btn primary" id="veuDesa">Copia l'enllaç per a «Desa a Galàxia»</button><button class="btn primary" id="veuNota">Copia l'enllaç per a «Nota de veu»</button><button class="btn primary" id="veuDoc">Copia l'enllaç per a «Desa document»</button></div>
           <details class="ajuda"><summary>1. «Desa a Galàxia» (menú Compartir)</summary>
             <p>Des de Notes, Safari, Instagram, Google, Maps… toques <b>Compartir → Desa a Galàxia</b> i es crea una fitxa a <b>Memòria → Per classificar</b>. Si ja la tens, t'avisa i no la repeteix.</p>
             <ol class="passos-veu">
@@ -1055,6 +1055,17 @@ function vistaAjustos() {
               <li>Afegeix l'acció <b>Mostrar notificación</b> amb <b>Contenido de URL</b>. Toca <b>OK</b>.</li>
               <li>Prova-ho amb ▶: parla i calla. Ha de sortir <b>«Apuntat»</b> (si surt «Apuntat per confirmar…», a l'enllaç li falta «&amp;nota=1»).</li>
               <li>Per tenir-la a un toc: mantén-la premuda → <b>Compartir → Añadir a pantalla de inicio</b>. O bé a <b>Ajustes → Accesibilidad → Tocar → Tocar atrás → Doble toque → Nota de veu</b>.</li>
+            </ol>
+          </details>
+          <details class="ajuda"><summary>3. «Desa document a Galàxia» (fitxers: PDF, fotos…)</summary>
+            <p>Des d'<b>Arxius</b>, <b>Fotos</b>, <b>Mail</b>… toques <b>Compartir → Desa document a Galàxia</b> i el fitxer es desa a <b>Documents → General</b>. Si ja el tens, t'avisa i no el repeteix.</p>
+            <ol class="passos-veu">
+              <li>Aquí, prem <b>Copia l'enllaç per a «Desa document»</b>.</li>
+              <li>A <b>Atajos</b>, toca <b>+</b> i posa-li de nom <b>Desa document a Galàxia</b>. A <b>Detalles</b>, activa <b>Mostrar en el panel de compartir</b>.</li>
+              <li>A la primera caixa, <b>Recibir</b>: deixa només <b>Archivos</b>, <b>PDF</b> i <b>Imágenes</b>.</li>
+              <li>Afegeix l'acció <b>Obtener contenido de URL</b>. Enganxa-hi l'enllaç (acaba en <b>&amp;doc=1</b>). Toca la fletxa <b>›</b>: Método <b>POST</b>, Cuerpo <b>Formulario</b>, <b>Añadir nuevo campo → Archivo</b>, clau <b>fitxer</b> i valor la variable <b>Entrada de atajo</b>.</li>
+              <li>Afegeix <b>Mostrar notificación</b> amb <b>Contenido de URL</b>. <b>OK</b>.</li>
+              <li>Prova-ho: a <b>Arxius</b>, mantén premut un PDF → <b>Compartir → Desa document a Galàxia</b>. Ha de sortir «Desat a Galàxia: …».</li>
             </ol>
           </details>
           <details class="ajuda"><summary>Plans per veu amb Siri (opcional)</summary>
@@ -2318,6 +2329,8 @@ async function clicEscaner(e) {
     }
     const titol = await demanaText('Nom del document', (unFull ? 'DNI ' : 'Document ') + new Date().toLocaleDateString('ca-ES'), { max: 80 });
     if (titol === null) { escn.pas = 'foto'; pintaEscaner(); return; }
+    const rep = docRepetit({ titol: titol.trim() || 'Document' });
+    if (rep && !(await confirmaDocRepetit(rep))) { escn.pas = 'foto'; pintaEscaner(); return; }
     b.disabled = true; b.textContent = 'Desant…';
     try { await desaEscaneig(unFull ? [muntaFull(escn.pagines)] : escn.pagines, (titol.trim() || 'Document').slice(0, 80)); tancaEscaner(); render(); toast('Document desat'); }
     catch (x) { b.disabled = false; b.textContent = 'Desa'; toast(navigator.onLine ? "No s'ha pogut desar. Torna-ho a provar." : 'Cal connexió a internet per desar.', 5000); }
@@ -4347,6 +4360,15 @@ $('#main').addEventListener('change', async (e) => {
   if (files.length === 1) {
     titolUn = await demanaText('Nom del document', nomPerDefecte(files[0]), { max: 80 });
     if (titolUn === null) return;
+    const rep = docRepetit({ titol: titolUn.trim() || nomPerDefecte(files[0]), nomFitxer: files[0].name.slice(0, 120), mida: files[0].size });
+    if (rep && !(await confirmaDocRepetit(rep))) return;
+  } else {
+    const repetits = files.filter((f) => docRepetit({ nomFitxer: f.name.slice(0, 120), mida: f.size }));
+    if (repetits.length) {
+      toast(`${repetits.length === 1 ? '1 ja el tenies' : repetits.length + ' ja els tenies'} i no es tornen a pujar: ${repetits.map((f) => f.name).join(', ')}`, 6000);
+      files.splice(0, files.length, ...files.filter((f) => !repetits.includes(f)));
+      if (!files.length) return;
+    }
   }
   ui.docPujant = true; render();
   let fets = 0, errors = 0;
@@ -4359,6 +4381,21 @@ $('#main').addEventListener('change', async (e) => {
   if (!errors) toast(fets === 1 ? 'Document desat' : `${fets} documents desats`);
   else toast(!navigator.onLine ? 'Cal connexió a internet per pujar documents.' : `${fets} desats, ${errors} no s'han pogut pujar.`, 4500);
 });
+// Documents repetits: el mateix enllaç, el mateix fitxer (nom i mida) o el mateix nom (sense la data del final)
+const titolBase = (t) => normal(String(t || '').replace(/\s*\d{1,2}\/\d{1,2}\/\d{2,4}\s*$/, '')).trim();
+function docRepetit({ titol = '', url = '', nomFitxer = '', mida = 0 }) {
+  const tb = titolBase(titol);
+  return state.documents.find((d) => (url && d.url && urlNetaApp(d.url) === urlNetaApp(url))
+    || (nomFitxer && mida && d.nomFitxer === nomFitxer && d.mida === mida)
+    || (tb && tb !== 'document' && titolBase(d.titol) === tb));   // «Document» a seques és el nom genèric: no compta
+}
+async function confirmaDocRepetit(d) {
+  const op = await triaOpcio('Aquest document ja el tens', [
+    ['no', 'No el desis', `Ja hi ha «${d.titol}» a ${nomCarpeta('docs', carpetaItem('docs', d))}`],
+    ['si', "Desa'l igualment", ''],
+  ]);
+  return op === 'si';
+}
 // Enllaç a una pàgina web: no es puja cap fitxer, només es guarda l'adreça
 $('#main').addEventListener('click', async (e) => {
   if (!e.target.closest('[data-docenllac]')) return;
@@ -4368,6 +4405,8 @@ $('#main').addEventListener('click', async (e) => {
   if (!/^https?:\/\/[^\s.]+\.[^\s]+$/i.test(url)) { toast('Aquesta adreça no sembla correcta.'); return; }
   const titol = await demanaText('Nom del document', domini(url), { max: 80 });
   if (titol === null) return;
+  const rep = docRepetit({ titol: titol.trim() || domini(url), url });
+  if (rep && !(await confirmaDocRepetit(rep))) return;
   state.documents.push({ id: nouId('d'), titol: (titol.trim() || domini(url)).slice(0, 80), tipus: 'enllac', url: url.slice(0, 2000), carpeta: carpetaOberta('docs') || '', creat: new Date().toISOString() });
   save(); render(); toast('Enllaç desat');
 });
@@ -4721,11 +4760,11 @@ $('#main').addEventListener('click', async (e) => {
 
 /* ---------- Ajustos: enllaç de veu ---------- */
 $('#main').addEventListener('click', async (e) => {
-  const b = e.target.closest('#veuCopia, #veuNou, #veuDesa');
+  const b = e.target.closest('#veuCopia, #veuNou, #veuDesa, #veuDoc');
   if (!b) return;
   if (b.id === 'veuNou' && b.dataset.segur !== '1') { b.dataset.segur = '1'; b.textContent = "segur? toca'l un altre cop"; return; }
   try {
-    const url = (await sync().enllacVeu(b.id === 'veuNou')) + (b.id === 'veuDesa' ? '&desa=1' : '');
+    const url = (await sync().enllacVeu(b.id === 'veuNou')) + (b.id === 'veuDesa' ? '&desa=1' : b.id === 'veuDoc' ? '&doc=1' : '');
     try { await navigator.clipboard.writeText(url); toast(b.id === 'veuNou' ? 'Enllaç nou copiat: posa\'l a la Drecera' : 'Enllaç copiat'); }
     catch (x) { prompt('Copia aquest enllaç:', url); }
   } catch (err) {
