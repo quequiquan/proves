@@ -964,6 +964,8 @@ function vistaAjustos() {
       <h2>Aspecte</h2>
       <p class="help"><b>Automàtic</b> fa el mateix que l'iPhone: clar de dia i fosc quan l'iPhone és en mode fosc.</p>
       <div class="seg tema-seg">${[['clar', 'Clar'], ['fosc', 'Fosc'], ['auto', 'Automàtic']].map(([k, n]) => `<button aria-pressed="${(state.ajustos.tema || 'auto') === k}" data-tema="${k}">${n}</button>`).join('')}</div>
+      <p class="help" style="margin-top:14px"><b>Lletres de les boles</b> de la pantalla Galàxia: la inicial de cada una, o que entre totes diguin <b>GALÀXIA</b> (a sota hi continua el nom).</p>
+      <div class="seg tema-seg">${[['inicials', 'Inicials'], ['galaxia', 'G·A·L·À·X·I·A']].map(([k, n]) => `<button aria-pressed="${llegeixPref('lletres', 'inicials') === k}" data-lletres="${k}">${n}</button>`).join('')}</div>
     </div>
     <div class="section" id="seccioIcona">
       <h2>Icona</h2>
@@ -1179,6 +1181,9 @@ const SATEL = [
   { id: 'documents', nom: 'Documents', color: '#FFC300' },
   { id: 'veu', nom: 'Notes de veu', color: '#0B7285' },
 ];
+// Lletres de les boles: la inicial de cada micro-app o, llegint en el sentit del rellotge, G-A-L-À-X-I-A
+const LLETRES_GALAXIA = ['G', 'A', 'L', 'À', 'X', 'I', 'A'];
+const lletraSatel = (s, i) => (llegeixPref('lletres', 'inicials') === 'galaxia' && SATEL.length === LLETRES_GALAXIA.length ? LLETRES_GALAXIA[i] : s.nom[0]);
 let gxAnimat = false;
 const modeAgenda = () => state.ajustos.mode === 'agenda';   // l'animació d'entrada només es fa el primer cop que s'obre l'app
 const VISTES_GALAXIA = ['inici', 'aniversaris', 'recordatoris', 'llista', 'compres', 'memoria', 'documents', 'veu', 'pindoles'];
@@ -1221,7 +1226,7 @@ function vistaInici() {
         <button class="gx-centre" id="gxAgenda" aria-label="Agenda (mantén premut per a un pla nou)">
           <span class="gx-centre-nom">Agenda</span>${nPlans ? `<small class="gx-centre-n" aria-label="${nPlans} plans avui">${nPlans}</small>` : ''}</button>
         ${(modeAgenda() ? [] : SATEL).map((s, i) => `<button class="gx-sat${s.aviat ? ' aviat' : ''}" data-sat="${s.id}" style="--c:${s.color};--a:${i * (360 / SATEL.length) - 90}deg;--i:${i}">
-            <span class="gx-bola"><span class="gx-ini" aria-hidden="true">${esc(s.nom[0])}</span>${comptes[s.id] ? `<i>${comptes[s.id]}</i>` : ''}</span><span class="gx-nom">${esc(s.nom)}</span>${s.aviat ? '<small>aviat</small>' : ''}</button>`).join('')}
+            <span class="gx-bola"><span class="gx-ini" aria-hidden="true">${esc(lletraSatel(s, i))}</span>${comptes[s.id] ? `<i>${comptes[s.id]}</i>` : ''}</span><span class="gx-nom">${esc(s.nom)}</span>${s.aviat ? '<small>aviat</small>' : ''}</button>`).join('')}
       </div>
       ${typeof pindolaDelDia === 'function' ? `<button class="gx-pindola" data-pindoles>${esc(pindola())}</button>` : ''}
       ${avisosEnviaments()}
@@ -4845,6 +4850,8 @@ const enllacIcona = () => location.origin + location.pathname.replace(/index\.ht
 $('#main').addEventListener('click', async (e) => {
   const b = e.target.closest('[data-icona]');
   if (b) { desaPref('icona', b.dataset.icona); render(); return; }
+  const ll = e.target.closest('[data-lletres]');
+  if (ll) { desaPref('lletres', ll.dataset.lletres); render(); toast(ll.dataset.lletres === 'galaxia' ? 'Ara les boles diuen GALÀXIA' : 'Ara les boles porten la inicial'); return; }
   if (!e.target.closest('#iconaCopia')) return;
   const url = enllacIcona();
   try { await navigator.clipboard.writeText(url); toast("Enllaç copiat: obre Safari i enganxa'l", 4500); } catch (x) { demanaText("Copia aquest enllaç i obre'l a Safari", url); }
