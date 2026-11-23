@@ -4047,7 +4047,7 @@ async function fullAPdf(el, nom) {
   caixa.innerHTML = el.innerHTML;
   document.body.appendChild(caixa);
   try {
-    const canvas = await window.html2canvas(caixa, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+    const canvas = await window.html2canvas(caixa, { scale: 1.6, backgroundColor: '#ffffff', useCORS: true });
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
     const ampleMm = 190, altPagMm = 277, mmPerPx = ampleMm / canvas.width, altPagPx = Math.floor(altPagMm / mmPerPx);
@@ -4056,9 +4056,11 @@ async function fullAPdf(el, nom) {
       tros.width = canvas.width; tros.height = Math.min(altPagPx, canvas.height - y);
       tros.getContext('2d').drawImage(canvas, 0, y, canvas.width, tros.height, 0, 0, canvas.width, tros.height);
       if (p) pdf.addPage();
-      pdf.addImage(tros.toDataURL('image/jpeg', 0.92), 'JPEG', 10, 10, ampleMm, tros.height * mmPerPx);
+      pdf.addImage(tros.toDataURL('image/jpeg', 0.8), 'JPEG', 10, 10, ampleMm, tros.height * mmPerPx);
     }
-    return new File([pdf.output('blob')], nom, { type: 'application/pdf' });
+    // Nom sense accents ni espais: l'extensió de WhatsApp de l'iPhone no envia bé els fitxers amb noms així
+    const nomNet = nom.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9.]+/g, '-').replace(/-+/g, '-').replace(/^-|-(?=\.pdf$)/g, '') || 'Galaxia.pdf';
+    return new File([pdf.output('blob')], nomNet, { type: 'application/pdf' });
   } finally { caixa.remove(); }
 }
 // Si el PDF ha trigat a fer-se, l'iPhone ja no deixa obrir el menú Compartir sol: es mostra un botó per obrir-lo
