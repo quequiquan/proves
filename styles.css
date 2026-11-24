@@ -1309,3 +1309,17 @@ button.gx-pindola, .gx-pindola { color: color-mix(in srgb, var(--text) 82%, var(
 @keyframes fotoEsquerra { from { transform: translateX(-40px); opacity: .3; } to { transform: none; opacity: 1; } }
 /* «Notes de veu» és llarg: el rètol es desplaça cap a fora perquè no toqui el cercle de l'Agenda */
 .gx-sat[data-sat="veu"] .gx-nom { transform: translateX(-30px); }
+/* Carpetes: l'alçada s'ajusta perquè totes càpiguen a la pantalla */
+.mem-carpetes { gap: 8px; }
+.mem-carpeta { min-height: var(--hcarp, 92px); }
+.mem-carpetes .cf-mur { min-height: var(--hcarp, 92px); }
+.mem-carpetes.compacte .mem-carpeta { padding: 8px 12px; gap: 2px; justify-content: center; }
+.mem-carpetes.compacte .mem-carpeta b { font-size: 16px; line-height: 1.15; }
+.mem-carpetes.compacte .mem-carpeta small { font-size: 12.5px; }
+.mem-carpetes.tres { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.mem-carpetes.tres .mem-carpeta { padding: 6px 9px; }
+.mem-carpetes.tres .mem-carpeta b { font-size: 14px; overflow-wrap: anywhere; }
+.mem-carpetes.tres .mem-carpeta small { font-size: 11.5px; }
+.mem-carpetes.tres .mem-carpeta.nova b { font-size: 13px; }
+/* Llistes: botó «Mou a…» en lliscar */
+.acc-mou { background: #1C7ED6; }
