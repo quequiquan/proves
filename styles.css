@@ -1323,3 +1323,9 @@ button.gx-pindola, .gx-pindola { color: color-mix(in srgb, var(--text) 82%, var(
 .mem-carpetes.tres .mem-carpeta.nova b { font-size: 13px; }
 /* Llistes: botó «Mou a…» en lliscar */
 .acc-mou { background: #1C7ED6; }
+/* Pantalla d'entrada: dues maneres de començar */
+.entrada-tria { display: grid; gap: 12px; margin: 18px 0 6px; text-align: left; }
+.entrada-opcio { display: grid; gap: 4px; width: 100%; padding: 16px 18px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); box-shadow: var(--shadow); font: inherit; color: var(--text); text-align: left; cursor: pointer; }
+.entrada-opcio b { font-size: 17px; }
+.entrada-opcio small { color: var(--muted); font-size: 14px; line-height: 1.35; }
+.entrada-opcio:active { transform: scale(.98); }

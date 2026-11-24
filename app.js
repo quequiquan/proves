@@ -200,7 +200,7 @@ function llegeixPref(k, def) { try { const v = localStorage.getItem('qqq-pref-' 
 function desaPref(k, v) { try { localStorage.setItem('qqq-pref-' + k, JSON.stringify(v)); } catch (e) { /* res */ } }
 const ui = {
   view: llegeixPref('view', 'propers'), calMode: llegeixPref('calMode', 'mes'), cursor: new Date(), diaSel: avui(), cerca: '', cercaGent: '', passats: false, persona: '',
-  entrada: { pas: 'correu', email: '' },
+  entrada: { pas: 'tria', email: '' },
 };
 
 /* ---------- Consultes ---------- */
@@ -1195,13 +1195,19 @@ function vistaEntrada() {
         <p class="help">És el nom que veuran les persones a qui enviïs plans.</p>
         <button class="btn primary">Comença</button>
       </form>`;
+  } else if (en.pas === 'tria') {
+    // Primer cop: dues maneres igual de visibles
+    cos = `<div class="entrada-tria">
+        <button class="entrada-opcio" id="senseCompte"><b>Fes-la servir només en aquest mòbil</b><small>Sense compte ni correu. Tot es guarda al teu mòbil, també les fotos i els documents.</small></button>
+        <button class="entrada-opcio" data-pas="correu"><b>Tinc invitació: entra amb el correu</b><small>Per tenir-la a diversos aparells i enviar-te plans amb altres persones.</small></button>
+      </div>`;
   } else {
     cos = `<form id="formCorreu" class="entrada-form">
         <label class="camp">El teu correu<input type="email" name="email" value="${esc(en.email)}" autocomplete="email" inputmode="email" placeholder="nom@exemple.com" required></label>
         <button class="btn primary">Envia'm un codi</button>
       </form>
-      <p class="help">T'enviarem un codi per correu per entrar. No cal cap contrasenya.</p>
-      <button class="enllac" id="senseCompte">Ara no: fes-la servir només en aquest dispositiu</button>`;
+      <p class="help">T'enviarem un codi per correu per entrar. No cal cap contrasenya. Només hi poden entrar les persones convidades.</p>
+      <button class="enllac" id="senseCompte">No tinc invitació: fes-la servir només en aquest mòbil</button>`;
   }
   return `<div class="entrada">
       <img src="img/icona.svg" alt="" class="entrada-logo">
@@ -2637,7 +2643,7 @@ $('#main').addEventListener('click', (e) => {
   if (t.closest('[data-entrada]')) { ui.view = 'entrada'; ui.entrada = { pas: 'correu', email: '' }; render(); return; }
   const pas = t.closest('[data-pas]');
   if (pas) { ui.entrada.pas = pas.dataset.pas; render(); return; }
-  if (t.id === 'senseCompte') { desaPref('senseCompte', true); fiEntrada(); return; }
+  if (t.closest('#senseCompte')) { desaPref('senseCompte', true); fiEntrada(); return; }
   if (t.id === 'reenvia') {
     sync().demanaCodi(ui.entrada.email).then(() => toast('Codi enviat de nou')).catch((err) => toast(errorEntrada(err)));
     return;
