@@ -1100,7 +1100,7 @@ function vistaAjustos() {
       ${usuari()
         ? `<div class="grp"><button class="btn primary" id="veuDesa">Copia l'enllaç per a «Desa a Galàxia»</button><button class="btn primary" id="veuNota">Copia l'enllaç per a «Nota de veu»</button><button class="btn primary" id="veuDoc">Copia l'enllaç per a «Desa document»</button></div>
           <details class="ajuda"><summary>1. «Desa a Galàxia» (menú Compartir)</summary>
-            <p>Des de Notes, Safari, Instagram, Google, Maps, Fotos, Arxius… toques <b>Compartir → Desa a Galàxia</b> i es crea una fitxa a <b>Memòria → Per classificar</b> (si és una imatge, amb la foto a dins; si és un PDF, va a Documents). Si ja la tens, t'avisa i no la repeteix.</p>
+            <p>Des de Notes, Safari, Instagram, Google, Maps, Fotos, Arxius… toques <b>Compartir → Desa a Galàxia</b> i va a parar a la <b>Safata d'entrada</b> de la portada: enllaços, textos, ubicacions, fotos i PDF. Des d'allà el mous on toqui amb <b>Mou a…</b>. Si ja el tens, t'avisa i no el repeteix.</p>
             <ol class="passos-veu">
               <li>Aquí, prem <b>Copia l'enllaç per a «Desa a Galàxia»</b>.</li>
               <li>Obre <b>Atajos</b>, pestanya <b>Atajos</b>, i toca <b>+</b>. A dalt, toca el nom i posa-li <b>Desa a Galàxia</b>.</li>
@@ -1127,7 +1127,7 @@ function vistaAjustos() {
             </ol>
           </details>
           <details class="ajuda"><summary>3. «Desa document a Galàxia» (fitxers: PDF, fotos…)</summary>
-            <p>Des d'<b>Arxius</b>, <b>Fotos</b>, <b>Mail</b>… toques <b>Compartir → Desa document a Galàxia</b> i el fitxer es desa a <b>Documents → General</b>. Si ja el tens, t'avisa i no el repeteix.</p>
+            <p>Des d'<b>Arxius</b>, <b>Fotos</b>, <b>Mail</b>… toques <b>Compartir → Desa document a Galàxia</b> i el fitxer va a la <b>Safata d'entrada</b> de la portada. Si ja el tens, t'avisa i no el repeteix.</p>
             <ol class="passos-veu">
               <li>Aquí, prem <b>Copia l'enllaç per a «Desa document»</b>.</li>
               <li>A <b>Atajos</b>, toca <b>+</b> i posa-li de nom <b>Desa document a Galàxia</b>. A <b>Detalles</b>, activa <b>Mostrar en el panel de compartir</b>.</li>
@@ -1259,7 +1259,7 @@ const LLETRES_GALAXIA = ['G', 'A', 'L', 'À', 'X', 'I', 'A'];
 const lletraSatel = (s, i) => (llegeixPref('lletres', 'inicials') === 'galaxia' && SATEL.length === LLETRES_GALAXIA.length ? LLETRES_GALAXIA[i] : s.nom[0]);
 let gxAnimat = false;
 const modeAgenda = () => state.ajustos.mode === 'agenda';   // l'animació d'entrada només es fa el primer cop que s'obre l'app
-const VISTES_GALAXIA = ['inici', 'aniversaris', 'recordatoris', 'llista', 'compres', 'memoria', 'documents', 'veu', 'pindoles'];
+const VISTES_GALAXIA = ['safata', 'inici', 'aniversaris', 'recordatoris', 'llista', 'compres', 'memoria', 'documents', 'veu', 'pindoles'];
 const pendentsRec = () => state.recordatoris.filter((r) => !r.fet);
 // Propers aniversaris i sants dels contactes (els dels pròxims 12 mesos, el primer avui)
 function propersAniv() {
@@ -1301,10 +1301,34 @@ function vistaInici() {
         ${(modeAgenda() ? [] : SATEL).map((s, i) => `<button class="gx-sat${s.aviat ? ' aviat' : ''}" data-sat="${s.id}" style="--c:${s.color};--a:${i * (360 / SATEL.length) - 90}deg;--i:${i}">
             <span class="gx-bola"><span class="gx-ini" aria-hidden="true">${esc(lletraSatel(s, i))}</span>${comptes[s.id] ? `<i>${comptes[s.id]}</i>` : ''}</span><span class="gx-nom">${esc(s.nom)}</span>${s.aviat ? '<small>aviat</small>' : ''}</button>`).join('')}
       </div>
+      ${modeAgenda() ? '' : (() => { const n = nSafata(); return `<button class="gx-safata${n ? '' : ' buida'}" data-safata aria-label="Safata d'entrada: ${n ? n + (n === 1 ? ' cosa per classificar' : ' coses per classificar') : 'buida'}"><span>Safata d'entrada</span>${n ? `<b>${n}</b>` : '<small>Buida ✓</small>'}</button>`; })()}
       ${typeof pindolaDelDia === 'function' ? `<button class="gx-pindola" data-pindoles>${esc(pindola())}</button>` : ''}
       ${avisosEnviaments()}
       ${inv ? `<button class="enllac portada-veure" data-anar="propers">${inv === 1 ? 'Tens 1 invitació per respondre' : `Tens ${inv} invitacions per respondre`}</button>` : ''}
     </div>`;
+}
+/* ---------- Safata d'entrada ---------- */
+// Tot el que arriba des del menú Compartir de l'iPhone (enllaços, textos, ubicacions, fotos, PDF, arxius) espera aquí
+// fins que es mou a la micro-app i la carpeta que toca.
+const fitxesSafata = () => state.memoria.filter((f) => f.carpeta === 'perclass');
+const docsSafata = () => state.documents.filter((d) => d.carpeta === 'perclass');
+const nSafata = () => fitxesSafata().length + docsSafata().length;
+function tipusFitxa(f) {
+  if ((f.imatges || []).length) return '🖼️ Foto';
+  const t = (f.titol || '') + ' ' + (f.text || '');
+  if (/google\.[a-z.]+\/maps|maps\.app\.goo\.gl|goo\.gl\/maps|maps\.apple\.com/i.test(t)) return '📍 Ubicació';
+  if (/https?:\/\//.test(t)) return '🔗 Enllaç';
+  return '✏️ Text';
+}
+function vistaSafata() {
+  if (ui.memEdita) return vistaMemoria();   // una fitxa oberta per editar: torna a la safata
+  ui.memCarpeta = 'perclass';
+  const recents = (a, b) => String(b.creat || '').localeCompare(String(a.creat || ''));
+  const fitxes = fitxesSafata().sort(recents), docs = docsSafata().sort(recents);
+  if (!fitxes.length && !docs.length) return capSatel("Safata d'entrada") + `<p class="help buit safata-buida">La safata és buida ✓<br>Tot el que desis des del mòbil (Compartir → Desa a Galàxia) arribarà aquí.</p>`;
+  return capSatel("Safata d'entrada") + `<p class="help">El que has desat des del mòbil. Llisca cada cosa cap a l'esquerra i toca <b>Mou a…</b> per posar-la a la micro-app i la carpeta que toca.</p>
+    ${fitxes.length ? `${docs.length ? '<h2 class="safata-cap">Enllaços, textos i fotos</h2>' : ''}<div class="mem-llista">${fitxes.map((x) => filaFitxa(x, false, tipusFitxa(x))).join('')}</div>` : ''}
+    ${docs.length ? `${fitxes.length ? '<h2 class="safata-cap">Arxius</h2>' : ''}${graellaDocs(docs, '')}` : ''}`;
 }
 function vistaAniversaris() {
   const llista = propersAniv();
@@ -1453,8 +1477,9 @@ const carpetaOberta = (k) => { const v = ui[UI_CARP[k]]; return v === 'g' ? '' :
 const nomGeneral = (k) => ((state.ajustos.nomsGeneral || {})[k] || '').trim() || 'General';
 const nomCarpeta = (k, id) => carpetesDe(k).find((c) => c.id === id)?.nom || nomGeneral(k);
 function graellaCarpetes(k, unitat) {
-  const compta = (id) => colCarp(k).filter((x) => carpetaItem(k, x) === id && !(k === 'compres' && x.fet)).length;
-  const totes = [...carpetesDe(k), ...(colCarp(k).some((x) => carpetaItem(k, x) === '') ? [{ id: 'g', nom: nomGeneral(k), color: '#868E96' }] : [])];
+  const vis = colCarp(k).filter((x) => x.carpeta !== 'perclass');
+  const compta = (id) => vis.filter((x) => carpetaItem(k, x) === id && !(k === 'compres' && x.fet)).length;
+  const totes = [...carpetesDe(k), ...(vis.some((x) => carpetaItem(k, x) === '') ? [{ id: 'g', nom: nomGeneral(k), color: '#868E96' }] : [])];
   return `<div class="mem-carpetes" id="carp-${k}">${totes.map((c) => {
     const n = compta(c.id === 'g' ? '' : c.id);
     return murCarpeta(c.id === 'g' ? '' : k, c.id, `<button class="mem-carpeta" data-cfobre="${k}|${esc(c.id)}" style="--c:${esc(c.color)}"><b>${esc(c.nom)}</b><small>${n === 1 ? '1 ' + unitat[0] : n + ' ' + unitat[1]}</small></button>`);
@@ -1501,7 +1526,7 @@ function appsPossibles(o, c) {
 }
 // Destins dins de cada micro-app: [id, nom, ajuda]
 function destinsDe(a, o) {
-  if (a === 'mem') return [['g', nomGeneral('mem'), ''], ...carpetesMem().map((c) => [c.id, c.nom, ''])];
+  if (a === 'mem') return [['g', nomGeneral('mem'), ''], ...carpetesMem().filter((c) => !c.virtual).map((c) => [c.id, c.nom, ''])];
   if (a === 'docs') return [['g', nomGeneral('docs'), ''], ...carpetesDe('docs').map((c) => [c.id, c.nom, ''])];
   if (a === 'compres') return [...carpetesDe('compres').map((c) => [c.id, c.nom, '']), ['g', nomGeneral('compres'), 'Sense botiga']];
   if (a === 'llista') return state.llistes.filter((l) => !(o.k === 'item' && l.id === o.lid)).slice().sort(perOrdreLl).map((l) => [l.id, l.nom, nomCarpeta('llista', carpetaItem('llista', l))]);
@@ -1584,7 +1609,7 @@ async function mouA(o) {
     const ll = destinsDe('llista', o);
     if (ll.length) opcions.push(['§', 'Altres llistes'], ...ll.map(([id, n, aj]) => ['aqui|' + id, n, aj]));
   } else if (o.k !== 'rec') {
-    const ara = o.k === 'mem' ? carpetaDe(o.x) : carpetaItem(propia, o.x);
+    const ara = o.k === 'mem' ? carpetaDe(o.x) : o.x.carpeta === 'perclass' ? 'perclass' : carpetaItem(propia, o.x);
     const totsLlocs = o.k === 'llista' ? [['g', nomGeneral('llista'), ''], ...carpetesDe('llista').map((k) => [k.id, k.nom, ''])] : destinsDe(propia, o);
     const llocs = totsLlocs.filter(([id]) => (id === 'g' ? '' : id) !== ara);
     if (llocs.length) opcions.push(['§', o.k === 'compra' ? 'Botigues' : `Carpetes de ${NOM_APP[propia]}`], ...llocs.map(([id, n, aj]) => ['aqui|' + id, n, aj]));
@@ -1978,8 +2003,9 @@ function vistaCompres() {
 // Memòria en carpetes (Restaurants, Vins, Filosofia…). «General» és la carpeta de les fitxes sense carpeta.
 const COLORS_CARPETA = ['#E03131', '#E8590C', '#F59F00', '#C2A100', '#2F9E44', '#12B886', '#0B7285', '#1C7ED6', '#3B5BDB', '#7048E8', '#A61E4D', '#E64980', '#8B5E3C', '#5C677D', '#212529'];
 const carpetesReals = () => (Array.isArray(state.ajustos.carpetesMem) ? state.ajustos.carpetesMem : []);
-// «Per classificar»: on arriben les fitxes que es desen des del menú Compartir de l'iPhone (només surt si en té alguna)
-const PER_CLASSIFICAR = { id: 'perclass', nom: 'Per classificar', color: '#F59F00', virtual: true };
+// «Safata d'entrada»: on arriba tot el que es desa des del menú Compartir de l'iPhone (fitxes de Memòria i documents
+// amb la carpeta 'perclass'). No surt entre les carpetes: té el seu rectangle a la portada.
+const PER_CLASSIFICAR = { id: 'perclass', nom: "Safata d'entrada", color: '#F59F00', virtual: true };
 const carpetesMem = () => (state.memoria.some((f) => f.carpeta === 'perclass') ? [PER_CLASSIFICAR, ...carpetesReals()] : carpetesReals());
 const carpetaDe = (f) => (carpetesMem().some((c) => c.id === f.carpeta) ? f.carpeta : '');
 const carpetaActual = () => (ui.memCarpeta === 'g' ? '' : carpetesMem().some((c) => c.id === ui.memCarpeta) ? ui.memCarpeta : null);
@@ -2005,10 +2031,10 @@ function preparaCarpetes() {
 }
 // Text amb els enllaços (http…) que es poden tocar
 const ambEnllacos = (t) => esc(t).replace(/https?:\/\/[^\s<]+/g, (u) => `<a href="${u}" target="_blank" rel="noopener">${u.replace(/^https?:\/\/(www\.)?/, '').slice(0, 40)}${u.length > 48 ? '…' : ''}</a>`);
-function filaFitxa(x, ambCarpeta) {
+function filaFitxa(x, ambCarpeta, etiq) {
   const c = ambCarpeta ? carpetesMem().find((k) => k.id === carpetaDe(x)) : null;
   return `<div class="mur-mem" data-memcerca="${esc(normal(x.titol + ' ' + x.text))}"><div class="mur-accions"><button type="button" class="acc-mou" data-memmouacc="${esc(x.id)}">Mou a…</button><button type="button" class="acc-esborra" data-memtreu="${esc(x.id)}">Esborra</button></div><div class="mem-fitxa${ui.memSel ? ' triant' + (ui.memSel.includes(x.id) ? ' triada' : '') : ''}" data-memobre="${esc(x.id)}"${c ? ` style="--c:${esc(c.color)}"` : ''}>
-        ${ambCarpeta ? `<small class="mem-de">${esc(c ? c.nom : nomGeneral('mem'))}</small>` : ''}<b>${esc(x.titol)}</b>${x.text ? `<p>${ambEnllacos(x.text)}</p>` : ''}
+        ${ambCarpeta ? `<small class="mem-de">${esc(c ? c.nom : nomGeneral('mem'))}</small>` : etiq ? `<small class="mem-de">${esc(etiq)}</small>` : ''}<b>${esc(x.titol)}</b>${x.text ? `<p>${ambEnllacos(x.text)}</p>` : ''}
         ${(x.imatges || []).length ? `<div class="mem-imgs">${x.imatges.map((im) => `<button class="rec-img" data-memimg="${esc(x.id)}|${esc(im.id)}"><img src="${esc(im.mini)}" alt=""></button>`).join('')}</div>` : ''}
         <div class="mem-accions"><button class="enllac" data-memcomparteix="${esc(x.id)}">Comparteix</button>${x.text ? `<button class="enllac" data-memcopia="${esc(x.id)}">Copia</button>` : ''}<button class="enllac" data-memimprimeix="${esc(x.id)}">Imprimeix</button><button class="enllac" data-memmou="${esc(x.id)}">Mou a…</button><button class="enllac" data-memajunta="${esc(x.id)}">Ajunta a una fitxa</button><button class="enllac" data-memedita="${esc(x.id)}">Edita</button></div>
       </div></div>`;
@@ -2039,11 +2065,12 @@ function vistaMemoria() {
         ${f ? `<button type="button" class="enllac perill" data-memesborra="${esc(f.id)}">Esborra</button>` : ''}</div>
     </form>`;
   }
+  if (ui.view === 'memoria' && carpetaActual() === 'perclass') ui.memCarpeta = null;   // la safata té la seva pantalla
   const cid = carpetaActual();
   if (cid === null) ui.memSel = null;
   if (cid === null) {
     // Inici de Memòria: les carpetes i un cercador que busca a totes
-    const totes = [{ id: 'g', nom: nomGeneral('mem'), color: '#868E96' }, ...carpetesMem()];
+    const totes = [{ id: 'g', nom: nomGeneral('mem'), color: '#868E96' }, ...carpetesMem().filter((c) => !c.virtual)];
     const compta = (c) => state.memoria.filter((x) => carpetaDe(x) === (c.id === 'g' ? '' : c.id)).length;
     return capSatel('Memòria') + `<p class="help">Les teves coses per consultar, ordenades en carpetes. Les contrasenyes, millor a l'app Contrasenyes de l'iPhone.</p>
       ${state.memoria.length ? '<input id="cercaMemG" type="search" class="doc-cerca" placeholder="Cerca a totes les carpetes…" autocomplete="off">' : ''}
@@ -2157,7 +2184,7 @@ const graellaDocs = (docs, q) => `<div class="doc-graella">${docs.map((x) => {
 }).join('')}</div>`;
 function vistaDocuments() {
   const entrat = true;   // sense compte, els documents es guarden a la memòria del mòbil
-  const tots = state.documents.slice().sort((a, b) => String(b.creat || '').localeCompare(String(a.creat || '')));
+  const tots = state.documents.filter((d) => d.carpeta !== 'perclass').sort((a, b) => String(b.creat || '').localeCompare(String(a.creat || '')));
   const q = normal((ui.docCerca || '').trim());
   const cid = carpetaOberta('docs');
   if (cid === null) {
@@ -2751,7 +2778,7 @@ function vistaPindoles() {
   return capSatel('Píndoles') + pestanyes + `<div class="pd-llista">${html}</div>`
     + (queden > 0 ? '<div class="grp centre"><button class="btn" data-pdmes>Mostra\'n més</button></div>' : '');
 }
-const VISTES = { inici: vistaInici, aniversaris: vistaAniversaris, recordatoris: vistaRecordatoris, llista: vistaLlista, compres: vistaCompres, memoria: vistaMemoria, documents: vistaDocuments, veu: vistaVeu, pindoles: vistaPindoles, propers: vistaPropers, calendari: vistaCalendari, gent: vistaGent, ajustos: vistaAjustos, entrada: vistaEntrada };
+const VISTES = { safata: vistaSafata, inici: vistaInici, aniversaris: vistaAniversaris, recordatoris: vistaRecordatoris, llista: vistaLlista, compres: vistaCompres, memoria: vistaMemoria, documents: vistaDocuments, veu: vistaVeu, pindoles: vistaPindoles, propers: vistaPropers, calendari: vistaCalendari, gent: vistaGent, ajustos: vistaAjustos, entrada: vistaEntrada };
 // Aspecte: Clar, Fosc o Automàtic (com l'iPhone). Es guarda amb el compte i també en aquest aparell (per a la guia)
 function aplicaTema() {
   const t = state.ajustos.tema, r = document.documentElement;
@@ -3275,6 +3302,9 @@ $('#main').addEventListener('click', (e) => {
     // L'Agenda s'obre sempre al calendari en vista de mes, situat en el dia d'avui
     obreAgendaMes(); return;
   }
+  if (e.target.closest('[data-safata]')) {
+    ui.view = 'safata'; ui.memEdita = ''; ui.memSel = null; ui.memCarpeta = 'perclass'; render(); window.scrollTo(0, 0); return;
+  }
   const s = e.target.closest('[data-sat]');
   if (s) {
     const sat = SATEL.find((x) => x.id === s.dataset.sat);
@@ -3442,7 +3472,7 @@ async function acceptaEnviament(x) {
       let k = carpetesReals().find((y) => normal(y.nom) === normal(c.carpeta?.nom || x.titol));
       if (!k) { k = { id: nouId('cm'), nom: (c.carpeta?.nom || x.titol).slice(0, 40), color: c.carpeta?.color || COLORS_CARPETA[0] }; state.ajustos.carpetesMem = [...carpetesReals(), k]; }
       carpeta = k.id; on = k.nom;
-    } else on = 'Per classificar';
+    } else on = "la Safata d'entrada";
     (c.fitxes || []).forEach((f) => {
       if (!f || !f.titol) return;
       if (fitxaRepetida(f.titol, f.text)) { rep++; return; }
