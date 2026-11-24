@@ -1345,3 +1345,8 @@ button.gx-pindola, .gx-pindola { color: color-mix(in srgb, var(--text) 82%, var(
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .badge.fet { background: #1F3A27; color: #8CE99A; } }
 :root[data-theme="dark"] .badge.fet { background: #1F3A27; color: #8CE99A; }
 .fet-btn { background: #12B886; border-color: #12B886; color: #fff; }
+/* Finestra «Mou a…»: títols de secció */
+.demana-caixa .opcio-cap { margin: 6px 0 -4px; font-size: 12px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; color: var(--muted); }
+.demana-caixa:has(.opcio-cap) { gap: 6px; }
+.demana-caixa:has(.opcio-cap) .opcio { padding: 9px 14px; min-height: 0; }
+.demana-caixa:has(.opcio-cap) .opcio-cap { margin: 10px 0 2px; }

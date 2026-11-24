@@ -1366,7 +1366,7 @@ function vistaRecordatoris() {
     <button class="enllac enganxa" data-enganxa="recordatoris">Enganxa el que has copiat</button>
     ${llista.length > 3 ? '<input id="cercaRec" type="search" class="doc-cerca" placeholder="Cerca un recordatori…" autocomplete="off">' : ''}
     ${llista.length ? `<ul class="rec-llista recs">${llista.map((r) => `<li class="mur-rec" data-rec="${esc(r.id)}" data-reccerca="${esc(normal([r.text, r.notes, r.lloc, ...(r.subtasques || []).map((x) => x.text)].filter(Boolean).join(' ')))}">
-        <div class="mur-accions"><button type="button" class="acc-esborra" data-rectreu="${esc(r.id)}">Esborra</button></div>
+        <div class="mur-accions"><button type="button" class="acc-mou" data-recmou="${esc(r.id)}">Mou a…</button><button type="button" class="acc-esborra" data-rectreu="${esc(r.id)}">Esborra</button></div>
         <div class="rec-cos${r.important ? ' important' : ''}"><button class="rec-check" data-recfet="${esc(r.id)}" aria-label="Fet"></button>
         <button class="rec-text" data-recedita="${esc(r.id)}"><span>${r.important ? '<i class="rec-bandera"></i>' : ''}${esc(r.text)}</span><small>${esc([fa(r.creat), ...indicadors(r)].filter(Boolean).join(' · '))}</small></button></div></li>`).join('')}</ul>`
       : '<p class="help buit">No tens res pendent.</p>'}
@@ -1465,6 +1465,166 @@ function peuCarpeta(k) {
   const c = carpetesDe(k).find((x) => x.id === carpetaOberta(k));
   if (!c) return carpetaOberta(k) === '' ? `<div class="ll-peu"><button class="enllac" data-gennom="${k}">Canvia el nom</button></div>` : '';
   return `<div class="ll-peu"><button class="enllac" data-envcarp="${k}">Envia una còpia</button><button class="enllac" data-cfnom="${k}">Canvia el nom</button><button class="enllac" data-cfcolor="${k}">Canvia el color</button><button class="enllac perill" data-cfesborra="${k}">Esborra la carpeta</button></div>`;
+}
+/* ---------- «Mou a…» comú a tota l'app: a una carpeta d'aquí o a una altra micro-app ---------- */
+// L'origen és { k, x, lid }: k = 'mem' (fitxa), 'docs' (document), 'llista' (llista sencera), 'item' (cosa d'una llista),
+// 'compra' (producte) o 'rec' (recordatori).
+const NOM_APP = { mem: 'Memòria', docs: 'Documents', llista: 'Llistes', compres: 'Compres', rec: 'Recordatoris' };
+const APP_DE = { mem: 'mem', docs: 'docs', llista: 'llista', item: 'llista', compra: 'compres', rec: 'rec' };
+const curtM = (t, n = 40) => (String(t || '').length > n ? String(t).slice(0, n) + '…' : String(t || ''));
+// El que hi ha a dins, en una forma comuna
+function contingutDe(o) {
+  const x = o.x, buit = { titol: '', text: '', imatges: [], docs: [], url: '', items: null };
+  if (o.k === 'mem') return { ...buit, titol: x.titol, text: x.text || '', imatges: x.imatges || [] };
+  if (o.k === 'docs') {
+    if (x.tipus === 'enllac') return { ...buit, titol: x.titol, url: x.url || '' };
+    if (/^image\//.test(x.tipus || '') && x.cami) return { ...buit, titol: x.titol, imatges: [{ id: nouId('mi'), cami: x.cami, mini: x.mini || '' }] };
+    return { ...buit, titol: x.titol, docs: [x] };
+  }
+  if (o.k === 'llista') { const its = x.items.filter((i) => !i.fet).map((i) => i.text); return { ...buit, titol: x.nom, text: its.join('\n'), items: its }; }
+  if (o.k === 'item' || o.k === 'compra') return { ...buit, titol: x.text, items: [x.text] };
+  if (o.k === 'rec') {
+    const subs = (x.subtasques || []).filter((s) => !s.fet).map((s) => s.text);
+    return { ...buit, titol: x.text, text: [x.notes, ...subs.map((s) => '• ' + s), x.lloc].filter(Boolean).join('\n'), imatges: x.imatges || [], url: x.url || '', subs };
+  }
+  return buit;
+}
+// Cap a quines altres micro-apps té sentit moure-ho (si es perdria alguna cosa, no surt)
+function appsPossibles(o, c) {
+  const propia = APP_DE[o.k], ambFitxers = c.imatges.length > 0 || c.docs.length > 0;
+  return ['mem', 'docs', 'rec', 'llista', 'compres'].filter((a) => {
+    if (a === propia) return false;
+    if (a === 'mem' || a === 'rec') return !c.docs.length;
+    if (a === 'docs') return o.k !== 'item' && o.k !== 'compra';
+    return !ambFitxers;   // a una llista o a Compres només hi va text
+  });
+}
+// Destins dins de cada micro-app: [id, nom, ajuda]
+function destinsDe(a, o) {
+  if (a === 'mem') return [['g', nomGeneral('mem'), ''], ...carpetesMem().map((c) => [c.id, c.nom, ''])];
+  if (a === 'docs') return [['g', nomGeneral('docs'), ''], ...carpetesDe('docs').map((c) => [c.id, c.nom, ''])];
+  if (a === 'compres') return [...carpetesDe('compres').map((c) => [c.id, c.nom, '']), ['g', nomGeneral('compres'), 'Sense botiga']];
+  if (a === 'llista') return state.llistes.filter((l) => !(o.k === 'item' && l.id === o.lid)).slice().sort(perOrdreLl).map((l) => [l.id, l.nom, nomCarpeta('llista', carpetaItem('llista', l))]);
+  return [];
+}
+const TIPUS_PER_EXT = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', heic: 'image/heic', webp: 'image/webp', gif: 'image/gif' };
+// Posa el contingut a la micro-app de destí. Torna la llista del que s'ha creat (per poder-ho desfer).
+async function posaA(a, desti, c, o) {
+  const ara = new Date().toISOString(), creats = [];
+  const carpeta = desti === 'g' ? '' : desti;
+  if (a === 'mem') {
+    const f = { id: nouId('m'), titol: String(c.titol || 'Sense títol').slice(0, 500), text: [c.text, c.url].filter(Boolean).join('\n').slice(0, 10000), carpeta, creat: ara };
+    if (c.imatges.length) f.imatges = c.imatges.map((i) => ({ ...i }));
+    state.memoria.push(f); creats.push(['memoria', f.id]);
+  } else if (a === 'rec') {
+    const r = { id: nouId('r'), text: String(c.titol || 'Recordatori').slice(0, 300), creat: ara };
+    if (o.k === 'llista') r.subtasques = (c.items || []).map((t) => ({ id: nouId('s'), text: t, fet: false }));
+    else if (c.text) r.notes = c.text.slice(0, 3000);
+    if (c.url) r.url = c.url;
+    if (c.imatges.length) r.imatges = c.imatges.map((i) => ({ ...i }));
+    state.recordatoris.push(r); creats.push(['recordatoris', r.id]);
+  } else if (a === 'llista') {
+    const l = state.llistes.find((x) => x.id === desti);
+    (c.items || [c.titol]).filter(Boolean).forEach((t) => { const it = { id: nouId('i'), text: String(t).slice(0, 200), fet: false }; l.items.push(it); creats.push(['item', l.id, it.id]); });
+  } else if (a === 'compres') {
+    (c.items || [c.titol]).filter(Boolean).forEach((t) => {
+      const igual = state.compres.find((y) => normal(y.text) === normal(t) && carpetaItem('compres', y) === carpeta);
+      if (igual) { if (igual.fet) { igual.fet = false; creats.push(['refet', igual.id]); } return; }
+      const p = { id: nouId('c'), text: String(t).slice(0, 200), fet: false, carpeta, creat: ara };
+      state.compres.push(p); creats.push(['compres', p.id]);
+    });
+  } else if (a === 'docs') {
+    const titol = String(c.titol || 'Document').slice(0, 80);
+    c.imatges.forEach((im, i) => {
+      const ext = ((im.cami || '').match(/\.([a-z0-9]{1,8})$/i) || [])[1]?.toLowerCase() || 'jpg';
+      const d = { id: nouId('d'), titol: c.imatges.length > 1 ? `${titol} (${i + 1})` : titol, tipus: TIPUS_PER_EXT[ext] || 'image/jpeg', cami: im.cami, nomFitxer: `${titol}.${ext}`, mida: 0, mini: im.mini || '', carpeta, creat: ara };
+      state.documents.push(d); creats.push(['documents', d.id]);
+    });
+    if (c.url) { const d = { id: nouId('d'), titol, tipus: 'enllac', url: c.url, carpeta, creat: ara }; state.documents.push(d); creats.push(['documents', d.id]); }
+    c.docs.forEach((d0) => { const d = { ...d0, id: nouId('d'), carpeta, creat: ara }; state.documents.push(d); creats.push(['documents', d.id]); });
+    // El text (o una cosa que només és text) es desa com a document de text
+    const text = (o.k === 'llista' ? (c.items || []).map((t) => '• ' + t).join('\n') : c.text).trim();
+    if (text || (!c.imatges.length && !c.url && !c.docs.length)) {
+      const blob = new Blob([titol + (text ? '\n\n' + text : '') + '\n'], { type: 'text/plain' });
+      const id = nouId('d'), cami = await Fitxers.puja(id, blob, 'text/plain', 'txt');
+      const d = { id, titol, tipus: 'text/plain', cami, nomFitxer: titol + '.txt', mida: blob.size, mini: '', carpeta, creat: ara };
+      state.documents.push(d); creats.push(['documents', d.id, cami]);
+    }
+  }
+  return creats;
+}
+// Treu l'origen (sense esborrar cap fitxer: ara són de la micro-app de destí). Torna com desfer-ho.
+function treuOrigen(o) {
+  const col = { mem: state.memoria, docs: state.documents, llista: state.llistes, compra: state.compres, rec: state.recordatoris }[o.k]
+    || state.llistes.find((l) => l.id === o.lid)?.items;
+  const lloc = col.indexOf(o.x), copia = JSON.parse(JSON.stringify(o.x));
+  col.splice(lloc, 1);
+  if (o.k === 'rec' && ui.recObert === o.x.id) ui.recObert = '';
+  if (o.k === 'llista' && ui.llista === o.x.id) ui.llista = '';
+  if (o.k === 'mem' && ui.memEdita === o.x.id) ui.memEdita = '';
+  return () => {
+    const c2 = { mem: state.memoria, docs: state.documents, llista: state.llistes, compra: state.compres, rec: state.recordatoris }[o.k]
+      || state.llistes.find((l) => l.id === o.lid)?.items;
+    if (c2 && !c2.some((y) => y.id === copia.id)) c2.splice(Math.max(0, lloc), 0, copia);
+  };
+}
+function desfesCreats(creats) {
+  creats.forEach(([tipus, id, extra]) => {
+    if (tipus === 'item') { const l = state.llistes.find((x) => x.id === id); if (l) l.items = l.items.filter((i) => i.id !== extra); return; }
+    if (tipus === 'refet') { const p = state.compres.find((x) => x.id === id); if (p) p.fet = true; return; }
+    state[tipus] = state[tipus].filter((x) => x.id !== id);
+    if (extra) Fitxers.esborra(extra).catch(() => {});
+  });
+}
+// La finestra: a dalt les carpetes d'aquí; a sota, les altres micro-apps
+async function mouA(o) {
+  const c = contingutDe(o), propia = APP_DE[o.k];
+  const opcions = [];
+  if (o.k === 'item') {
+    const ll = destinsDe('llista', o);
+    if (ll.length) opcions.push(['§', 'Altres llistes'], ...ll.map(([id, n, aj]) => ['aqui|' + id, n, aj]));
+  } else if (o.k !== 'rec') {
+    const ara = o.k === 'mem' ? carpetaDe(o.x) : carpetaItem(propia, o.x);
+    const totsLlocs = o.k === 'llista' ? [['g', nomGeneral('llista'), ''], ...carpetesDe('llista').map((k) => [k.id, k.nom, ''])] : destinsDe(propia, o);
+    const llocs = totsLlocs.filter(([id]) => (id === 'g' ? '' : id) !== ara);
+    if (llocs.length) opcions.push(['§', o.k === 'compra' ? 'Botigues' : `Carpetes de ${NOM_APP[propia]}`], ...llocs.map(([id, n, aj]) => ['aqui|' + id, n, aj]));
+  }
+  const apps = appsPossibles(o, c);
+  if (apps.length) opcions.push(['§', 'Altres micro-apps'], ...apps.map((a) => ['app|' + a, NOM_APP[a] + (a === 'rec' ? '' : ' ›'), '']));
+  const tria = await triaOpcio(`Mou «${curtM(c.titol)}» a…`, opcions);
+  if (!tria) return;
+  const [tipus, val] = tria.split('|');
+  // Dins de la mateixa micro-app
+  if (tipus === 'aqui') {
+    if (o.k === 'item') {
+      const a = state.llistes.find((l) => l.id === val), de = state.llistes.find((l) => l.id === o.lid);
+      if (!a || !de) return;
+      const lloc = de.items.indexOf(o.x); de.items.splice(lloc, 1); a.items.push(o.x); save(); render();
+      toastDesfes(`Ara és a «${a.nom}»`, () => { a.items = a.items.filter((i) => i.id !== o.x.id); if (!de.items.some((i) => i.id === o.x.id)) de.items.splice(Math.max(0, lloc), 0, o.x); save(); render(); });
+      return;
+    }
+    const abans = o.x.carpeta || '', desti = val === 'g' ? '' : val;
+    o.x.carpeta = desti; save(); render();
+    const nom = o.k === 'mem' ? (desti ? carpetesMem().find((k) => k.id === desti)?.nom : nomGeneral('mem')) : nomCarpeta(propia, desti);
+    toastDesfes(`Ara és a ${nom}`, () => { o.x.carpeta = abans; save(); render(); });
+    return;
+  }
+  // A una altra micro-app
+  const a = val;
+  let desti = '';
+  if (a !== 'rec') {
+    const ds = destinsDe(a, o);
+    if (!ds.length) { toast(a === 'llista' ? "Encara no tens cap llista. Crea'n una a Llistes." : 'No hi ha on posar-ho.'); return; }
+    desti = await triaOpcio(`A ${NOM_APP[a]}: ${a === 'llista' ? 'a quina llista?' : a === 'compres' ? 'a quina botiga?' : 'a quina carpeta?'}`, ds);
+    if (!desti) return;
+  }
+  let creats;
+  try { creats = await posaA(a, desti, c, o); }
+  catch (e) { toast("No s'ha pogut moure. Torna-ho a provar."); return; }
+  const recupera = treuOrigen(o);
+  save(); render();
+  const on = a === 'rec' ? 'Recordatoris' : `${NOM_APP[a]} › ${(destinsDe(a, o).find(([id]) => id === desti) || [, ''])[1]}`;
+  toastDesfes(`Ara és a ${on}`, () => { desfesCreats(creats); recupera(); save(); render(); });
 }
 // Passar una llista a una altra carpeta (lliscant-la a la carpeta: «Mou a…»)
 async function mouACarpeta(k, x, nom) {
@@ -1698,8 +1858,8 @@ $('#main').addEventListener('click', (e) => {
   if (im) {
     e.stopImmediatePropagation(); tancaMurG();
     const [col, lid, iid] = im.dataset.itmou.split('|');
-    if (col === 'compres') { const r = state.compres.find((x) => x.id === iid); if (r) mouACarpeta('compres', r, r.text); }
-    else mouItemLlista(lid, iid);
+    if (col === 'compres') { const r = state.compres.find((x) => x.id === iid); if (r) mouA({ k: 'compra', x: r }); }
+    else { const it2 = state.llistes.find((l) => l.id === lid)?.items.find((x) => x.id === iid); if (it2) mouA({ k: 'item', x: it2, lid }); }
     return;
   }
   const it = e.target.closest('[data-ittreu]');
@@ -1717,14 +1877,14 @@ $('#main').addEventListener('click', (e) => {
   if (dm) {
     e.stopImmediatePropagation(); tancaMurG();
     const d = state.documents.find((x) => x.id === dm.dataset.docmou);
-    if (d) mouACarpeta('docs', d, d.titol);
+    if (d) mouA({ k: 'docs', x: d });
     return;
   }
   const lm = e.target.closest('[data-llmou]');
   if (lm) {
     e.stopImmediatePropagation(); tancaMurG();
     const l = state.llistes.find((x) => x.id === lm.dataset.llmou);
-    if (l) mouLlista(l);
+    if (l) mouA({ k: 'llista', x: l });
     return;
   }
   const tl = e.target.closest('[data-lltreu]');
@@ -3587,7 +3747,7 @@ function vistaRecFitxa(r) {
         ${true ? `<label class="btn rec-afoto${ui.recPujant ? ' ocupat' : ''}"><input type="file" id="recFoto" accept="image/*" multiple hidden ${ui.recPujant ? 'disabled' : ''}>${ui.recPujant ? 'Pujant…' : 'Afegeix fotos'}</label>`
           : '<p class="help">Per afegir fotos cal haver entrat amb el teu correu.</p>'}
       </div>
-      <div class="ll-peu"><button class="btn primary" data-recfitxafet>Fet</button><button class="enllac" data-envrec>Envia una còpia</button><button class="enllac perill" data-recesborra>Esborra</button></div>
+      <div class="ll-peu"><button class="btn primary" data-recfitxafet>Fet</button><button class="enllac" data-recmoufitxa>Mou a…</button><button class="enllac" data-envrec>Envia una còpia</button><button class="enllac perill" data-recesborra>Esborra</button></div>
     </div>`;
 }
 const AVISOS_REC = [
@@ -3665,6 +3825,7 @@ $('#main').addEventListener('click', async (e) => {
   const r = recObert();
   if (!r) return;
   if (t.closest('[data-recimp]')) { r.important = !r.important; save(); render(); return; }
+  if (t.closest('[data-recmoufitxa]')) { mouA({ k: 'rec', x: r }); return; }
   if (t.closest('[data-rectreudata]')) { r.data = ''; r.hora = ''; save(); render(); return; }
   const rl = t.closest('[data-reclloc]');
   if (rl) {
@@ -3962,7 +4123,8 @@ $('#main').addEventListener('click', (e) => {
   const b = e.target.closest('[data-memmou]');
   if (!b || ui.memSel) return;
   e.stopPropagation();
-  mouFitxes([b.dataset.memmou]);
+  const f = state.memoria.find((x) => x.id === b.dataset.memmou);
+  if (f) mouA({ k: 'mem', x: f });
 });
 const ajustaTitolMem = () => { const t = document.querySelector('#formMem [name="titol"]'); if (t) { t.style.height = 'auto'; t.style.height = t.scrollHeight + 2 + 'px'; } };
 $('#main').addEventListener('input', (e) => { if (e.target.matches('#formMem [name="titol"]')) ajustaTitolMem(); });
@@ -4095,7 +4257,7 @@ function esborraFitxaMem(f) {
 }
 $('#main').addEventListener('click', (e) => {
   const mm = e.target.closest('[data-memmouacc]');
-  if (mm) { e.preventDefault(); e.stopPropagation(); tancaMurM(); mouFitxes([mm.dataset.memmouacc]); return; }
+  if (mm) { e.preventDefault(); e.stopPropagation(); tancaMurM(); const f = state.memoria.find((x) => x.id === mm.dataset.memmouacc); if (f) mouA({ k: 'mem', x: f }); return; }
   const b = e.target.closest('[data-memtreu]');
   if (b) { const f = state.memoria.find((x) => x.id === b.dataset.memtreu); if (f) esborraFitxaMem(f); return; }
   if (murMObert && e.target.closest('.mur-mem') === murMObert) { e.preventDefault(); e.stopPropagation(); tancaMurM(); }
@@ -4143,7 +4305,7 @@ function triaOpcio(titol, opcions) {
   return new Promise((resol) => {
     const d = document.createElement('div');
     d.className = 'demana';
-    d.innerHTML = '<div class="demana-caixa"><b>' + esc(titol) + '</b>' + opcions.map(([k, n, ajuda]) => '<button type="button" class="btn opcio" data-op="' + esc(k) + '"><span>' + esc(n) + '</span>' + (ajuda ? '<small>' + esc(ajuda) + '</small>' : '') + '</button>').join('')
+    d.innerHTML = '<div class="demana-caixa"><b>' + esc(titol) + '</b>' + opcions.map(([k, n, ajuda]) => (k === '§' ? '<p class="opcio-cap">' + esc(n) + '</p>' : '<button type="button" class="btn opcio" data-op="' + esc(k) + '"><span>' + esc(n) + '</span>' + (ajuda ? '<small>' + esc(ajuda) + '</small>' : '') + '</button>')).join('')
       + '<button type="button" class="enllac" data-op="">Cancel·la</button></div>';
     document.body.appendChild(d);
     d.addEventListener('click', (e) => { const b = e.target.closest('[data-op]'); if (b || e.target === d) { d.remove(); resol(b ? b.dataset.op : ''); } });
@@ -4206,6 +4368,8 @@ $('#main').addEventListener('touchend', (e) => {
   else tancaMurR(m);
 }, { passive: true });
 $('#main').addEventListener('click', (e) => {
+  const rm = e.target.closest('[data-recmou]');
+  if (rm) { e.preventDefault(); e.stopPropagation(); tancaMurR(); const r = state.recordatoris.find((x) => x.id === rm.dataset.recmou); if (r) mouA({ k: 'rec', x: r }); return; }
   const b = e.target.closest('[data-rectreu]');
   if (b) { const r = state.recordatoris.find((x) => x.id === b.dataset.rectreu); if (r) treuRecordatori(r, `Esborrat: ${r.text}`); e.stopPropagation(); return; }
   if (murRObert && e.target.closest('.mur-rec') === murRObert) { e.preventDefault(); e.stopPropagation(); tancaMurR(); }
@@ -4269,12 +4433,10 @@ $('#main').addEventListener('click', (e) => {
     const llista = itemsDe(col, lid), it = llista?.find((x) => x.id === iid);
     if (!it) return;
     if (col === 'compres' && !ed.dataset.corregeix) {
-      triaOpcio(it.text, [['corregeix', 'Corregeix-ho', 'Canvia el nom o treu-ho de la llista'], ['mou', 'Mou a una altra botiga', 'Ara és a ' + nomCarpeta('compres', carpetaItem('compres', it))]]).then(async (op) => {
+      triaOpcio(it.text, [['corregeix', 'Corregeix-ho', 'Canvia el nom o treu-ho de la llista'], ['mou', 'Mou a…', 'Ara és a ' + nomCarpeta('compres', carpetaItem('compres', it)) + '. A una altra botiga o a una altra micro-app']]).then(async (op) => {
         if (op === 'corregeix') { ed.dataset.corregeix = '1'; ed.click(); delete ed.dataset.corregeix; return; }
         if (op !== 'mou') return;
-        const on = await triaOpcio('A quina botiga?', [...carpetesDe('compres').map((c) => [c.id, c.nom, '']), ['g', nomGeneral('compres'), 'Sense botiga']]);
-        if (!on) return;
-        it.carpeta = on === 'g' ? '' : on; save(); render(); toast(`Ara és a ${nomCarpeta('compres', it.carpeta)}`);
+        mouA({ k: 'compra', x: it });
       });
       return;
     }
