@@ -1307,3 +1307,5 @@ button.gx-pindola, .gx-pindola { color: color-mix(in srgb, var(--text) 82%, var(
 .doc-zoomcaixa.entra-dreta { animation: fotoDreta .2s ease; } .doc-zoomcaixa.entra-esquerra { animation: fotoEsquerra .2s ease; }
 @keyframes fotoDreta { from { transform: translateX(40px); opacity: .3; } to { transform: none; opacity: 1; } }
 @keyframes fotoEsquerra { from { transform: translateX(-40px); opacity: .3; } to { transform: none; opacity: 1; } }
+/* «Notes de veu» és llarg: el rètol es desplaça cap a fora perquè no toqui el cercle de l'Agenda */
+.gx-sat[data-sat="veu"] .gx-nom { transform: translateX(-30px); }

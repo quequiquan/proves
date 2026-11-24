@@ -1214,8 +1214,8 @@ function vistaInici() {
   const nPlans = delDia(avui()).filter((p) => p.estat !== 'cancelat').length, nRec = pendentsRec().length;
   const aviatAniv = propersAniv().filter((x) => x.falten === 0).length;
   const inv = rebuts().filter((p) => p.rebut.resposta === 'pendent' && p.data >= avui()).length;
-  const comptes = { recordatoris: nRec, aniversaris: aviatAniv, compres: state.compres.filter((r) => !r.fet).length,
-    llista: state.llistes.reduce((n, l) => n + l.items.filter((i) => !i.fet).length, 0), veu: state.notesveu.length };
+  // Compres i Llistes no porten número: el que hi ha es mira entrant-hi
+  const comptes = { recordatoris: nRec, aniversaris: aviatAniv, veu: state.notesveu.length };
   const entra = !gxAnimat; gxAnimat = true;
   return `<div class="galaxia${entra ? ' entra' : ''}">
       <div class="gx-salut"><h1>${esc(salut)}${nom ? ', ' + esc(nom) : ''}</h1>
