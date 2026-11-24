@@ -1329,3 +1329,10 @@ button.gx-pindola, .gx-pindola { color: color-mix(in srgb, var(--text) 82%, var(
 .entrada-opcio b { font-size: 17px; }
 .entrada-opcio small { color: var(--muted); font-size: 14px; line-height: 1.35; }
 .entrada-opcio:active { transform: scale(.98); }
+/* Coses de les llistes i de Compres: es poden lliscar (Mou a… / Esborra) */
+.rec-llista li.it-mur { display: block; padding: 0; background: none; border: 0; border-radius: 14px; }
+.rec-llista li.it-mur > .it-cos { display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 8px 12px; box-sizing: border-box; }
+.rec-llista li.it-mur > .mur-accions button { min-width: 84px; padding: 0 14px; }
+/* Documents: els dos botons, un sobre l'altre */
+.doc-mur > .mur-accions { flex-direction: column; }
+.doc-mur > .mur-accions button { flex: 1; }

@@ -1373,9 +1373,9 @@ $('#main').addEventListener('input', (e) => {
 // Elements d'una llista (Llista i Compres): casella per marcar i text per corregir
 const nouId = (p) => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 function filesItems(items, col, lid) {
-  return `<ul class="rec-llista">${items.map((it) => `<li data-item="${esc(it.id)}">
+  return `<ul class="rec-llista">${items.map((it) => filaItem(col, lid, it, `
       <button class="rec-check" data-chk="${col}|${esc(lid)}|${esc(it.id)}" aria-label="Fet"></button>
-      <button class="rec-text" data-itedita="${col}|${esc(lid)}|${esc(it.id)}"><span>${esc(it.text)}</span></button></li>`).join('')}</ul>`;
+      <button class="rec-text" data-itedita="${col}|${esc(lid)}|${esc(it.id)}"><span>${esc(it.text)}</span></button>`)).join('')}</ul>`;
 }
 const formItem = (col, lid, ph) => `<form class="rec-nou" data-formitem="${col}|${esc(lid)}" autocomplete="off"><input name="text" placeholder="${esc(ph)}" maxlength="200" enterkeyhint="done"><button class="btn primary">Afegeix</button></form>`;
 // Ordre de les llistes dins d'una carpeta: el que s'ha triat amb el dit; si no, les més noves a dalt
@@ -1450,15 +1450,37 @@ function peuCarpeta(k) {
   return `<div class="ll-peu"><button class="enllac" data-envcarp="${k}">Envia una còpia</button><button class="enllac" data-cfnom="${k}">Canvia el nom</button><button class="enllac" data-cfcolor="${k}">Canvia el color</button><button class="enllac perill" data-cfesborra="${k}">Esborra la carpeta</button></div>`;
 }
 // Passar una llista a una altra carpeta (lliscant-la a la carpeta: «Mou a…»)
-async function mouLlista(l) {
-  const ara = carpetaItem('llista', l);
-  const opcions = [...carpetesDe('llista').filter((c) => c.id !== ara).map((c) => [c.id, c.nom, '']), ...(ara === '' ? [] : [['g', nomGeneral('llista'), '']])];
-  const on = await triaOpcio(`Mou «${l.nom}» a…`, opcions);
+async function mouACarpeta(k, x, nom) {
+  const ara = carpetaItem(k, x);
+  const opcions = [...carpetesDe(k).filter((c) => c.id !== ara).map((c) => [c.id, c.nom, '']), ...(ara === '' ? [] : [['g', nomGeneral(k), k === 'compres' ? 'Sense botiga' : '']])];
+  const curt = String(nom || '').length > 40 ? String(nom).slice(0, 40) + '…' : String(nom || '');
+  const on = await triaOpcio(`Mou «${curt}» a…`, opcions);
   if (!on) return;
   const desti = on === 'g' ? '' : on;
-  l.carpeta = desti; save(); render();
-  toastDesfes(`Moguda a ${nomCarpeta('llista', desti)}`, () => { const x = state.llistes.find((y) => y.id === l.id); if (x) { x.carpeta = ara; save(); render(); } });
+  x.carpeta = desti; save(); render();
+  toastDesfes(`Ara és a ${nomCarpeta(k, desti)}`, () => { const y = colCarp(k).find((z) => z.id === x.id); if (y) { y.carpeta = ara; save(); render(); } });
 }
+const mouLlista = (l) => mouACarpeta('llista', l, l.nom);
+// Moure una cosa d'una llista a una altra llista
+async function mouItemLlista(lid, iid) {
+  const de = state.llistes.find((l) => l.id === lid), it = de?.items.find((x) => x.id === iid);
+  if (!it) return;
+  const altres = state.llistes.filter((l) => l.id !== lid).sort((a, b) => a.nom.localeCompare(b.nom, 'ca'));
+  if (!altres.length) { toast('No tens cap altra llista.'); return; }
+  const on = await triaOpcio(`Mou «${it.text.length > 40 ? it.text.slice(0, 40) + '…' : it.text}» a…`, altres.map((l) => [l.id, l.nom, nomCarpeta('llista', carpetaItem('llista', l))]));
+  const a = on && state.llistes.find((l) => l.id === on);
+  if (!a) return;
+  const lloc = de.items.indexOf(it);
+  de.items.splice(lloc, 1); a.items.push(it); save(); render();
+  toastDesfes(`Ara és a «${a.nom}»`, () => {
+    const aa = state.llistes.find((l) => l.id === on), dd = state.llistes.find((l) => l.id === lid);
+    if (aa) aa.items = aa.items.filter((x) => x.id !== iid);
+    if (dd && !dd.items.some((x) => x.id === iid)) dd.items.splice(Math.max(0, lloc), 0, it);
+    save(); render();
+  });
+}
+// Les coses de les llistes i de Compres: lliscant cap a l'esquerra, «Mou a…» i «Esborra»
+const filaItem = (col, lid, it, dins) => `<li class="mur-g it-mur" data-item="${esc(it.id)}"><div class="mur-accions"><button type="button" class="acc-mou" data-itmou="${col}|${esc(lid)}|${esc(it.id)}">Mou a…</button><button type="button" class="acc-esborra" data-ittreu="${col}|${esc(lid)}|${esc(it.id)}">Esborra</button></div><div class="mur-cos it-cos">${dins}</div></li>`;
 // Desplegable per moure una llista o un document a una altra carpeta
 const triaCarpeta = (k, x) => `<label class="cf-mou">Carpeta <select data-cfmou="${k}|${esc(x.id)}"><option value="">${esc(nomGeneral(k))}</option>${carpetesDe(k).map((c) => `<option value="${esc(c.id)}"${c.id === carpetaItem(k, x) ? ' selected' : ''}>${esc(c.nom)}</option>`).join('')}</select></label>`;
 document.addEventListener('change', (e) => {
@@ -1655,6 +1677,32 @@ $('#main').addEventListener('click', (e) => {
   if (ignoraClicG && e.target.closest('.mur-g')) { e.stopImmediatePropagation(); e.preventDefault(); return; }
   const tc = e.target.closest('[data-cftreu]');
   if (tc) { e.stopImmediatePropagation(); const [k, id] = tc.dataset.cftreu.split('|'); murGObert = null; esborraCarpeta(k, id); return; }
+  const im = e.target.closest('[data-itmou]');
+  if (im) {
+    e.stopImmediatePropagation(); tancaMurG();
+    const [col, lid, iid] = im.dataset.itmou.split('|');
+    if (col === 'compres') { const r = state.compres.find((x) => x.id === iid); if (r) mouACarpeta('compres', r, r.text); }
+    else mouItemLlista(lid, iid);
+    return;
+  }
+  const it = e.target.closest('[data-ittreu]');
+  if (it) {
+    e.stopImmediatePropagation(); murGObert = null;
+    const [col, lid, iid] = it.dataset.ittreu.split('|');
+    const llista = itemsDe(col, lid), x = llista?.find((y) => y.id === iid);
+    if (!x) return;
+    const lloc = llista.indexOf(x), copia = { ...x };
+    llista.splice(lloc, 1); save(); render();
+    toastDesfes(`Esborrat: ${x.text}`, () => { itemsDe(col, lid)?.splice(Math.max(0, lloc), 0, copia); save(); render(); });
+    return;
+  }
+  const dm = e.target.closest('[data-docmou]');
+  if (dm) {
+    e.stopImmediatePropagation(); tancaMurG();
+    const d = state.documents.find((x) => x.id === dm.dataset.docmou);
+    if (d) mouACarpeta('docs', d, d.titol);
+    return;
+  }
   const lm = e.target.closest('[data-llmou]');
   if (lm) {
     e.stopImmediatePropagation(); tancaMurG();
@@ -1723,10 +1771,10 @@ function filesCompres(items) {
   return FAMILIES.map((f) => {
     const seus = items.filter((r) => familiaDe(r) === f.id);
     if (!seus.length) return '';
-    return `<h3 class="fam-titol" style="--fc:${f.c}">${esc(f.nom)}</h3><ul class="rec-llista">${seus.map((it) => `<li data-item="${esc(it.id)}">
+    return `<h3 class="fam-titol" style="--fc:${f.c}">${esc(f.nom)}</h3><ul class="rec-llista">${seus.map((it) => filaItem('compres', '', it, `
       <button class="rec-check" data-chk="compres||${esc(it.id)}" aria-label="Fet"></button>
       <button class="rec-text" data-itedita="compres||${esc(it.id)}"><span>${esc(it.text)}</span></button>
-      <select class="fam-tria" data-fam="${esc(it.id)}" aria-label="Família">${FAMILIES.map((x) => `<option value="${x.id}"${x.id === f.id ? ' selected' : ''}>${esc(x.nom)}</option>`).join('')}</select></li>`).join('')}</ul>`;
+      <select class="fam-tria" data-fam="${esc(it.id)}" aria-label="Família">${FAMILIES.map((x) => `<option value="${x.id}"${x.id === f.id ? ' selected' : ''}>${esc(x.nom)}</option>`).join('')}</select>`)).join('')}</ul>`;
   }).join('');
 }
 function vistaCompres() {
@@ -1782,7 +1830,7 @@ function preparaCarpetes() {
 const ambEnllacos = (t) => esc(t).replace(/https?:\/\/[^\s<]+/g, (u) => `<a href="${u}" target="_blank" rel="noopener">${u.replace(/^https?:\/\/(www\.)?/, '').slice(0, 40)}${u.length > 48 ? '…' : ''}</a>`);
 function filaFitxa(x, ambCarpeta) {
   const c = ambCarpeta ? carpetesMem().find((k) => k.id === carpetaDe(x)) : null;
-  return `<div class="mur-mem" data-memcerca="${esc(normal(x.titol + ' ' + x.text))}"><div class="mur-accions"><button type="button" class="acc-esborra" data-memtreu="${esc(x.id)}">Esborra</button></div><div class="mem-fitxa${ui.memSel ? ' triant' + (ui.memSel.includes(x.id) ? ' triada' : '') : ''}" data-memobre="${esc(x.id)}"${c ? ` style="--c:${esc(c.color)}"` : ''}>
+  return `<div class="mur-mem" data-memcerca="${esc(normal(x.titol + ' ' + x.text))}"><div class="mur-accions"><button type="button" class="acc-mou" data-memmouacc="${esc(x.id)}">Mou a…</button><button type="button" class="acc-esborra" data-memtreu="${esc(x.id)}">Esborra</button></div><div class="mem-fitxa${ui.memSel ? ' triant' + (ui.memSel.includes(x.id) ? ' triada' : '') : ''}" data-memobre="${esc(x.id)}"${c ? ` style="--c:${esc(c.color)}"` : ''}>
         ${ambCarpeta ? `<small class="mem-de">${esc(c ? c.nom : nomGeneral('mem'))}</small>` : ''}<b>${esc(x.titol)}</b>${x.text ? `<p>${ambEnllacos(x.text)}</p>` : ''}
         ${(x.imatges || []).length ? `<div class="mem-imgs">${x.imatges.map((im) => `<button class="rec-img" data-memimg="${esc(x.id)}|${esc(im.id)}"><img src="${esc(im.mini)}" alt=""></button>`).join('')}</div>` : ''}
         <div class="mem-accions"><button class="enllac" data-memcomparteix="${esc(x.id)}">Comparteix</button>${x.text ? `<button class="enllac" data-memcopia="${esc(x.id)}">Copia</button>` : ''}<button class="enllac" data-memimprimeix="${esc(x.id)}">Imprimeix</button><button class="enllac" data-memmou="${esc(x.id)}">Mou a…</button><button class="enllac" data-memajunta="${esc(x.id)}">Ajunta a una fitxa</button><button class="enllac" data-memedita="${esc(x.id)}">Edita</button></div>
@@ -1926,7 +1974,7 @@ const etiquetaDoc = (d) => (d.tipus === 'enllac' ? 'WEB' : extDoc(d).toUpperCase
 const domini = (u) => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return u; } };
 const graellaDocs = (docs, q) => `<div class="doc-graella">${docs.map((x) => {
   const cat = CATS_DOC.find((c) => c.id === catDoc(x)), cerca = normal([x.titol, x.nomFitxer, x.url, cat.nom, etiquetaDoc(x), nomCarpeta('docs', carpetaItem('docs', x))].filter(Boolean).join(' '));
-  return `<div class="mur-g doc-mur" data-doccerca="${esc(cerca)}"${q && !cerca.includes(q) ? ' hidden' : ''}><div class="mur-accions"><button type="button" class="acc-esborra" data-doctreu="${esc(x.id)}">Esborra</button></div><button class="mur-cos doc-fitxa" data-docobre="${esc(x.id)}">
+  return `<div class="mur-g doc-mur" data-doccerca="${esc(cerca)}"${q && !cerca.includes(q) ? ' hidden' : ''}><div class="mur-accions"><button type="button" class="acc-mou" data-docmou="${esc(x.id)}">Mou a…</button><button type="button" class="acc-esborra" data-doctreu="${esc(x.id)}">Esborra</button></div><button class="mur-cos doc-fitxa" data-docobre="${esc(x.id)}">
         <span class="doc-mini" style="--fc:${cat.c}">${x.mini ? `<img src="${esc(x.mini)}" alt="">` : `<b>${esc(etiquetaDoc(x))}</b>`}</span>
         <span class="doc-nom">${esc(x.titol)}</span><small>${esc(x.tipus === 'enllac' ? domini(x.url) : [dataDoc(x.creat), midaText(x.mida)].filter(Boolean).join(' · '))}</small></button></div>`;
 }).join('')}</div>`;
@@ -3108,9 +3156,9 @@ function vistaTotaCompra() {
   return `<div class="sat-cap"><button class="sat-torna" data-comptotsurt aria-label="Torna a les botigues">‹ Botigues</button><h1 class="h1-curt">Tota la compra</h1></div>
     <p class="help">Tot el que tens per comprar, botiga per botiga. Per afegir coses, entra a cada botiga.</p>
     ${total ? grups.map((g) => `<h3 class="fam-titol tc-botiga" style="--fc:${esc(g.c.color)}">${esc(g.c.nom)} <small>${g.items.length}</small></h3>
-      <ul class="rec-llista">${g.items.map((it) => `<li data-item="${esc(it.id)}">
+      <ul class="rec-llista">${g.items.map((it) => filaItem('compres', '', it, `
         <button class="rec-check" data-chk="compres||${esc(it.id)}" aria-label="Comprat"></button>
-        <button class="rec-text" data-itedita="compres||${esc(it.id)}"><span>${esc(it.text)}</span></button></li>`).join('')}</ul>`).join('')
+        <button class="rec-text" data-itedita="compres||${esc(it.id)}"><span>${esc(it.text)}</span></button>`)).join('')}</ul>`).join('')
       + '<div class="ll-peu"><button class="btn primary" data-comprescomparteix>Comparteix-ho tot</button><button class="btn" data-comprescimprimeix>Imprimeix-ho tot</button></div>'
       : '<p class="help buit">No falta res a cap botiga.</p>'}`;
 }
@@ -4029,6 +4077,8 @@ function esborraFitxaMem(f) {
   setTimeout(() => { if (!state.memoria.some((x) => x.id === copia.id)) (copia.imatges || []).forEach((im) => Fitxers.esborra(im.cami).catch(() => {})); }, 7000);
 }
 $('#main').addEventListener('click', (e) => {
+  const mm = e.target.closest('[data-memmouacc]');
+  if (mm) { e.preventDefault(); e.stopPropagation(); tancaMurM(); mouFitxes([mm.dataset.memmouacc]); return; }
   const b = e.target.closest('[data-memtreu]');
   if (b) { const f = state.memoria.find((x) => x.id === b.dataset.memtreu); if (f) esborraFitxaMem(f); return; }
   if (murMObert && e.target.closest('.mur-mem') === murMObert) { e.preventDefault(); e.stopPropagation(); tancaMurM(); }
