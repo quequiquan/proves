@@ -1366,3 +1366,10 @@ button.gx-pindola, .gx-pindola { color: color-mix(in srgb, var(--text) 82%, var(
 .safata-cap { font-size: 14px; color: var(--muted); margin: 18px 0 8px; }
 .safata-buida { line-height: 1.6; }
 .vista-safata .sat-cap h1 { font-size: 20.5px; }
+/* Arxius adjunts (PDF, entrades, bitllets…) a les fitxes de Memòria i als recordatoris */
+.adj-llista { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.adj { display: inline-flex; align-items: center; gap: 7px; max-width: 100%; padding: 5px 11px 5px 5px; border: 1px solid var(--border); border-radius: 10px;
+  background: var(--surface); color: var(--text); font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; text-align: left; }
+.adj b { flex: none; padding: 3px 6px; border-radius: 6px; background: var(--fc, #868E96); color: #fff; font-size: 10.5px; letter-spacing: .3px; }
+.adj span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rec-bloc .adj-llista { margin: 0 0 8px; }

@@ -1356,7 +1356,7 @@ function purgaFets() {
   const vells = (state.recordatoris || []).filter((x) => x.fet && x.fetEl && new Date(x.fetEl).getTime() < limit);
   if (!vells.length) return;
   state.recordatoris = state.recordatoris.filter((x) => !vells.includes(x)); save();
-  vells.forEach((x) => (x.imatges || []).forEach((im) => Fitxers.esborra(im.cami).catch(() => {})));
+  vells.forEach((x) => [...(x.imatges || []), ...(x.adjunts || [])].forEach((im) => Fitxers.esborra(im.cami).catch(() => {})));
 }
 function marcaFet(r) {
   r.fet = true; r.fetEl = new Date().toISOString(); save(); render();
@@ -1491,6 +1491,66 @@ function peuCarpeta(k) {
   if (!c) return carpetaOberta(k) === '' ? `<div class="ll-peu"><button class="enllac" data-gennom="${k}">Canvia el nom</button></div>` : '';
   return `<div class="ll-peu"><button class="enllac" data-envcarp="${k}">Envia una còpia</button><button class="enllac" data-cfnom="${k}">Canvia el nom</button><button class="enllac" data-cfcolor="${k}">Canvia el color</button><button class="enllac perill" data-cfesborra="${k}">Esborra la carpeta</button></div>`;
 }
+/* ---------- Arxius adjunts (PDF, entrades, bitllets…) a les fitxes de Memòria i als recordatoris ---------- */
+// Cada adjunt és com un document (titol, tipus, cami, nomFitxer, mida), però viu dins de la fitxa o del recordatori.
+const adjDe = (d) => ({ id: nouId('a'), titol: String(d.titol || 'Document').slice(0, 80), tipus: d.tipus || 'application/octet-stream', cami: d.cami, nomFitxer: d.nomFitxer || '', mida: d.mida || 0 });
+const xipsAdj = (on, oid, llista) => ((llista || []).length ? `<div class="adj-llista">${llista.map((a) => `<button type="button" class="adj" data-adj="${on}|${esc(oid)}|${esc(a.id)}"><b style="--fc:${(CATS_DOC.find((c) => c.id === catDoc(a)) || CATS_DOC[6]).c}">${esc(etiquetaDoc(a))}</b><span>${esc(a.titol)}</span></button>`).join('')}</div>` : '');
+const botoAdj = (id, pujant) => `<label class="btn rec-afoto${pujant ? ' ocupat' : ''}"><input type="file" id="${id}" multiple hidden ${pujant ? 'disabled' : ''}>${pujant ? 'Pujant…' : 'Afegeix un PDF o un arxiu'}</label>`;
+const amoAdj = (on, oid) => (on === 'mem' ? state.memoria : state.recordatoris).find((x) => x.id === oid);
+// Esborra del núvol (o del mòbil) els fitxers que ja no fa servir ningú, passat el temps de Desfés
+function netejaFitxers(camins, encaraHiEs) {
+  setTimeout(() => { if (!encaraHiEs()) camins.filter(Boolean).forEach((c) => Fitxers.esborra(c).catch(() => {})); }, 7000);
+}
+async function pujaAdjunts(files, on, oid) {
+  const grans = files.filter((f) => f.size > MAX_DOC), bons = files.filter((f) => f.size <= MAX_DOC);
+  if (grans.length) toast(grans.length === 1 ? `«${grans[0].name}» fa ${midaText(grans[0].size)} i el màxim són 50 MB.` : `${grans.length} fitxers passen de 50 MB i no es pujaran.`, 5000);
+  let errors = 0;
+  for (const file of bons) {
+    try {
+      const ext = ((file.name.match(/\.([a-z0-9]{1,8})$/i) || [])[1] || 'bin').toLowerCase();
+      const id = nouId('a'), tipus = file.type || TIPUS_EXT[ext] || 'application/octet-stream';
+      const cami = await Fitxers.puja(id, file, tipus, ext);
+      const o = amoAdj(on, oid);
+      if (o) { o.adjunts = [...(o.adjunts || []), { id, titol: nomPerDefecte(file).slice(0, 80), tipus, cami, nomFitxer: file.name.slice(0, 120), mida: file.size }]; o.modificat = new Date().toISOString(); save(); }
+    } catch (err) { errors++; if (!navigator.onLine) break; }
+  }
+  if (errors) toast(navigator.onLine ? "Algun arxiu no s'ha pogut pujar." : 'Cal connexió a internet per pujar arxius.', 4500);
+}
+$('#main').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-adj]');
+  if (!b || (ui.memSel && b.closest('.mem-fitxa'))) return;
+  e.preventDefault(); e.stopPropagation();
+  const [on, oid, aid] = b.dataset.adj.split('|');
+  const o = amoAdj(on, oid), a = o && (o.adjunts || []).find((x) => x.id === aid);
+  if (!a) return;
+  if (!usuari() && !Fitxers.esLocal(a.cami)) { toast('Per veure els arxius cal haver entrat amb el correu.'); return; }
+  obreVisor(a, { adjunt: true, treu: () => {
+    const lloc = o.adjunts.indexOf(a);
+    o.adjunts = o.adjunts.filter((x) => x.id !== aid); save(); render();
+    toastDesfes(`Arxiu tret: ${a.titol}`, () => { const oo = amoAdj(on, oid); if (oo && !(oo.adjunts || []).some((x) => x.id === aid)) { oo.adjunts = oo.adjunts || []; oo.adjunts.splice(Math.max(0, lloc), 0, a); save(); render(); } });
+    netejaFitxers([a.cami], () => (amoAdj(on, oid)?.adjunts || []).some((x) => x.id === aid));
+  } });
+}, true);
+$('#main').addEventListener('change', async (e) => {
+  const t = e.target;
+  if (t.id !== 'memAdj' && t.id !== 'recAdj') return;
+  const files = [...(t.files || [])]; t.value = '';
+  if (!files.length) return;
+  if (t.id === 'memAdj') {
+    const f = state.memoria.find((x) => x.id === ui.memEdita);
+    if (!f) return;
+    desaFormMem(document.getElementById('formMem'));
+    ui.memAdjPujant = true; render();
+    await pujaAdjunts(files, 'mem', f.id);
+    ui.memAdjPujant = false; render();
+  } else {
+    const r = recObert();
+    if (!r) return;
+    ui.recAdjPujant = true; render();
+    await pujaAdjunts(files, 'rec', r.id);
+    ui.recAdjPujant = false; render();
+  }
+});
 /* ---------- «Mou a…» comú a tota l'app: a una carpeta d'aquí o a una altra micro-app ---------- */
 // L'origen és { k, x, lid }: k = 'mem' (fitxa), 'docs' (document), 'llista' (llista sencera), 'item' (cosa d'una llista),
 // 'compra' (producte) o 'rec' (recordatori).
@@ -1500,7 +1560,7 @@ const curtM = (t, n = 40) => (String(t || '').length > n ? String(t).slice(0, n)
 // El que hi ha a dins, en una forma comuna
 function contingutDe(o) {
   const x = o.x, buit = { titol: '', text: '', imatges: [], docs: [], url: '', items: null };
-  if (o.k === 'mem') return { ...buit, titol: x.titol, text: x.text || '', imatges: x.imatges || [] };
+  if (o.k === 'mem') return { ...buit, titol: x.titol, text: x.text || '', imatges: x.imatges || [], docs: x.adjunts || [] };
   if (o.k === 'docs') {
     if (x.tipus === 'enllac') return { ...buit, titol: x.titol, url: x.url || '' };
     if (/^image\//.test(x.tipus || '') && x.cami) return { ...buit, titol: x.titol, imatges: [{ id: nouId('mi'), cami: x.cami, mini: x.mini || '' }] };
@@ -1510,7 +1570,7 @@ function contingutDe(o) {
   if (o.k === 'item' || o.k === 'compra') return { ...buit, titol: x.text, items: [x.text] };
   if (o.k === 'rec') {
     const subs = (x.subtasques || []).filter((s) => !s.fet).map((s) => s.text);
-    return { ...buit, titol: x.text, text: [x.notes, ...subs.map((s) => '• ' + s), x.lloc].filter(Boolean).join('\n'), imatges: x.imatges || [], url: x.url || '', subs };
+    return { ...buit, titol: x.text, text: [x.notes, ...subs.map((s) => '• ' + s), x.lloc].filter(Boolean).join('\n'), imatges: x.imatges || [], docs: x.adjunts || [], url: x.url || '', subs };
   }
   return buit;
 }
@@ -1519,7 +1579,7 @@ function appsPossibles(o, c) {
   const propia = APP_DE[o.k], ambFitxers = c.imatges.length > 0 || c.docs.length > 0;
   return ['mem', 'docs', 'rec', 'llista', 'compres'].filter((a) => {
     if (a === propia) return false;
-    if (a === 'mem' || a === 'rec') return !c.docs.length;
+    if (a === 'mem' || a === 'rec') return true;   // hi caben text, fotos i arxius
     if (a === 'docs') return o.k !== 'item' && o.k !== 'compra';
     return !ambFitxers;   // a una llista o a Compres només hi va text
   });
@@ -1540,6 +1600,7 @@ async function posaA(a, desti, c, o) {
   if (a === 'mem') {
     const f = { id: nouId('m'), titol: String(c.titol || 'Sense títol').slice(0, 500), text: [c.text, c.url].filter(Boolean).join('\n').slice(0, 10000), carpeta, creat: ara };
     if (c.imatges.length) f.imatges = c.imatges.map((i) => ({ ...i }));
+    if (c.docs.length) f.adjunts = c.docs.map(adjDe);
     state.memoria.push(f); creats.push(['memoria', f.id]);
   } else if (a === 'rec') {
     const r = { id: nouId('r'), text: String(c.titol || 'Recordatori').slice(0, 300), creat: ara };
@@ -1547,6 +1608,7 @@ async function posaA(a, desti, c, o) {
     else if (c.text) r.notes = c.text.slice(0, 3000);
     if (c.url) r.url = c.url;
     if (c.imatges.length) r.imatges = c.imatges.map((i) => ({ ...i }));
+    if (c.docs.length) r.adjunts = c.docs.map(adjDe);
     state.recordatoris.push(r); creats.push(['recordatoris', r.id]);
   } else if (a === 'llista') {
     const l = state.llistes.find((x) => x.id === desti);
@@ -1566,7 +1628,7 @@ async function posaA(a, desti, c, o) {
       state.documents.push(d); creats.push(['documents', d.id]);
     });
     if (c.url) { const d = { id: nouId('d'), titol, tipus: 'enllac', url: c.url, carpeta, creat: ara }; state.documents.push(d); creats.push(['documents', d.id]); }
-    c.docs.forEach((d0) => { const d = { ...d0, id: nouId('d'), carpeta, creat: ara }; state.documents.push(d); creats.push(['documents', d.id]); });
+    c.docs.forEach((d0) => { const d = { mini: '', ...d0, id: nouId('d'), carpeta, creat: d0.creat || ara }; state.documents.push(d); creats.push(['documents', d.id]); });
     // El text (o una cosa que només és text) es desa com a document de text
     const text = (o.k === 'llista' ? (c.items || []).map((t) => '• ' + t).join('\n') : c.text).trim();
     if (text || (!c.imatges.length && !c.url && !c.docs.length)) {
@@ -2036,6 +2098,7 @@ function filaFitxa(x, ambCarpeta, etiq) {
   return `<div class="mur-mem" data-memcerca="${esc(normal(x.titol + ' ' + x.text))}"><div class="mur-accions"><button type="button" class="acc-mou" data-memmouacc="${esc(x.id)}">Mou a…</button><button type="button" class="acc-esborra" data-memtreu="${esc(x.id)}">Esborra</button></div><div class="mem-fitxa${ui.memSel ? ' triant' + (ui.memSel.includes(x.id) ? ' triada' : '') : ''}" data-memobre="${esc(x.id)}"${c ? ` style="--c:${esc(c.color)}"` : ''}>
         ${ambCarpeta ? `<small class="mem-de">${esc(c ? c.nom : nomGeneral('mem'))}</small>` : etiq ? `<small class="mem-de">${esc(etiq)}</small>` : ''}<b>${esc(x.titol)}</b>${x.text ? `<p>${ambEnllacos(x.text)}</p>` : ''}
         ${(x.imatges || []).length ? `<div class="mem-imgs">${x.imatges.map((im) => `<button class="rec-img" data-memimg="${esc(x.id)}|${esc(im.id)}"><img src="${esc(im.mini)}" alt=""></button>`).join('')}</div>` : ''}
+        ${xipsAdj('mem', x.id, x.adjunts)}
         <div class="mem-accions"><button class="enllac" data-memcomparteix="${esc(x.id)}">Comparteix</button>${x.text ? `<button class="enllac" data-memcopia="${esc(x.id)}">Copia</button>` : ''}<button class="enllac" data-memimprimeix="${esc(x.id)}">Imprimeix</button><button class="enllac" data-memmou="${esc(x.id)}">Mou a…</button><button class="enllac" data-memajunta="${esc(x.id)}">Ajunta a una fitxa</button><button class="enllac" data-memedita="${esc(x.id)}">Edita</button></div>
       </div></div>`;
 }
@@ -2061,6 +2124,7 @@ function vistaMemoria() {
           : true ? `<label class="btn rec-afoto${ui.memPujant ? ' ocupat' : ''}"><input type="file" id="memFoto" accept="image/*" multiple hidden ${ui.memPujant ? 'disabled' : ''}>${ui.memPujant ? 'Pujant…' : 'Afegeix fotos'}</label>`
           : '<p class="help">Per afegir fotos cal haver entrat amb el teu correu.</p>'}
       </div>
+      ${f ? `<div class="rec-bloc"><span>Arxius</span>${xipsAdj('mem', f.id, f.adjunts)}${botoAdj('memAdj', ui.memAdjPujant)}<p class="help">PDF, entrades, bitllets, invitacions… Toca'l per obrir-lo.</p></div>` : ''}
       <div class="grp"><button class="btn primary">Fet</button><span class="mem-desat help">Els canvis es desen sols</span>
         ${f ? `<button type="button" class="enllac perill" data-memesborra="${esc(f.id)}">Esborra</button>` : ''}</div>
     </form>`;
@@ -3777,6 +3841,7 @@ function vistaRecFitxa(r) {
         ${true ? `<label class="btn rec-afoto${ui.recPujant ? ' ocupat' : ''}"><input type="file" id="recFoto" accept="image/*" multiple hidden ${ui.recPujant ? 'disabled' : ''}>${ui.recPujant ? 'Pujant…' : 'Afegeix fotos'}</label>`
           : '<p class="help">Per afegir fotos cal haver entrat amb el teu correu.</p>'}
       </div>
+      <div class="rec-bloc"><span>Arxius</span>${xipsAdj('rec', r.id, r.adjunts)}${botoAdj('recAdj', ui.recAdjPujant)}</div>
       <div class="ll-peu"><button class="btn primary" data-recfitxafet>Fet</button><button class="enllac" data-recmoufitxa>Mou a…</button><button class="enllac" data-envrec>Envia una còpia</button><button class="enllac perill" data-recesborra>Esborra</button></div>
     </div>`;
 }
@@ -3792,7 +3857,7 @@ const recObert = () => state.recordatoris.find((x) => x.id === ui.recObert && !x
 function netejaFotosRec(r) {
   setTimeout(() => {
     if (state.recordatoris.some((x) => x.id === r.id)) return;
-    (r.imatges || []).forEach((im) => { Fitxers.esborra(im.cami).catch(() => {}); });
+    [...(r.imatges || []), ...(r.adjunts || [])].forEach((im) => { Fitxers.esborra(im.cami).catch(() => {}); });
   }, 7000);
 }
 function treuRecordatori(r, text) {
@@ -4233,16 +4298,17 @@ async function ajuntaFitxa(deId) {
   const aId = await triaFitxa(`Ajunta «${curt(de.titol)}» a…`, deId);
   const a = aId && state.memoria.find((x) => x.id === aId);
   if (!a) return;
-  const abansA = { text: a.text || '', imatges: (a.imatges || []).slice() }, lloc = state.memoria.indexOf(de), copia = JSON.parse(JSON.stringify(de));
+  const abansA = { text: a.text || '', imatges: (a.imatges || []).slice(), adjunts: (a.adjunts || []).slice() }, lloc = state.memoria.indexOf(de), copia = JSON.parse(JSON.stringify(de));
   const bloc = ['— ' + de.titol + ' —', (de.text || '').trim()].filter(Boolean).join('\n');
   a.text = [String(a.text || '').trim(), bloc].filter(Boolean).join('\n\n').slice(0, 10000);
   if ((de.imatges || []).length) a.imatges = [...(a.imatges || []), ...de.imatges];
+  if ((de.adjunts || []).length) a.adjunts = [...(a.adjunts || []), ...de.adjunts];
   a.modificat = new Date().toISOString();
   state.memoria.splice(lloc, 1);   // les fotos no s'esborren: ara són de l'altra fitxa
   save(); render();
   toastDesfes(`Ajuntada a «${curt(a.titol)}»`, () => {
     const aa = state.memoria.find((x) => x.id === aId);
-    if (aa) { aa.text = abansA.text; aa.imatges = abansA.imatges; }
+    if (aa) { aa.text = abansA.text; aa.imatges = abansA.imatges; aa.adjunts = abansA.adjunts; }
     if (!state.memoria.some((x) => x.id === copia.id)) state.memoria.splice(Math.max(0, lloc), 0, copia);
     save(); render();
   });
@@ -4283,7 +4349,7 @@ function esborraFitxaMem(f) {
   const lloc = state.memoria.indexOf(f), copia = { ...f };
   state.memoria.splice(lloc, 1); ui.memEdita = ''; save(); render();
   toastDesfes(`Esborrada: ${f.titol}`, () => { state.memoria.splice(Math.max(0, lloc), 0, copia); save(); render(); });
-  setTimeout(() => { if (!state.memoria.some((x) => x.id === copia.id)) (copia.imatges || []).forEach((im) => Fitxers.esborra(im.cami).catch(() => {})); }, 7000);
+  netejaFitxers([...(copia.imatges || []), ...(copia.adjunts || [])].map((x) => x.cami), () => state.memoria.some((x) => x.id === copia.id));
 }
 $('#main').addEventListener('click', (e) => {
   const mm = e.target.closest('[data-memmouacc]');
@@ -4681,7 +4747,7 @@ $('#main').addEventListener('click', async (e) => {
     const lloc = state.memoria.indexOf(f), copia = { ...f };
     state.memoria.splice(lloc, 1); ui.memEdita = ''; save(); render();
     toastDesfes(`Esborrada: ${f.titol}`, () => { state.memoria.splice(lloc, 0, copia); save(); render(); });
-    setTimeout(() => { if (!state.memoria.some((x) => x.id === copia.id)) (copia.imatges || []).forEach((im) => Fitxers.esborra(im.cami).catch(() => {})); }, 7000);
+    netejaFitxers([...(copia.imatges || []), ...(copia.adjunts || [])].map((x) => x.cami), () => state.memoria.some((x) => x.id === copia.id));
     return;
   }
   const mi = t.closest('[data-memimg]');
@@ -5068,7 +5134,7 @@ async function mostraPdf(cos, url, v) {
 }
 function tancaVisor() { document.querySelector('.doc-visor')?.remove(); }
 // Visor a pantalla completa: la foto (amb zoom), o una fitxa amb el tipus i el botó per obrir-lo
-async function obreVisor(doc) {
+async function obreVisor(doc, opc = {}) {
   tancaVisor();
   const cat = catDoc(doc), esEnllac = cat === 'enllac', esFoto = cat === 'foto' && doc.tipus === 'image/jpeg';
   const v = document.createElement('div');
@@ -5077,13 +5143,14 @@ async function obreVisor(doc) {
     <div class="doc-visor-cos"><p class="help">Carregant…</p></div>
     <div class="doc-visor-peu"><a class="btn primary" data-visor="obre" target="_blank" rel="noopener" hidden>${esEnllac ? 'Obre la pàgina' : 'Obre / Comparteix'}</a>
       ${esEnllac ? '<button type="button" class="btn" data-visor="comparteix">Comparteix</button>' : '<button type="button" class="btn" data-visor="imprimeix" hidden>Imprimeix</button>'}
-      ${triaCarpeta('docs', doc)}<button type="button" class="enllac" data-visor="envia">Envia una còpia</button><button type="button" class="enllac" data-visor="nom">Canvia el nom</button><button type="button" class="enllac perill" data-visor="esborra">Esborra</button></div>`;
+      ${opc.adjunt ? '<button type="button" class="enllac" data-visor="nom">Canvia el nom</button><button type="button" class="enllac perill" data-visor="treu">Treu-lo</button>' : `${triaCarpeta('docs', doc)}<button type="button" class="enllac" data-visor="envia">Envia una còpia</button><button type="button" class="enllac" data-visor="nom">Canvia el nom</button><button type="button" class="enllac perill" data-visor="esborra">Esborra</button>`}</div>`;
   document.body.appendChild(v);
   v.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-visor]');
     if (!b) return;
     const acc = b.dataset.visor;
     if (acc === 'tanca') { tancaVisor(); return; }
+    if (acc === 'treu') { tancaVisor(); opc.treu?.(); return; }
     if (acc === 'envia') {
       if (!usuari()) { toast('Per enviar còpies cal haver entrat amb el teu correu.'); return; }
       await enviaCopia('docs', doc.titol, { docs: await docsPerEnviar([doc]) }, `«${doc.titol}»`);
@@ -6063,6 +6130,7 @@ function fitxersDeCopia(d) {
   const llista = [
     ...(d.memoria || []).flatMap((f) => (f.imatges || []).map((i) => i.cami)),
     ...(d.recordatoris || []).flatMap((r) => (r.imatges || []).map((i) => i.cami)),
+    ...[...(d.memoria || []), ...(d.recordatoris || [])].flatMap((o) => (o.adjunts || []).map((a) => a.cami)),
     ...(d.documents || []).map((x) => x.cami),
     ...(d.notesveu || []).map((n) => n.audio?.cami),
   ].filter(Boolean);
@@ -6240,6 +6308,7 @@ async function importaCompleta(fitxer) {
   // Tipus de cada fitxer: el que diu la còpia (documents, àudios) o, si no, per l'extensió
   const tipusDe = {};
   (d.documents || []).forEach((x) => { if (x.cami) tipusDe[x.cami] = x.tipus; });
+  [...(d.memoria || []), ...(d.recordatoris || [])].forEach((o) => (o.adjunts || []).forEach((a) => { if (a.cami) tipusDe[a.cami] = a.tipus; }));
   (d.notesveu || []).forEach((n) => { if (n.audio?.cami) tipusDe[n.audio.cami] = n.audio.tipus; });
   const nous = {};
   let fallen = 0;
@@ -6260,6 +6329,7 @@ async function importaCompleta(fitxer) {
   const canvia = (o) => { if (o && o.cami && nous[o.cami]) o.cami = nous[o.cami]; };
   (d.memoria || []).forEach((f) => (f.imatges || []).forEach(canvia));
   (d.recordatoris || []).forEach((r) => (r.imatges || []).forEach(canvia));
+  [...(d.memoria || []), ...(d.recordatoris || [])].forEach((o) => (o.adjunts || []).forEach(canvia));
   (d.documents || []).forEach(canvia);
   (d.notesveu || []).forEach((n) => canvia(n.audio));
   state = normalize(d); save(); render();
