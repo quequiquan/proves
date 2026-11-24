@@ -252,6 +252,56 @@ const perOrdre = (a, b) => (clau(a) < clau(b) ? -1 : clau(a) > clau(b) ? 1 : 0);
 const usos = (pid) => state.plans.filter((p) => (p.qui || []).includes(pid)).length;
 
 const sync = () => (typeof Sync !== 'undefined' ? Sync : null);
+// Fitxers (fotos, àudios, documents): al núvol si s'ha entrat amb el correu; si no, a la memòria d'aquest mòbil (IndexedDB).
+// Els que són al mòbil tenen un camí que comença per «local/» i sempre es llegeixen d'aquí.
+const Fitxers = (() => {
+  let dbP = null;
+  const db = () => (dbP ||= new Promise((ok, ko) => {
+    const r = indexedDB.open('galaxia-fitxers', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('f');
+    r.onsuccess = () => ok(r.result);
+    r.onerror = () => { dbP = null; ko(r.error); };
+  }));
+  const op = async (mode, fn) => {
+    const d = await db();
+    return new Promise((ok, ko) => {
+      const t = d.transaction('f', mode), req = fn(t.objectStore('f'));
+      t.oncomplete = () => ok(req ? req.result : undefined);
+      t.onerror = () => ko(t.error); t.onabort = () => ko(t.error || new Error('avortat'));
+    });
+  };
+  const esLocal = (c) => String(c || '').startsWith('local/');
+  const alNuvol = () => Boolean(usuari() || sync()?.potserEntrat());
+  const urls = {};
+  const llegeixLocal = async (cami) => { const b = await op('readonly', (st) => st.get(cami)); if (!b) throw new Error('No trobat'); return b; };
+  return {
+    esLocal, alNuvol,
+    async puja(id, blob, tipus, ext) {
+      if (alNuvol()) return sync().pujaDoc(id, blob, tipus, ext);
+      const e = String(ext || 'bin').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 8) || 'bin';
+      const cami = `local/${id}.${e}`;
+      await op('readwrite', (st) => st.put(tipus && blob.type !== tipus ? new Blob([blob], { type: tipus }) : blob, cami));
+      try { await navigator.storage?.persist?.(); } catch (x) { /* res */ }
+      return cami;
+    },
+    async url(cami, nomDescarrega, segons) {
+      if (!esLocal(cami)) return sync().urlDoc(cami, nomDescarrega, segons);
+      if (!urls[cami]) urls[cami] = URL.createObjectURL(await llegeixLocal(cami));
+      return urls[cami];
+    },
+    async blob(cami) {
+      if (esLocal(cami)) return llegeixLocal(cami);
+      const r = await fetch(await sync().urlDoc(cami));
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.blob();
+    },
+    async esborra(cami) {
+      if (!esLocal(cami)) return sync()?.esborraDoc(cami);
+      if (urls[cami]) { URL.revokeObjectURL(urls[cami]); delete urls[cami]; }
+      await op('readwrite', (st) => st.delete(cami));
+    },
+  };
+})();
 const usuari = () => sync()?.usuari() || null;
 // Si el compte és l'administrador de la llista de convidats (es mira en obrir Ajustos)
 const admin = { es: false, mirat: '', llista: null };
@@ -1259,7 +1309,7 @@ function purgaFets() {
   const vells = (state.recordatoris || []).filter((x) => x.fet && x.fetEl && new Date(x.fetEl).getTime() < limit);
   if (!vells.length) return;
   state.recordatoris = state.recordatoris.filter((x) => !vells.includes(x)); save();
-  vells.forEach((x) => (x.imatges || []).forEach((im) => sync()?.esborraDoc(im.cami).catch(() => {})));
+  vells.forEach((x) => (x.imatges || []).forEach((im) => Fitxers.esborra(im.cami).catch(() => {})));
 }
 function marcaFet(r) {
   r.fet = true; r.fetEl = new Date().toISOString(); save(); render();
@@ -1624,7 +1674,7 @@ $('#main').addEventListener('click', (e) => {
     const lloc = state.documents.indexOf(d), copia = { ...d };
     state.documents.splice(lloc, 1); save(); render();
     toastDesfes(`Esborrat: ${d.titol}`, () => { state.documents.splice(Math.max(0, lloc), 0, copia); save(); render(); });
-    if (copia.cami) setTimeout(() => { if (!state.documents.some((x) => x.id === copia.id)) sync()?.esborraDoc(copia.cami).catch(() => {}); }, 7000);
+    if (copia.cami) setTimeout(() => { if (!state.documents.some((x) => x.id === copia.id)) Fitxers.esborra(copia.cami).catch(() => {}); }, 7000);
     return;
   }
   // Tocar una fila oberta la tanca (no l'obre); els botons de darrere sí que funcionen
@@ -1751,7 +1801,7 @@ function vistaMemoria() {
       <div class="rec-bloc"><span>Fotos</span>
         ${f && (f.imatges || []).length ? `<div class="rec-imgs">${f.imatges.map((im) => `<button type="button" class="rec-img" data-memimg="${esc(f.id)}|${esc(im.id)}"><img src="${esc(im.mini)}" alt=""></button>`).join('')}</div>` : ''}
         ${!f ? '<p class="help">Toca «Fet» i després, amb «Edita», hi podràs afegir fotos.</p>'
-          : usuari() ? `<label class="btn rec-afoto${ui.memPujant ? ' ocupat' : ''}"><input type="file" id="memFoto" accept="image/*" multiple hidden ${ui.memPujant ? 'disabled' : ''}>${ui.memPujant ? 'Pujant…' : 'Afegeix fotos'}</label>`
+          : true ? `<label class="btn rec-afoto${ui.memPujant ? ' ocupat' : ''}"><input type="file" id="memFoto" accept="image/*" multiple hidden ${ui.memPujant ? 'disabled' : ''}>${ui.memPujant ? 'Pujant…' : 'Afegeix fotos'}</label>`
           : '<p class="help">Per afegir fotos cal haver entrat amb el teu correu.</p>'}
       </div>
       <div class="grp"><button class="btn primary">Fet</button><span class="mem-desat help">Els canvis es desen sols</span>
@@ -1875,13 +1925,13 @@ const graellaDocs = (docs, q) => `<div class="doc-graella">${docs.map((x) => {
         <span class="doc-nom">${esc(x.titol)}</span><small>${esc(x.tipus === 'enllac' ? domini(x.url) : [dataDoc(x.creat), midaText(x.mida)].filter(Boolean).join(' · '))}</small></button></div>`;
 }).join('')}</div>`;
 function vistaDocuments() {
-  const entrat = Boolean(usuari());
+  const entrat = true;   // sense compte, els documents es guarden a la memòria del mòbil
   const tots = state.documents.slice().sort((a, b) => String(b.creat || '').localeCompare(String(a.creat || '')));
   const q = normal((ui.docCerca || '').trim());
   const cid = carpetaOberta('docs');
   if (cid === null) {
     // Inici: les carpetes i un cercador que busca a totes
-    return capSatel('Documents') + `<p class="help">Guarda qualsevol document en carpetes: fotos, PDF, contractes, pressupostos, enllaços a pàgines web… Es guarden al teu núvol privat: només tu els pots veure.</p>
+    return capSatel('Documents') + `<p class="help">Guarda qualsevol document en carpetes: fotos, PDF, contractes, pressupostos, enllaços a pàgines web… Es guarden ${Fitxers.alNuvol() ? 'al teu núvol privat: només tu els pots veure' : "a la memòria d'aquest mòbil: només tu els pots veure. Fes còpies completes de tant en tant (Ajustos)"}.</p>
       ${!entrat ? '<p class="help avis-doc">Per guardar documents cal haver entrat amb el teu correu (toca el logo de Galàxia, a dalt).</p>' : ''}
       ${tots.length > 1 ? `<input id="cercaDoc" type="search" class="doc-cerca" placeholder="Cerca a totes les carpetes…" autocomplete="off" value="${esc(ui.docCerca || '')}">` : ''}
       <div id="docInici"${q ? ' hidden' : ''}>${graellaCarpetes('docs', ['document', 'documents'])}</div>
@@ -1913,7 +1963,7 @@ function vistaVeu() {
   const notes = state.notesveu.slice().sort((a, b) => String(b.creat || '').localeCompare(String(a.creat || '')));
   const grava = ui.grava;
   return capSatel('Notes de veu') + `<p class="help">Apunta el que se t'acudi sense haver d'escriure: després ho envies a Recordatoris, a una llista, a Compres o a Memòria.</p>
-    ${usuari() ? `<div class="veu-grava">
+    ${true ? `<div class="veu-grava">
         <button type="button" class="veu-boto${grava ? ' grava' : ''}" id="veuBoto" aria-label="${grava ? 'Atura i desa' : 'Grava una nota de veu'}">
           <svg viewBox="0 0 24 24" aria-hidden="true">${grava ? '<rect x="7" y="7" width="10" height="10" rx="2"/>' : '<path d="M12 15a3.5 3.5 0 0 0 3.5-3.5v-5a3.5 3.5 0 0 0-7 0v5A3.5 3.5 0 0 0 12 15zm6-3.5a6 6 0 0 1-12 0H4.5a7.5 7.5 0 0 0 6.75 7.46V21h1.5v-2.04a7.5 7.5 0 0 0 6.75-7.46z"/>'}</svg></button>
         <p class="veu-estat" id="veuEstat">${grava ? `<b class="veu-temps" id="veuTemps">${durText((Date.now() - grava.inici) / 1000)}</b> Gravant… toca per acabar` : ui.veuPujant ? 'Desant l\'àudio…' : '<b>Toca per gravar</b> i torna a tocar per acabar. També pots mantenir-lo premut mentre parles.'}</p>
@@ -1962,7 +2012,7 @@ async function desaGravacio(flux) {
   ui.veuPujant = true; render();
   const id = nouId('nv');
   try {
-    const cami = await sync().pujaDoc(id, blob, tipus, tipus.includes('webm') ? 'webm' : 'm4a');
+    const cami = await Fitxers.puja(id, blob, tipus, tipus.includes('webm') ? 'webm' : 'm4a');
     state.notesveu.push({ id, text: '', origen: 'gravat', audio: { cami, tipus, durada: Math.round(durada) }, creat: new Date().toISOString() });
     save(); toast('Nota de veu desada');
   } catch (x) {
@@ -2003,7 +2053,7 @@ function treuNota(n, missatge) {
   const lloc = state.notesveu.indexOf(n), copia = { ...n };
   state.notesveu.splice(lloc, 1); save(); render();
   toastDesfes(missatge, () => { state.notesveu.splice(Math.max(0, lloc), 0, copia); save(); render(); });
-  if (copia.audio) setTimeout(() => { if (!state.notesveu.some((x) => x.id === copia.id)) sync()?.esborraDoc(copia.audio.cami).catch(() => {}); }, 7000);
+  if (copia.audio) setTimeout(() => { if (!state.notesveu.some((x) => x.id === copia.id)) Fitxers.esborra(copia.audio.cami).catch(() => {}); }, 7000);
 }
 $('#main').addEventListener('click', async (e) => {
   const t = e.target;
@@ -2027,7 +2077,7 @@ $('#main').addEventListener('click', async (e) => {
     if (!n?.audio) return;
     es.disabled = true; es.textContent = 'Carregant…';
     try {
-      const url = await sync().urlDoc(n.audio.cami);
+      const url = await Fitxers.url(n.audio.cami);
       const caixa = document.getElementById('veuAudio-' + n.id);
       if (caixa) { caixa.innerHTML = `<audio controls autoplay preload="auto" src="${esc(url)}"></audio>`; }
     } catch (x) { es.disabled = false; es.textContent = '▶ Escolta'; toast(navigator.onLine ? "No s'ha pogut carregar l'àudio." : 'Cal connexió a internet.'); }
@@ -2418,7 +2468,7 @@ async function desaEscaneig(pagines, titol) {
     }
     blob = pdf.output('blob'); tipus = 'application/pdf'; ext = 'pdf';
   }
-  const cami = await sync().pujaDoc(id, blob, tipus, ext);
+  const cami = await Fitxers.puja(id, blob, tipus, ext);
   state.documents.push({ id, titol, tipus, cami, nomFitxer: titol + '.' + ext, mida: blob.size, mini, carpeta: carpetaOberta('docs') || '', creat: new Date().toISOString() });
   save();
 }
@@ -2532,7 +2582,7 @@ addEventListener('resize', () => requestAnimationFrame(ajustaCarpetes));
 const minisProvades = new Set();
 let minisEnCurs = false;
 async function completaMinis() {
-  if (minisEnCurs || !usuari() || !navigator.onLine) return;
+  if (minisEnCurs) return;
   const falten = [];
   (state.memoria || []).forEach((f) => (f.imatges || []).forEach((im) => { if (!im.mini && im.cami && !minisProvades.has(im.id)) falten.push([f, im]); }));
   if (!falten.length) return;
@@ -2541,8 +2591,9 @@ async function completaMinis() {
   for (const [f, im] of falten) {
     minisProvades.add(im.id);
     try {
-      const url = await sync().urlDoc(im.cami);
-      const img = await new Promise((ok, ko) => { const i = new Image(); i.crossOrigin = 'anonymous'; i.onload = () => ok(i); i.onerror = ko; i.src = url; });
+      if (!Fitxers.esLocal(im.cami) && !navigator.onLine) continue;
+      const url = await Fitxers.url(im.cami);
+      const img = await new Promise((ok, ko) => { const i = new Image(); if (!Fitxers.esLocal(im.cami)) i.crossOrigin = 'anonymous'; i.onload = () => ok(i); i.onerror = ko; i.src = url; });
       const mini = redueix(img, 240).toDataURL('image/jpeg', 0.6);
       const ara = state.memoria.find((x) => x.id === f.id), ii = ara && (ara.imatges || []).find((x) => x.id === im.id);
       if (ii) { ii.mini = mini; fet = true; }
@@ -3303,7 +3354,7 @@ async function acceptaMes(x, c) {
       try {
         const blob = await (await fetch(d.fitxer)).blob();
         const id = nouId('d'), ext = ((d.nomFitxer || '').match(/\.([a-z0-9]{1,8})$/i) || [])[1] || (d.tipus === 'application/pdf' ? 'pdf' : 'jpg');
-        const cami = await sync().pujaDoc(id, blob, d.tipus || blob.type, ext);
+        const cami = await Fitxers.puja(id, blob, d.tipus || blob.type, ext);
         state.documents.push({ id, titol: d.titol, tipus: d.tipus || blob.type, cami, nomFitxer: d.nomFitxer || '', mida: blob.size, mini: d.mini || '', carpeta, creat: ara }); n++;
       } catch (err) { errors++; }
     }
@@ -3462,7 +3513,7 @@ function vistaRecFitxa(r) {
       </div>
       <div class="rec-bloc"><span>Fotos</span>
         ${imgs.length ? `<div class="rec-imgs">${imgs.map((im) => `<button class="rec-img" data-recimg="${esc(im.id)}"><img src="${esc(im.mini)}" alt=""></button>`).join('')}</div>` : ''}
-        ${entrat ? `<label class="btn rec-afoto${ui.recPujant ? ' ocupat' : ''}"><input type="file" id="recFoto" accept="image/*" multiple hidden ${ui.recPujant ? 'disabled' : ''}>${ui.recPujant ? 'Pujant…' : 'Afegeix fotos'}</label>`
+        ${true ? `<label class="btn rec-afoto${ui.recPujant ? ' ocupat' : ''}"><input type="file" id="recFoto" accept="image/*" multiple hidden ${ui.recPujant ? 'disabled' : ''}>${ui.recPujant ? 'Pujant…' : 'Afegeix fotos'}</label>`
           : '<p class="help">Per afegir fotos cal haver entrat amb el teu correu.</p>'}
       </div>
       <div class="ll-peu"><button class="btn primary" data-recfitxafet>Fet</button><button class="enllac" data-envrec>Envia una còpia</button><button class="enllac perill" data-recesborra>Esborra</button></div>
@@ -3480,7 +3531,7 @@ const recObert = () => state.recordatoris.find((x) => x.id === ui.recObert && !x
 function netejaFotosRec(r) {
   setTimeout(() => {
     if (state.recordatoris.some((x) => x.id === r.id)) return;
-    (r.imatges || []).forEach((im) => { sync()?.esborraDoc(im.cami).catch(() => {}); });
+    (r.imatges || []).forEach((im) => { Fitxers.esborra(im.cami).catch(() => {}); });
   }, 7000);
 }
 function treuRecordatori(r, text) {
@@ -3515,7 +3566,7 @@ $('#main').addEventListener('change', async (e) => {
       try {
         const im = await carregaImg(f);
         const blob = await new Promise((ok) => redueix(im, 2000).toBlob(ok, 'image/jpeg', 0.82));
-        const id = nouId('ri'), cami = await sync().pujaDoc(id, blob, 'image/jpeg', 'jpg');
+        const id = nouId('ri'), cami = await Fitxers.puja(id, blob, 'image/jpeg', 'jpg');
         const rr = state.recordatoris.find((x) => x.id === r.id);
         if (rr) { rr.imatges = [...(rr.imatges || []), { id, cami, mini: redueix(im, 240).toDataURL('image/jpeg', 0.6) }]; save(); }
       } catch (err) { errors++; if (!navigator.onLine) break; }
@@ -3596,7 +3647,7 @@ async function obreFoto(titol, fotos, inici, { treu, mou } = {}) {
     const tr = v.querySelector('[data-fv="treu"]'); tr.dataset.segur = ''; tr.textContent = 'Treu la foto';
     const o = v.querySelector('[data-fv="obre"]'); o.hidden = true;
     try {
-      const url = urls[im.id] || (urls[im.id] = await sync().urlDoc(im.cami));
+      const url = urls[im.id] || (urls[im.id] = await Fitxers.url(im.cami));
       if (!document.body.contains(v) || fotos[i] !== im) return;
       img.src = url; o.href = url; o.hidden = false;
     } catch (err) { /* es queda la miniatura */ }
@@ -3647,12 +3698,12 @@ async function obreFotoRec(r, im) {
       if (b.dataset.segur !== '1') { b.dataset.segur = '1'; b.textContent = "Segur? Toca'l un altre cop"; return; }
       const rr = state.recordatoris.find((x) => x.id === r.id);
       if (rr) { rr.imatges = (rr.imatges || []).filter((x) => x.id !== im.id); save(); }
-      sync()?.esborraDoc(im.cami).catch(() => {});
+      Fitxers.esborra(im.cami).catch(() => {});
       tancaVisor(); render(); toast('Foto treta');
     }
   });
   try {
-    const url = await sync().urlDoc(im.cami);
+    const url = await Fitxers.url(im.cami);
     if (!document.body.contains(v)) return;
     v.querySelector('.doc-visor-cos img').src = url;
     const o = v.querySelector('[data-fv="obre"]'); o.href = url; o.hidden = false;
@@ -3726,7 +3777,7 @@ async function pujaFotosRecNou(id, fotos) {
     try {
       const im = await carregaImg(f);
       const blob = await new Promise((ok) => redueix(im, 2000).toBlob(ok, 'image/jpeg', 0.82));
-      const fid = nouId('ri'), cami = await sync().pujaDoc(fid, blob, 'image/jpeg', 'jpg');
+      const fid = nouId('ri'), cami = await Fitxers.puja(fid, blob, 'image/jpeg', 'jpg');
       const r = state.recordatoris.find((x) => x.id === id);
       if (r) { r.imatges = [...(r.imatges || []), { id: fid, cami, mini: redueix(im, 240).toDataURL('image/jpeg', 0.6) }]; save(); }
     } catch (err) { toast(navigator.onLine ? "Alguna foto no s'ha pogut pujar." : 'Cal connexió a internet per pujar fotos.', 4500); break; }
@@ -3819,7 +3870,7 @@ $('#main').addEventListener('click', async (e) => {
     ui.memSel = null; save(); render();
     toastDesfes(treure.length === 1 ? `Esborrada: ${treure[0].titol}` : `${treure.length} fitxes esborrades`, () => { state.memoria = abans; save(); render(); });
     // Les fotos s'esborren del núvol quan ja no es pot desfer
-    setTimeout(() => treure.forEach((f) => { if (!state.memoria.some((x) => x.id === f.id)) (f.imatges || []).forEach((im) => sync()?.esborraDoc(im.cami).catch(() => {})); }), 7000);
+    setTimeout(() => treure.forEach((f) => { if (!state.memoria.some((x) => x.id === f.id)) (f.imatges || []).forEach((im) => Fitxers.esborra(im.cami).catch(() => {})); }), 7000);
   }
 });
 // Moure fitxes a una altra carpeta sense sortir de la carpeta on ets (per classificar de pressa)
@@ -3940,7 +3991,7 @@ function esborraFitxaMem(f) {
   const lloc = state.memoria.indexOf(f), copia = { ...f };
   state.memoria.splice(lloc, 1); ui.memEdita = ''; save(); render();
   toastDesfes(`Esborrada: ${f.titol}`, () => { state.memoria.splice(Math.max(0, lloc), 0, copia); save(); render(); });
-  setTimeout(() => { if (!state.memoria.some((x) => x.id === copia.id)) (copia.imatges || []).forEach((im) => sync()?.esborraDoc(im.cami).catch(() => {})); }, 7000);
+  setTimeout(() => { if (!state.memoria.some((x) => x.id === copia.id)) (copia.imatges || []).forEach((im) => Fitxers.esborra(im.cami).catch(() => {})); }, 7000);
 }
 $('#main').addEventListener('click', (e) => {
   const b = e.target.closest('[data-memtreu]');
@@ -4336,7 +4387,7 @@ $('#main').addEventListener('click', async (e) => {
     const lloc = state.memoria.indexOf(f), copia = { ...f };
     state.memoria.splice(lloc, 1); ui.memEdita = ''; save(); render();
     toastDesfes(`Esborrada: ${f.titol}`, () => { state.memoria.splice(lloc, 0, copia); save(); render(); });
-    setTimeout(() => { if (!state.memoria.some((x) => x.id === copia.id)) (copia.imatges || []).forEach((im) => sync()?.esborraDoc(im.cami).catch(() => {})); }, 7000);
+    setTimeout(() => { if (!state.memoria.some((x) => x.id === copia.id)) (copia.imatges || []).forEach((im) => Fitxers.esborra(im.cami).catch(() => {})); }, 7000);
     return;
   }
   const mi = t.closest('[data-memimg]');
@@ -4344,7 +4395,7 @@ $('#main').addEventListener('click', async (e) => {
     const [fid, iid] = mi.dataset.memimg.split('|');
     const f = state.memoria.find((x) => x.id === fid), im = f && (f.imatges || []).find((x) => x.id === iid);
     if (im) obreFoto(f.titol, f.imatges.slice(), f.imatges.indexOf(im), {
-      treu: (x) => { f.imatges = f.imatges.filter((y) => y.id !== x.id); save(); sync()?.esborraDoc(x.cami).catch(() => {}); render(); },
+      treu: (x) => { f.imatges = f.imatges.filter((y) => y.id !== x.id); save(); Fitxers.esborra(x.cami).catch(() => {}); render(); },
       mou: (x) => mouFotoMem(f.id, x.id),
     });
     return;
@@ -4386,7 +4437,7 @@ $('#main').addEventListener('change', async (e) => {
     try {
       const im = await carregaImg(file);
       const blob = await new Promise((ok) => redueix(im, 2000).toBlob(ok, 'image/jpeg', 0.82));
-      const id = nouId('mi'), cami = await sync().pujaDoc(id, blob, 'image/jpeg', 'jpg');
+      const id = nouId('mi'), cami = await Fitxers.puja(id, blob, 'image/jpeg', 'jpg');
       f.imatges = [...(f.imatges || []), { id, cami, mini: redueix(im, 240).toDataURL('image/jpeg', 0.6) }]; save();
     } catch (err) { errors++; if (!navigator.onLine) break; }
   }
@@ -4544,7 +4595,7 @@ async function pujaUnDocument(file, titol) {
       mini = redueix(im, 240).toDataURL('image/jpeg', 0.6);
     } catch (x) { blob = file; }
   }
-  const cami = await sync().pujaDoc(id, blob, tipus, extFinal);
+  const cami = await Fitxers.puja(id, blob, tipus, extFinal);
   state.documents.push({ id, titol: titol.slice(0, 80), tipus, cami, nomFitxer: file.name.slice(0, 120), mida: blob.size, mini, carpeta: carpetaOberta('docs') || '', creat: new Date().toISOString() });
   save();
 }
@@ -4768,7 +4819,7 @@ async function obreVisor(doc) {
     if (acc === 'esborra') {
       if (b.dataset.segur !== '1') { b.dataset.segur = '1'; b.textContent = "Segur? Toca'l un altre cop"; return; }
       try {
-        if (doc.cami) await sync().esborraDoc(doc.cami);
+        if (doc.cami) await Fitxers.esborra(doc.cami);
         state.documents = state.documents.filter((x) => x.id !== doc.id);
         save(); tancaVisor(); render(); toast('Document esborrat');
       } catch (err) { toast(navigator.onLine ? "No s'ha pogut esborrar." : 'Cal connexió a internet.'); }
@@ -4783,7 +4834,7 @@ async function obreVisor(doc) {
   }
   try {
     // Les fotos i els PDF s'obren dins del navegador; la resta es descarreguen amb el seu nom
-    const url = await sync().urlDoc(doc.cami, esFoto || cat === 'pdf' ? '' : doc.nomFitxer || (doc.titol + '.' + extDoc(doc)));
+    const url = await Fitxers.url(doc.cami, esFoto || cat === 'pdf' ? '' : doc.nomFitxer || (doc.titol + '.' + extDoc(doc)));
     if (!document.body.contains(v)) return;
     obre.href = url; obre.hidden = false; v.querySelector('[data-visor="imprimeix"]').hidden = false;
     if (esFoto) {
@@ -4805,7 +4856,7 @@ $('#main').addEventListener('click', (e) => {
   if (!b) return;
   const doc = state.documents.find((x) => x.id === b.dataset.docobre);
   if (!doc) return;
-  if (!usuari() && doc.tipus !== 'enllac') { toast('Per veure els documents cal haver entrat amb el correu.'); return; }
+  if (!usuari() && doc.tipus !== 'enllac' && !Fitxers.esLocal(doc.cami)) { toast('Per veure els documents cal haver entrat amb el correu.'); return; }
   obreVisor(doc);
 });
 
@@ -5735,7 +5786,6 @@ async function triaOnCopia() {
     ]);
     if (!quina) return;
     completa = quina === 'completa';
-    if (completa && !usuari()) { toast('Per fer la còpia completa cal haver entrat amb el teu correu (les fotos i els fitxers són al teu núvol).', 6000); return; }
   }
   if (!esIOS()) {
     // A l'ordinador es descarrega a la carpeta Baixades
@@ -5795,10 +5845,7 @@ async function copiaCompleta(on) {
     for (let i = 0; i < camins.length; i++) {
       progres(['Preparant la còpia completa…', `Fitxer ${i + 1} de ${camins.length} · ${midaMB(total)}`]);
       try {
-        const url = await sync().urlDoc(camins[i]);
-        const r = await fetch(url);
-        if (!r.ok) throw new Error(r.status);
-        const b = await r.blob();
+        const b = await Fitxers.blob(camins[i]);
         total += b.size;
         zip.file('fitxers/' + camins[i], b, { binary: true });
       } catch (e) { fallen++; }
@@ -5884,7 +5931,7 @@ async function importaCompleta(fitxer) {
   } catch (e) { progres(null); toast('Aquest fitxer no és una còpia completa de Galàxia.'); return; }
   progres(null);
   const entrades = Object.values(zip.files).filter((f) => !f.dir && f.name.startsWith('fitxers/'));
-  const senseNuvol = entrades.length && !usuari();
+  const senseNuvol = false;   // sense compte, els fitxers es desen a la memòria del mòbil
   if (!confirm(`Aquesta còpia té ${d.plans.length} plans i ${entrades.length === 1 ? '1 fitxer' : entrades.length + ' fitxers'} (fotos, àudios i documents).\n\nVols substituir les dades actuals per les de la còpia?`
     + (senseNuvol ? "\n\nCompte: no has entrat amb el teu correu, així que es recuperaran les dades però no les fotos ni els fitxers." : ''))) return;
   // Tipus de cada fitxer: el que diu la còpia (documents, àudios) o, si no, per l'extensió
@@ -5901,7 +5948,7 @@ async function importaCompleta(fitxer) {
       progres(['Recuperant la còpia…', `Pujant fitxer ${i + 1} de ${entrades.length}`]);
       try {
         const b = await entrades[i].async('blob');
-        nous[vell] = await sync().pujaDoc(id, new Blob([b], { type: tipus }), tipus, ext);
+        nous[vell] = await Fitxers.puja(id, new Blob([b], { type: tipus }), tipus, ext);
       } catch (e) { fallen++; if (!navigator.onLine) break; }
     }
   }
