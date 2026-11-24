@@ -1096,21 +1096,21 @@ function vistaAjustos() {
     </div>` : ''}
     ${sync()?.disponible ? `<div class="section" id="seccioVeu">
       <h2>Dreceres de l'iPhone</h2>
-      <p class="help">Dues dreceres per guardar coses a Galàxia sense obrir l'app. Es preparen un sol cop a l'app <b>Atajos</b> de l'iPhone. Cada persona ha de fer servir <b>el seu enllaç</b> (el d'aquests botons): així tot va a la seva Galàxia.</p>
+      <p class="help">Dreceres per guardar coses a Galàxia sense obrir l'app. Tot el que deses va a la <b>Safata d'entrada</b> de la portada. La norma fàcil: si ho has <b>seleccionat</b>, o és un <b>enllaç</b> o una <b>ubicació</b> → <b>Desa text o enllaç</b>; si és una cosa <b>guardada</b> (foto, PDF, document) → <b>Desa foto o fitxer</b>. Es preparen un sol cop a l'app <b>Atajos</b> de l'iPhone. Cada persona ha de fer servir <b>el seu enllaç</b> (el d'aquests botons): així tot va a la seva Galàxia.</p>
       ${usuari()
-        ? `<div class="grp"><button class="btn primary" id="veuDesa">Copia l'enllaç per a «Desa a Galàxia»</button><button class="btn primary" id="veuNota">Copia l'enllaç per a «Nota de veu»</button><button class="btn primary" id="veuDoc">Copia l'enllaç per a «Desa document»</button></div>
-          <details class="ajuda"><summary>1. «Desa a Galàxia» (menú Compartir)</summary>
-            <p>Des de Notes, Safari, Instagram, Google, Maps, Fotos, Arxius… toques <b>Compartir → Desa a Galàxia</b> i va a parar a la <b>Safata d'entrada</b> de la portada: enllaços, textos, ubicacions, fotos i PDF. Des d'allà el mous on toqui amb <b>Mou a…</b>. Si ja el tens, t'avisa i no el repeteix.</p>
+        ? `<div class="grp"><button class="btn primary" id="veuDesa">Copia l'enllaç per a «Desa text o enllaç»</button><button class="btn primary" id="veuNota">Copia l'enllaç per a «Nota de veu»</button><button class="btn primary" id="veuDoc">Copia l'enllaç per a «Desa foto o fitxer»</button></div>
+          <details class="ajuda"><summary>1. «Desa text o enllaç» (enllaços, ubicacions i textos)</summary>
+            <p>Des d'Instagram, Safari, Google, Maps, Notes, WhatsApp… toques <b>Compartir → Desa text o enllaç</b> i va a parar a la <b>Safata d'entrada</b> de la portada: enllaços, ubicacions i textos seleccionats. Des d'allà el mous on toqui amb <b>Mou a…</b>. Si ja el tens, t'avisa i no el repeteix.</p>
             <ol class="passos-veu">
-              <li>Aquí, prem <b>Copia l'enllaç per a «Desa a Galàxia»</b>.</li>
-              <li>Obre <b>Atajos</b>, pestanya <b>Atajos</b>, i toca <b>+</b>. A dalt, toca el nom i posa-li <b>Desa a Galàxia</b>.</li>
+              <li>Aquí, prem <b>Copia l'enllaç per a «Desa text o enllaç»</b>.</li>
+              <li>Obre <b>Atajos</b>, pestanya <b>Atajos</b>, i toca <b>+</b>. A dalt, toca el nom i posa-li <b>Desa text o enllaç</b>.</li>
               <li>Toca el nom de nou → <b>Detalles</b> (o la ⓘ) → activa <b>Mostrar en el panel de compartir</b>. Torna enrere.</li>
-              <li>A la primera caixa, <b>Recibir … de Panel de compartir</b>: deixa marcats tots els tipus. A <b>Si no hay datos de entrada</b>, tria <b>Obtener portapapeles</b>.</li>
+              <li>A la primera caixa, <b>Recibir … de Panel de compartir</b>: deixa marcats tots els tipus <b>menys</b> <b>Archivos</b>, <b>Imágenes</b> i <b>PDF</b> (aquests són per a l'altra drecera). A <b>Si no hay datos de entrada</b>, tria <b>Obtener portapapeles</b>.</li>
               <li>Afegeix l'acció <b>Texto</b>. Toca dins de la caixa i tria la variable <b>Entrada de atajo</b>.</li>
-              <li>Afegeix l'acció <b>Obtener contenido de URL</b>. Toca <b>URL</b> i enganxa-hi l'enllaç (acaba en <b>&amp;desa=1</b>). Toca la fletxa <b>›</b>: Método <b>POST</b>, Cuerpo de la solicitud <b>Formulario</b>, <b>Añadir nuevo campo → Texto</b>, clau <b>text</b> i valor la variable <b>Texto</b>. Després, <b>Añadir nuevo campo → Archivo</b>, clau <b>fitxer</b> i valor la variable <b>Entrada de atajo</b> (així també desa les imatges).</li>
+              <li>Afegeix l'acció <b>Obtener contenido de URL</b>. Toca <b>URL</b> i enganxa-hi l'enllaç (acaba en <b>&amp;desa=1</b>). Toca la fletxa <b>›</b>: Método <b>POST</b>, Cuerpo de la solicitud <b>Formulario</b>, <b>Añadir nuevo campo → Texto</b>, clau <b>text</b> i valor la variable <b>Texto</b>. Cap camp més.</li>
               <li>Afegeix l'acció <b>Mostrar notificación</b> amb la variable <b>Contenido de URL</b>. Toca <b>OK</b>.</li>
-              <li>Prova-ho: a Notes, selecciona un text → <b>Compartir → Desa a Galàxia</b>. Ha de sortir «Desat a Galàxia: …».</li>
-              <li>Perquè surti la primera del menú Compartir: al final del menú, <b>Editar acciones…</b> → <b>+</b> a «Desa a Galàxia» i arrossega-la a dalt de <b>Favoritos</b>.</li>
+              <li>Prova-ho: a Notes, selecciona un text → <b>Compartir → Desa text o enllaç</b>. Ha de sortir «Desat a Galàxia: …».</li>
+              <li>Perquè surti la primera del menú Compartir: al final del menú, <b>Editar acciones…</b> → <b>+</b> a «Desa text o enllaç» i a «Desa foto o fitxer», i arrossega-les a dalt de <b>Favoritos</b>.</li>
             </ol>
           </details>
           <details class="ajuda"><summary>2. «Nota de veu» (dictar sense obrir l'app)</summary>
@@ -1126,15 +1126,15 @@ function vistaAjustos() {
               <li>Per tenir-la a un toc: mantén-la premuda → <b>Compartir → Añadir a pantalla de inicio</b>. O bé a <b>Ajustes → Accesibilidad → Tocar → Tocar atrás → Doble toque → Nota de veu</b>.</li>
             </ol>
           </details>
-          <details class="ajuda"><summary>3. «Desa document a Galàxia» (fitxers: PDF, fotos…)</summary>
-            <p>Des d'<b>Arxius</b>, <b>Fotos</b>, <b>Mail</b>… toques <b>Compartir → Desa document a Galàxia</b> i el fitxer va a la <b>Safata d'entrada</b> de la portada. Si ja el tens, t'avisa i no el repeteix.</p>
+          <details class="ajuda"><summary>3. «Desa foto o fitxer» (fotos, PDF i documents)</summary>
+            <p>Des de <b>Fotos</b>, <b>Arxius</b>, <b>Notebook</b>, <b>Mail</b>… toques <b>Compartir → Desa foto o fitxer</b> i el fitxer va a la <b>Safata d'entrada</b> de la portada. Si ja el tens, t'avisa i no el repeteix.</p>
             <ol class="passos-veu">
-              <li>Aquí, prem <b>Copia l'enllaç per a «Desa document»</b>.</li>
-              <li>A <b>Atajos</b>, toca <b>+</b> i posa-li de nom <b>Desa document a Galàxia</b>. A <b>Detalles</b>, activa <b>Mostrar en el panel de compartir</b>.</li>
+              <li>Aquí, prem <b>Copia l'enllaç per a «Desa foto o fitxer»</b>.</li>
+              <li>A <b>Atajos</b>, toca <b>+</b> i posa-li de nom <b>Desa foto o fitxer</b>. A <b>Detalles</b>, activa <b>Mostrar en el panel de compartir</b>.</li>
               <li>A la primera caixa, <b>Recibir</b>: deixa només <b>Archivos</b>, <b>PDF</b> i <b>Imágenes</b>.</li>
               <li>Afegeix l'acció <b>Obtener contenido de URL</b>. Enganxa-hi l'enllaç (acaba en <b>&amp;doc=1</b>). Toca la fletxa <b>›</b>: Método <b>POST</b> i Cuerpo de la solicitud <b>Archivo</b>; a <b>Archivo</b>, tria la variable <b>Entrada de atajo</b>.</li>
               <li>Afegeix <b>Mostrar notificación</b> amb <b>Contenido de URL</b>. <b>OK</b>.</li>
-              <li>Prova-ho: a <b>Arxius</b>, mantén premut un PDF → <b>Compartir → Desa document a Galàxia</b>. Ha de sortir «Desat a Galàxia: …».</li>
+              <li>Prova-ho: a <b>Arxius</b>, mantén premut un PDF → <b>Compartir → Desa foto o fitxer</b>. Ha de sortir «Desat a Galàxia: …».</li>
             </ol>
           </details>
           <details class="ajuda"><summary>Plans per veu amb Siri (opcional)</summary>
@@ -1325,7 +1325,7 @@ function vistaSafata() {
   ui.memCarpeta = 'perclass';
   const recents = (a, b) => String(b.creat || '').localeCompare(String(a.creat || ''));
   const fitxes = fitxesSafata().sort(recents), docs = docsSafata().sort(recents);
-  if (!fitxes.length && !docs.length) return capSatel("Safata d'entrada") + `<p class="help buit safata-buida">La safata és buida ✓<br>Tot el que desis des del mòbil (Compartir → Desa a Galàxia) arribarà aquí.</p>`;
+  if (!fitxes.length && !docs.length) return capSatel("Safata d'entrada") + `<p class="help buit safata-buida">La safata és buida ✓<br>Tot el que desis des del mòbil arribarà aquí:<br><b>Desa text o enllaç</b> → enllaços, ubicacions i textos seleccionats.<br><b>Desa foto o fitxer</b> → fotos, PDF i documents.</p>`;
   return capSatel("Safata d'entrada") + `<p class="help">El que has desat des del mòbil. Llisca cada cosa cap a l'esquerra i toca <b>Mou a…</b> per posar-la a la micro-app i la carpeta que toca.</p>
     ${fitxes.length ? `${docs.length ? '<h2 class="safata-cap">Enllaços, textos i fotos</h2>' : ''}<div class="mem-llista">${fitxes.map((x) => filaFitxa(x, false, tipusFitxa(x))).join('')}</div>` : ''}
     ${docs.length ? `${fitxes.length ? '<h2 class="safata-cap">Arxius</h2>' : ''}${graellaDocs(docs, '')}` : ''}`;
