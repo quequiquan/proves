@@ -1110,11 +1110,11 @@ function vistaAjustos() {
     </div>
     <div class="section">
       <h2>Còpia de seguretat</h2>
-      <p class="help">Desa en un fitxer <b>tot</b> el que tens a Galàxia: agenda, contactes, recordatoris, llistes, compres, Memòria, notes de veu, la llista de documents i els ajustos. En prémer <b>Desa una còpia</b> tries on: <b>al mòbil</b>, <b>al núvol (iCloud Drive)</b> o <b>a l'ordinador</b>. El més segur és iCloud Drive: si perds el mòbil, la còpia hi continua. Les fotos, els àudios i els fitxers de Documents es queden al teu núvol privat i no van dins de la còpia.</p>
+      <p class="help">Desa en un fitxer <b>tot</b> el que tens a Galàxia: agenda, contactes, recordatoris, llistes, compres, Memòria, notes de veu, la llista de documents i els ajustos. En prémer <b>Desa una còpia</b> tries si la vols <b>completa</b> (també amb les fotos, els àudios i els fitxers de Documents) o <b>només les dades</b>, i on la deses: <b>al mòbil</b>, <b>al núvol (iCloud Drive)</b> o <b>a l'ordinador</b>. El més segur és una còpia completa a iCloud Drive: si perds el mòbil o el núvol de l'app falla, la tens.</p>
       ${(() => { const u = llegeixPref('ultimaCopia', ''); if (!u) return '<p class="help"><b>Encara no has fet cap còpia en aquest aparell.</b></p>'; const dies = Math.round((Date.now() - new Date(u).getTime()) / 86400000); return `<p class="help">Última còpia en aquest aparell: <b>${dies <= 0 ? 'avui' : dies === 1 ? 'ahir' : 'fa ' + dies + ' dies'}</b>.${dies > 30 ? ' Ja tocaria fer-ne una de nova.' : ''}</p>`; })()}
       <div class="grp">
         <button class="btn" id="btnExporta">Desa una còpia</button>
-        <label class="btn">Recupera una còpia<input type="file" id="fitxerImporta" accept=".json,application/json" hidden></label>
+        <label class="btn">Recupera una còpia<input type="file" id="fitxerImporta" accept=".json,application/json,.zip,application/zip" hidden></label>
       </div>
     </div>
     <div class="section">
@@ -5704,8 +5704,39 @@ function obreForm(p, base = {}) {
 }
 
 /* ---------- Còpia de seguretat ---------- */
+// Els fitxers del núvol que fa servir l'app: fotos de Memòria i de Recordatoris, documents i àudios
+function fitxersDeCopia(d) {
+  const llista = [
+    ...(d.memoria || []).flatMap((f) => (f.imatges || []).map((i) => i.cami)),
+    ...(d.recordatoris || []).flatMap((r) => (r.imatges || []).map((i) => i.cami)),
+    ...(d.documents || []).map((x) => x.cami),
+    ...(d.notesveu || []).map((n) => n.audio?.cami),
+  ].filter(Boolean);
+  return [...new Set(llista)];
+}
+const midaMB = (b) => (b >= 1048576 ? (b / 1048576).toFixed(b >= 10485760 ? 0 : 1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB');
+// Finestra amb el progrés (es tanca amb progres(null))
+function progres(text) {
+  let d = document.querySelector('.progres-copia');
+  if (text === null) { d?.remove(); return; }
+  if (!d) { d = document.createElement('div'); d.className = 'demana progres-copia'; d.innerHTML = '<div class="demana-caixa"><b></b><p class="help"></p></div>'; document.body.appendChild(d); }
+  const [t, sub] = Array.isArray(text) ? text : [text, ''];
+  d.querySelector('b').textContent = t; d.querySelector('p').textContent = sub;
+}
+const carregaZip = () => (window.JSZip ? Promise.resolve() : carregaScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js'));
 // On es desa la còpia. Al mòbil, el lloc es tria al menú Compartir de l'iPhone: aquí es diu què s'ha de tocar.
 async function triaOnCopia() {
+  const nFitxers = fitxersDeCopia(state).length;
+  let completa = false;
+  if (nFitxers) {
+    const quina = await triaOpcio('Quina còpia vols fer?', [
+      ['completa', 'Còpia completa', `Tot, també les fotos, els àudios i els fitxers de Documents (${nFitxers === 1 ? '1 fitxer' : nFitxers + ' fitxers'}). Pot trigar una estona i ocupar força.`],
+      ['dades', 'Només les dades', 'Agenda, contactes, llistes, fitxes… sense les fotos ni els fitxers. Petita i ràpida.'],
+    ]);
+    if (!quina) return;
+    completa = quina === 'completa';
+    if (completa && !usuari()) { toast('Per fer la còpia completa cal haver entrat amb el teu correu (les fotos i els fitxers són al teu núvol).', 6000); return; }
+  }
   if (!esIOS()) {
     // A l'ordinador es descarrega a la carpeta Baixades
     const op = await triaOpcio('On vols desar la còpia?', [
@@ -5713,8 +5744,8 @@ async function triaOnCopia() {
       ['icloud', 'A iCloud Drive', "Es desa a Baixades i després l'arrossegues a la carpeta iCloud Drive"],
     ]);
     if (!op) return;
-    await exporta();
-    toast(op === 'icloud' ? "Desada a Baixades. Ara arrossega-la a la carpeta iCloud Drive." : 'Còpia desada a la carpeta Baixades', 6000);
+    const fet = completa ? await copiaCompleta(op) : (await exporta(), true);
+    if (fet) toast(op === 'icloud' ? "Desada a Baixades. Ara arrossega-la a la carpeta iCloud Drive." : 'Còpia desada a la carpeta Baixades', 6000);
     return;
   }
   const op = await triaOpcio('On vols desar la còpia?', [
@@ -5725,19 +5756,21 @@ async function triaOnCopia() {
   if (!op) return;
   if (op === 'ordinador') {
     const com = await triaOpcio("Com la vols passar a l'ordinador?", [
-      ['correu', "Envia-te-la per correu", "Al menú que surt: Mail → posa el teu correu. A l'ordinador, obre el correu i desa el fitxer adjunt"],
+      ['correu', "Envia-te-la per correu", completa ? "Al menú que surt: Mail → posa el teu correu. Compte: la còpia completa pot ser massa gran per al correu" : "Al menú que surt: Mail → posa el teu correu. A l'ordinador, obre el correu i desa el fitxer adjunt"],
       ['alla', "Fes-la des de l'ordinador", "Obre Galàxia a l'ordinador (quequiquan.github.io), entra amb el teu correu i, a Ajustos, prem «Desa una còpia»: es desarà a Baixades"],
     ]);
     if (com !== 'correu') { if (com === 'alla') toast("Obre Galàxia a l'ordinador i, a Ajustos, prem «Desa una còpia».", 7000); return; }
   }
-  await exporta();
+  if (completa) await copiaCompleta(op); else await exporta();
 }
+const blobDades = () => new Blob([JSON.stringify({ app: 'que-qui-quan', versio: 1, data: new Date().toISOString(), ...state }, null, 2)], { type: 'application/json' });
 async function exporta() {
-  const blob = new Blob([JSON.stringify({ app: 'que-qui-quan', versio: 1, data: new Date().toISOString(), ...state }, null, 2)], { type: 'application/json' });
-  const nom = `Galaxia-copia-${avui()}.json`;
   desaPref('ultimaCopia', new Date().toISOString());
-  // Al mòbil: menú Compartir (Desar a Arxius, iCloud Drive, Correu…); a l'ordinador: es descarrega
-  const f = new File([blob], nom, { type: 'application/json' });
+  await desaFitxerCopia(blobDades(), `Galaxia-copia-${avui()}.json`, 'application/json');
+}
+// Al mòbil: menú Compartir (Desar a Arxius, iCloud Drive, Correu…); a l'ordinador: es descarrega
+async function desaFitxerCopia(blob, nom, tipus) {
+  const f = new File([blob], nom, { type: tipus });
   if (esIOS() && navigator.canShare && navigator.canShare({ files: [f] })) {
     try { await navigator.share({ files: [f] }); toast('Còpia preparada'); render(); return; }
     catch (x) { if (x.name === 'AbortError') return; }
@@ -5747,7 +5780,50 @@ async function exporta() {
   a.href = URL.createObjectURL(blob);
   a.download = nom;
   document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+}
+// Còpia completa: un fitxer .zip amb les dades (galaxia.json) i tots els fitxers del núvol (carpeta fitxers/)
+async function copiaCompleta(on) {
+  const camins = fitxersDeCopia(state);
+  let fallen = 0, total = 0;
+  try {
+    progres(['Preparant la còpia completa…', 'Carregant…']);
+    await carregaZip();
+    const zip = new window.JSZip();
+    zip.file('galaxia.json', blobDades());
+    zip.file('LLEGEIX-ME.txt', "Còpia completa de Galàxia (" + avui() + ").\n\n- galaxia.json: totes les dades (agenda, contactes, recordatoris, llistes, compres, Memòria, notes de veu, documents i ajustos).\n- fitxers/: les fotos, els àudios i els fitxers de Documents.\n\nPer recuperar-la: Galàxia → Ajustos → Còpia de seguretat → Recupera una còpia, i tria aquest fitxer .zip tal com està.\n");
+    for (let i = 0; i < camins.length; i++) {
+      progres(['Preparant la còpia completa…', `Fitxer ${i + 1} de ${camins.length} · ${midaMB(total)}`]);
+      try {
+        const url = await sync().urlDoc(camins[i]);
+        const r = await fetch(url);
+        if (!r.ok) throw new Error(r.status);
+        const b = await r.blob();
+        total += b.size;
+        zip.file('fitxers/' + camins[i], b, { binary: true });
+      } catch (e) { fallen++; }
+    }
+    progres(['Preparant la còpia completa…', `Empaquetant ${midaMB(total)}…`]);
+    const blob = await zip.generateAsync({ type: 'blob', compression: 'STORE', mimeType: 'application/zip' });
+    progres(null);
+    desaPref('ultimaCopia', new Date().toISOString());
+    const nom = `Galaxia-copia-completa-${avui()}.zip`;
+    const avis = fallen ? ` (${fallen === 1 ? '1 fitxer no s\'ha pogut' : fallen + " fitxers no s'han pogut"} afegir)` : '';
+    if (esIOS()) {
+      // L'iPhone només obre el menú Compartir si es toca un botó: s'espera que es toqui «Desa-la»
+      const pista = on === 'mobil' ? 'Al menú: Desar a Arxius → En el meu iPhone → Desa' : on === 'icloud' ? 'Al menú: Desar a Arxius → iCloud Drive → Desa' : 'Al menú: Mail → posa el teu correu';
+      const ok = await triaOpcio(`La còpia completa és a punt: ${midaMB(blob.size)}${avis}`, [['desa', 'Desa-la ara', pista]]);
+      if (ok) await desaFitxerCopia(blob, nom, 'application/zip');
+      return Boolean(ok);
+    }
+    await desaFitxerCopia(blob, nom, 'application/zip');
+    if (fallen) toast(`Còpia desada${avis}.`, 6000);
+    return !fallen;
+  } catch (e) {
+    progres(null);
+    toast(navigator.onLine ? "No s'ha pogut fer la còpia completa. Torna-ho a provar o fes-ne una només de dades." : 'Cal connexió a internet per fer la còpia completa.', 6000);
+    return false;
+  }
 }
 // Afegeix plans d'un fitxer { app: 'que-qui-quan-plans', plans: [{ id, titol, tipus, data, hora, horaFi, lloc, qui: [noms], notes, estat }] }
 // No substitueix res: els plans que ja hi són (pel seu identificador) no es tornen a afegir
@@ -5781,6 +5857,7 @@ function afegeixPlans(fitxer) {
   r.readAsText(fitxer);
 }
 function importa(fitxer) {
+  if (/\.zip$/i.test(fitxer.name || '') || /zip/.test(fitxer.type || '')) { importaCompleta(fitxer); return; }
   const r = new FileReader();
   r.onload = () => {
     try {
@@ -5791,6 +5868,52 @@ function importa(fitxer) {
     } catch (e) { toast('Aquest fitxer no és una còpia de Galàxia.'); }
   };
   r.readAsText(fitxer);
+}
+// Recuperar una còpia completa (.zip): les dades i, si s'ha entrat amb el correu, les fotos i els fitxers tornen al núvol
+const TIPUS_EXT = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', heic: 'image/heic', webp: 'image/webp', gif: 'image/gif', pdf: 'application/pdf', m4a: 'audio/mp4', mp4: 'audio/mp4', webm: 'audio/webm', txt: 'text/plain' };
+async function importaCompleta(fitxer) {
+  let d, zip;
+  try {
+    progres(['Obrint la còpia…', '']);
+    await carregaZip();
+    zip = await window.JSZip.loadAsync(fitxer);
+    const j = zip.file('galaxia.json');
+    if (!j) throw new Error('format');
+    d = JSON.parse(await j.async('string'));
+    if (!d || !Array.isArray(d.plans)) throw new Error('format');
+  } catch (e) { progres(null); toast('Aquest fitxer no és una còpia completa de Galàxia.'); return; }
+  progres(null);
+  const entrades = Object.values(zip.files).filter((f) => !f.dir && f.name.startsWith('fitxers/'));
+  const senseNuvol = entrades.length && !usuari();
+  if (!confirm(`Aquesta còpia té ${d.plans.length} plans i ${entrades.length === 1 ? '1 fitxer' : entrades.length + ' fitxers'} (fotos, àudios i documents).\n\nVols substituir les dades actuals per les de la còpia?`
+    + (senseNuvol ? "\n\nCompte: no has entrat amb el teu correu, així que es recuperaran les dades però no les fotos ni els fitxers." : ''))) return;
+  // Tipus de cada fitxer: el que diu la còpia (documents, àudios) o, si no, per l'extensió
+  const tipusDe = {};
+  (d.documents || []).forEach((x) => { if (x.cami) tipusDe[x.cami] = x.tipus; });
+  (d.notesveu || []).forEach((n) => { if (n.audio?.cami) tipusDe[n.audio.cami] = n.audio.tipus; });
+  const nous = {};
+  let fallen = 0;
+  if (!senseNuvol) {
+    for (let i = 0; i < entrades.length; i++) {
+      const vell = entrades[i].name.slice('fitxers/'.length), nomF = vell.split('/').pop();
+      const ext = (nomF.match(/\.([a-z0-9]{1,8})$/i) || [])[1]?.toLowerCase() || 'bin', id = nomF.replace(/\.[a-z0-9]{1,8}$/i, '');
+      const tipus = tipusDe[vell] || TIPUS_EXT[ext] || 'application/octet-stream';
+      progres(['Recuperant la còpia…', `Pujant fitxer ${i + 1} de ${entrades.length}`]);
+      try {
+        const b = await entrades[i].async('blob');
+        nous[vell] = await sync().pujaDoc(id, new Blob([b], { type: tipus }), tipus, ext);
+      } catch (e) { fallen++; if (!navigator.onLine) break; }
+    }
+  }
+  progres(null);
+  // Els fitxers poden haver canviat de lloc (un altre compte): s'actualitzen els camins
+  const canvia = (o) => { if (o && o.cami && nous[o.cami]) o.cami = nous[o.cami]; };
+  (d.memoria || []).forEach((f) => (f.imatges || []).forEach(canvia));
+  (d.recordatoris || []).forEach((r) => (r.imatges || []).forEach(canvia));
+  (d.documents || []).forEach(canvia);
+  (d.notesveu || []).forEach((n) => canvia(n.audio));
+  state = normalize(d); save(); render();
+  toast(fallen ? `Còpia recuperada, però ${fallen === 1 ? "1 fitxer no s'ha pogut" : fallen + " fitxers no s'han pogut"} tornar a pujar.` : senseNuvol ? 'Dades recuperades (sense les fotos ni els fitxers).' : 'Còpia completa recuperada', 6000);
 }
 
 /* ---------- Arrencada ---------- */
