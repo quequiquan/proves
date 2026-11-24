@@ -1083,7 +1083,7 @@ function vistaAjustos() {
       ${usuari()
         ? `<div class="grp"><button class="btn primary" id="veuDesa">Copia l'enllaç per a «Desa a Galàxia»</button><button class="btn primary" id="veuNota">Copia l'enllaç per a «Nota de veu»</button><button class="btn primary" id="veuDoc">Copia l'enllaç per a «Desa document»</button></div>
           <details class="ajuda"><summary>1. «Desa a Galàxia» (menú Compartir)</summary>
-            <p>Des de Notes, Safari, Instagram, Google, Maps… toques <b>Compartir → Desa a Galàxia</b> i es crea una fitxa a <b>Memòria → Per classificar</b>. Si ja la tens, t'avisa i no la repeteix.</p>
+            <p>Des de Notes, Safari, Instagram, Google, Maps, Fotos, Arxius… toques <b>Compartir → Desa a Galàxia</b> i es crea una fitxa a <b>Memòria → Per classificar</b> (si és una imatge, amb la foto a dins; si és un PDF, va a Documents). Si ja la tens, t'avisa i no la repeteix.</p>
             <ol class="passos-veu">
               <li>Aquí, prem <b>Copia l'enllaç per a «Desa a Galàxia»</b>.</li>
               <li>Obre <b>Atajos</b>, pestanya <b>Atajos</b>, i toca <b>+</b>. A dalt, toca el nom i posa-li <b>Desa a Galàxia</b>.</li>
