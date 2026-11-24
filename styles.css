@@ -1336,3 +1336,12 @@ button.gx-pindola, .gx-pindola { color: color-mix(in srgb, var(--text) 82%, var(
 /* Documents: els dos botons, un sobre l'altre */
 .doc-mur > .mur-accions { flex-direction: column; }
 .doc-mur > .mur-accions button { flex: 1; }
+/* Plans fets: continuen a l'agenda (historial) però es veuen apagats */
+.acc-fet { background: #12B886; }
+.acc-fet.desfes { background: #868E96; }
+.pla.fet { opacity: .55; }
+.pla.fet .pla-cos b { text-decoration: line-through; text-decoration-thickness: 1.5px; }
+.badge.fet { background: #D3F9D8; color: #2B8A3E; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .badge.fet { background: #1F3A27; color: #8CE99A; } }
+:root[data-theme="dark"] .badge.fet { background: #1F3A27; color: #8CE99A; }
+.fet-btn { background: #12B886; border-color: #12B886; color: #fff; }

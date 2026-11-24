@@ -697,6 +697,20 @@ function toast(msg, ms = 3200) {
 addEventListener('error', (e) => { try { toast('⚠️ Error: ' + (e.message || 'desconegut'), 8000); } catch (x) { /* res */ } });
 addEventListener('unhandledrejection', (e) => { try { toast('⚠️ Error: ' + (e.reason?.message || e.reason || 'desconegut'), 8000); } catch (x) { /* res */ } });
 
+/* ---------- Plans fets ---------- */
+// Un pla (o un dia d'un pla que es repeteix) es pot marcar com a fet. Continua a l'agenda com a historial,
+// però ja no compta al número de la portada.
+const clauFet = (p) => `${(p.base || p).id}|${p.data}`;
+const esFet = (p) => Boolean((state.ajustos.plansFets || {})[clauFet(p)]);
+function marcaPlaFet(p, si) {
+  const f = { ...(state.ajustos.plansFets || {}) };
+  if (si) f[clauFet(p)] = new Date().toISOString().slice(0, 10); else delete f[clauFet(p)];
+  // Només es guarden els dels darrers 2 anys
+  const limit = ymd(new Date(Date.now() - 730 * 86400000));
+  Object.keys(f).forEach((k) => { if (k.slice(k.lastIndexOf('|') + 1) < limit) delete f[k]; });
+  state.ajustos.plansFets = f; save();
+}
+const pendentAvui = (p) => p.estat !== 'cancellat' && !p.recordatori && !esFet(p);
 /* ---------- Targeta d'un pla ---------- */
 function targeta(p, ambData = false) {
   const t = tipDe(p);
@@ -705,16 +719,19 @@ function targeta(p, ambData = false) {
   const de = p.rebut ? `<small class="pla-de">De part de ${esc(p.rebut.de_nom || p.rebut.de_email)}</small>` : '';
   const env = '';
   const estat = p.estat !== 'confirmat' ? `<span class="badge ${p.estat}">${esc((ESTATS.find((e) => e[0] === p.estat) || [, p.estat])[1])}</span>` : '';
-  const boto = `<button class="pla ${esc(p.estat)}${diesPla(p) < avui() ? ' passat' : ''}${p.rebut ? ' rebut' : ''}" data-pla="${esc(p.id)}" style="--c:${esc(t.color)}">
+  const fet = !p.recordatori && esFet(p);
+  const boto = `<button class="pla ${esc(p.estat)}${diesPla(p) < avui() ? ' passat' : ''}${p.rebut ? ' rebut' : ''}${fet ? ' fet' : ''}" data-pla="${esc(p.id)}" style="--c:${esc(t.color)}">
     <span class="pla-emoji">${ico(t)}</span>
     <span class="pla-cos"><b>${esc(titolPla(p))}</b><small>${esc(info.join(' · '))}</small>${gent}${de}</span>
-    ${env}${estat}
+    ${env}${estat}${fet ? '<span class="badge fet">Fet ✓</span>' : ''}
   </button>`;
-  // Els plans propis es poden lliscar cap a l'esquerra: Confirma (si està per confirmar) i Esborra
-  if (p.rebut || p.aniversari || p.extern || p.recordatori) return boto;
+  // Lliscant cap a l'esquerra: Fet (o Pendent), i als plans propis també Confirma i Esborra
+  if (p.recordatori) return boto;
+  const botoFet = `<button type="button" class="acc-fet${fet ? ' desfes' : ''}" data-acc="fet" data-accpla="${esc(p.id)}">${fet ? 'Pendent' : 'Fet ✓'}</button>`;
+  if (p.rebut || p.aniversari || p.extern) return `<div class="pla-mur" data-mur="${esc(p.id)}"><div class="pla-accions">${botoFet}</div>${boto}</div>`;
   const base = p.base || p;
   return `<div class="pla-mur" data-mur="${esc(p.id)}">
-    <div class="pla-accions">${base.estat === 'pendent' ? `<button type="button" class="acc-confirma" data-acc="confirma" data-accpla="${esc(p.id)}">Confirma</button>` : ''}<button type="button" class="acc-esborra" data-acc="esborra" data-accpla="${esc(p.id)}">Esborra</button></div>
+    <div class="pla-accions">${botoFet}${base.estat === 'pendent' ? `<button type="button" class="acc-confirma" data-acc="confirma" data-accpla="${esc(p.id)}">Confirma</button>` : ''}<button type="button" class="acc-esborra" data-acc="esborra" data-accpla="${esc(p.id)}">Esborra</button></div>
     ${boto}
   </div>`;
 }
@@ -1267,7 +1284,7 @@ function vistaInici() {
   const h = new Date().getHours();
   const salut = h < 6 ? 'Bona nit' : h < 13 ? 'Bon dia' : h < 20 ? 'Bona tarda' : 'Bona nit';
   const nom = (state.ajustos.nom || '').trim().split(' ')[0];
-  const nPlans = delDia(avui()).filter((p) => p.estat !== 'cancelat').length, nRec = pendentsRec().length;
+  const nPlans = delDia(avui()).filter(pendentAvui).length, nRec = pendentsRec().length;
   const aviatAniv = propersAniv().filter((x) => x.falten === 0).length;
   const inv = rebuts().filter((p) => p.rebut.resposta === 'pendent' && p.data >= avui()).length;
   // Compres i Llistes no porten número: el que hi ha es mira entrant-hi
@@ -1280,7 +1297,7 @@ function vistaInici() {
       <div class="gx-cercle${modeAgenda() ? ' gx-sol' : ''}">
         ${modeAgenda() ? '' : '<div class="gx-orbita" aria-hidden="true"></div>'}
         <button class="gx-centre" id="gxAgenda" aria-label="Agenda (mantén premut per a un pla nou)">
-          <span class="gx-centre-nom">Agenda</span>${nPlans ? `<small class="gx-centre-n" aria-label="${nPlans} plans avui">${nPlans}</small>` : ''}</button>
+          <span class="gx-centre-nom">Agenda</span>${nPlans ? `<small class="gx-centre-n" aria-label="${nPlans} plans per fer avui">${nPlans}</small>` : ''}</button>
         ${(modeAgenda() ? [] : SATEL).map((s, i) => `<button class="gx-sat${s.aviat ? ' aviat' : ''}" data-sat="${s.id}" style="--c:${s.color};--a:${i * (360 / SATEL.length) - 90}deg;--i:${i}">
             <span class="gx-bola"><span class="gx-ini" aria-hidden="true">${esc(lletraSatel(s, i))}</span>${comptes[s.id] ? `<i>${comptes[s.id]}</i>` : ''}</span><span class="gx-nom">${esc(s.nom)}</span>${s.aviat ? '<small>aviat</small>' : ''}</button>`).join('')}
       </div>
@@ -4982,6 +4999,12 @@ $('#main').addEventListener('click', (e) => {
     e.preventDefault(); e.stopPropagation();
     const p0 = trobaPla(b.dataset.accpla), p = p0?.base || p0;
     if (!p) return;
+    if (b.dataset.acc === 'fet') {
+      const ara = !esFet(p0);
+      tancaMur(); marcaPlaFet(p0, ara); render();
+      toastDesfes(ara ? `Fet: ${titolPla(p0)}` : `Torna a estar pendent: ${titolPla(p0)}`, () => { marcaPlaFet(p0, !ara); render(); });
+      return;
+    }
     if (b.dataset.acc === 'confirma') {
       Object.assign(p, { estat: 'confirmat', versio: (p.versio || 1) + 1, modificat: new Date().toISOString() });
       save(); render(); toast('Pla confirmat');
@@ -5342,6 +5365,8 @@ function obreDetall(p) {
        <button type="button" class="btn" id="dCalendari">Al meu calendari</button>
        <button type="button" class="btn" id="dEdita">Edita</button>
        <button type="button" class="btn" id="dDuplica">Duplica</button>`;
+  const fetD = esFet(vista);
+  const botoFetD = `<button type="button" class="btn${fetD ? '' : ' fet-btn'}" id="dFet">${fetD ? 'Torna a pendent' : 'Fet ✓'}</button>`;
   obreDlg(`<header class="det-cap" style="--c:${esc(t.color)}">
       <span class="det-emoji">${ico(t)}</span>
       <div><small>${esc(t.nom)}</small><h2>${esc(titolPla(p))}</h2></div>
@@ -5362,12 +5387,13 @@ function obreDetall(p) {
         ${r && r.resposta === 'pendent' ? '<li><span class="et">Resposta</span>Encara no has dit si hi vas.</li>' : ''}
       </ul>
     </div>
-    <footer class="dlg-peu det-accions">${peu}</footer>`, 'detall');
+    <footer class="dlg-peu det-accions">${botoFetD}${peu}</footer>`, 'detall');
   dlgForm.onsubmit = (e) => e.preventDefault();
   dlgForm.onclick = (e) => {
     const b = e.target.closest('button');
     if (!b) return;
     if (b.dataset.respon) { respon(p, b.dataset.respon); return; }
+    if (b.id === 'dFet') { const ara = !esFet(vista); marcaPlaFet(vista, ara); tancaDlg(); render(); toast(ara ? 'Fet ✓' : 'Torna a estar pendent'); return; }
     if (b.id === 'dComparteix') enviaEnllac(p);
     if (b.id === 'dCalendari') obreAlCalendari(p);
     if (b.id === 'dEdita') obreForm(p);
