@@ -1785,7 +1785,7 @@ function filaFitxa(x, ambCarpeta) {
   return `<div class="mur-mem" data-memcerca="${esc(normal(x.titol + ' ' + x.text))}"><div class="mur-accions"><button type="button" class="acc-esborra" data-memtreu="${esc(x.id)}">Esborra</button></div><div class="mem-fitxa${ui.memSel ? ' triant' + (ui.memSel.includes(x.id) ? ' triada' : '') : ''}" data-memobre="${esc(x.id)}"${c ? ` style="--c:${esc(c.color)}"` : ''}>
         ${ambCarpeta ? `<small class="mem-de">${esc(c ? c.nom : nomGeneral('mem'))}</small>` : ''}<b>${esc(x.titol)}</b>${x.text ? `<p>${ambEnllacos(x.text)}</p>` : ''}
         ${(x.imatges || []).length ? `<div class="mem-imgs">${x.imatges.map((im) => `<button class="rec-img" data-memimg="${esc(x.id)}|${esc(im.id)}"><img src="${esc(im.mini)}" alt=""></button>`).join('')}</div>` : ''}
-        <div class="mem-accions"><button class="enllac" data-memcomparteix="${esc(x.id)}">Comparteix</button>${x.text ? `<button class="enllac" data-memcopia="${esc(x.id)}">Copia</button>` : ''}<button class="enllac" data-memimprimeix="${esc(x.id)}">Imprimeix</button><button class="enllac" data-memmou="${esc(x.id)}">Mou a…</button><button class="enllac" data-memedita="${esc(x.id)}">Edita</button></div>
+        <div class="mem-accions"><button class="enllac" data-memcomparteix="${esc(x.id)}">Comparteix</button>${x.text ? `<button class="enllac" data-memcopia="${esc(x.id)}">Copia</button>` : ''}<button class="enllac" data-memimprimeix="${esc(x.id)}">Imprimeix</button><button class="enllac" data-memmou="${esc(x.id)}">Mou a…</button><button class="enllac" data-memajunta="${esc(x.id)}">Ajunta a una fitxa</button><button class="enllac" data-memedita="${esc(x.id)}">Edita</button></div>
       </div></div>`;
 }
 function vistaMemoria() {
@@ -1803,7 +1803,7 @@ function vistaMemoria() {
       <div class="mem-web"><button type="button" class="btn" data-memcerca-web="google">Cerca a Google</button><button type="button" class="btn" data-memcerca-web="maps">Cerca a Maps</button><button type="button" class="btn" data-memenganxa>Enganxa les dades</button></div>
       <p class="help mem-web-ajuda">Busca el nom a Google o a Maps, copia l'adreça, el telèfon o la web (a Maps: Compartir → Copiar) i torna aquí a prémer «Enganxa les dades».</p>
       <label>Carpeta<select name="carpeta"><option value="">General</option>${carpetesMem().map((c) => `<option value="${esc(c.id)}"${c.id === cSel ? ' selected' : ''}>${esc(c.nom)}</option>`).join('')}</select></label>
-      <label>Què has de recordar<textarea name="text" rows="6" maxlength="3000" placeholder="Adreça, telèfon, enllaç, el que calgui…">${esc(f?.text || '')}</textarea></label>
+      <label>Què has de recordar<textarea name="text" rows="6" maxlength="10000" placeholder="Adreça, telèfon, enllaç, el que calgui…">${esc(f?.text || '')}</textarea></label>
       <div class="rec-bloc"><span>Fotos</span>
         ${f && (f.imatges || []).length ? `<div class="rec-imgs">${f.imatges.map((im) => `<button type="button" class="rec-img" data-memimg="${esc(f.id)}|${esc(im.id)}"><img src="${esc(im.mini)}" alt=""></button>`).join('')}</div>` : ''}
         ${!f ? '<p class="help">Toca «Fet» i després, amb «Edita», hi podràs afegir fotos.</p>'
@@ -3967,6 +3967,35 @@ function triaFitxa(titol, excepte) {
     d.addEventListener('click', (e) => { const b = e.target.closest('[data-op]'); if (b || e.target === d) { d.remove(); resol(b ? b.dataset.op : ''); } });
   });
 }
+// Ajuntar una fitxa a una altra: el text va a sota del de la fitxa triada (amb el títol com a separador),
+// les fotos hi passen i la fitxa d'origen desapareix (amb Desfés)
+async function ajuntaFitxa(deId) {
+  const de = state.memoria.find((x) => x.id === deId);
+  if (!de) return;
+  const curt = (t) => (t.length > 40 ? t.slice(0, 40) + '…' : t);
+  const aId = await triaFitxa(`Ajunta «${curt(de.titol)}» a…`, deId);
+  const a = aId && state.memoria.find((x) => x.id === aId);
+  if (!a) return;
+  const abansA = { text: a.text || '', imatges: (a.imatges || []).slice() }, lloc = state.memoria.indexOf(de), copia = JSON.parse(JSON.stringify(de));
+  const bloc = ['— ' + de.titol + ' —', (de.text || '').trim()].filter(Boolean).join('\n');
+  a.text = [String(a.text || '').trim(), bloc].filter(Boolean).join('\n\n').slice(0, 10000);
+  if ((de.imatges || []).length) a.imatges = [...(a.imatges || []), ...de.imatges];
+  a.modificat = new Date().toISOString();
+  state.memoria.splice(lloc, 1);   // les fotos no s'esborren: ara són de l'altra fitxa
+  save(); render();
+  toastDesfes(`Ajuntada a «${curt(a.titol)}»`, () => {
+    const aa = state.memoria.find((x) => x.id === aId);
+    if (aa) { aa.text = abansA.text; aa.imatges = abansA.imatges; }
+    if (!state.memoria.some((x) => x.id === copia.id)) state.memoria.splice(Math.max(0, lloc), 0, copia);
+    save(); render();
+  });
+}
+$('#main').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-memajunta]');
+  if (!b || ui.memSel) return;
+  e.stopPropagation();
+  ajuntaFitxa(b.dataset.memajunta);
+});
 // Moure una foto d'una fitxa a una altra (si la fitxa d'origen queda buida, es pot esborrar)
 async function mouFotoMem(deId, fotoId) {
   const de = state.memoria.find((x) => x.id === deId), im = de && (de.imatges || []).find((x) => x.id === fotoId);
@@ -4036,7 +4065,7 @@ $('#main').addEventListener('click', async (e) => {
       form.elements.titol.value = ls.shift().trim().slice(0, 80);
       text = ls.join('\n').trim();
     }
-    ta.value = [ta.value.trim(), text].filter(Boolean).join('\n').slice(0, 3000);
+    ta.value = [ta.value.trim(), text].filter(Boolean).join('\n').slice(0, 10000);
     toast('Dades afegides a la fitxa. Recorda prémer Desa.', 3500);
   }
 });
@@ -4460,7 +4489,7 @@ $('#main').addEventListener('input', (e) => {
 // La fitxa es desa sola mentre s'escriu, i també en sortir-ne (fletxa enrere, una altra pantalla, tancar l'app)
 function desaFormMem(form) {
   if (!form || !form.isConnected) return null;
-  const titol = form.elements.titol.value.replace(/\s*\n\s*/g, ' ').trim().slice(0, 500), text = form.elements.text.value.trim().slice(0, 3000);
+  const titol = form.elements.titol.value.replace(/\s*\n\s*/g, ' ').trim().slice(0, 500), text = form.elements.text.value.trim().slice(0, 10000);
   if (!titol) return null;
   const carpeta = carpetesMem().some((c) => c.id === form.elements.carpeta?.value) ? form.elements.carpeta.value : '';
   const id = form.dataset.memid === 'nova' ? form.dataset.creada : form.dataset.memid;
