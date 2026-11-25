@@ -2914,11 +2914,56 @@ function ajustaCarpetes() {
   });
 }
 addEventListener('resize', () => requestAnimationFrame(ajustaCarpetes));
+// Els fitxers que arriben de l'iPhone sense nom ni tipus queden com a «.bin»: es mira què són pels primers bytes
+const TIPUS_OFFICE = {
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  doc: 'application/msword', ppt: 'application/vnd.ms-powerpoint', xls: 'application/vnd.ms-excel',
+  zip: 'application/zip', pdf: 'application/pdf', jpg: 'image/jpeg', png: 'image/png',
+};
+async function endevinaExt(blob) {
+  const cap = new Uint8Array(await blob.slice(0, 8).arrayBuffer());
+  const text = async (n) => { const u = new Uint8Array(await blob.slice(0, n).arrayBuffer()); let s = ''; for (let i = 0; i < u.length; i++) if (u[i]) s += String.fromCharCode(u[i]); return s; };
+  if (cap[0] === 0x50 && cap[1] === 0x4B) {   // ZIP: Word, PowerPoint i Excel moderns ho són
+    const t = await text(400000);
+    return t.includes('word/') ? 'docx' : t.includes('ppt/') ? 'pptx' : t.includes('xl/') ? 'xlsx' : 'zip';
+  }
+  if (cap[0] === 0xD0 && cap[1] === 0xCF && cap[2] === 0x11 && cap[3] === 0xE0) {   // Word, PowerPoint i Excel antics
+    const t = await text(Math.min(blob.size, 3000000));
+    return t.includes('WordDocument') ? 'doc' : t.includes('PowerPoint Document') ? 'ppt' : t.includes('Workbook') ? 'xls' : '';
+  }
+  if (cap[0] === 0x25 && cap[1] === 0x50 && cap[2] === 0x44 && cap[3] === 0x46) return 'pdf';
+  if (cap[0] === 0xFF && cap[1] === 0xD8) return 'jpg';
+  if (cap[0] === 0x89 && cap[1] === 0x50) return 'png';
+  return '';
+}
+async function arreglaBin(d) {
+  if (extDoc(d) !== 'bin' || !d.cami) return false;
+  const ext = await endevinaExt(await Fitxers.blob(d.cami));
+  if (!ext) return false;
+  d.tipus = TIPUS_OFFICE[ext];
+  d.nomFitxer = String(d.nomFitxer || d.titol || 'Document').replace(/\.bin$/i, '') + '.' + ext;
+  save();
+  return true;
+}
 // Les fotos que arriben per la drecera «Desa a Galàxia» no porten miniatura: es fa aquí, un sol cop
 const minisProvades = new Set();
 let minisEnCurs = false;
 async function completaMinis() {
   if (minisEnCurs) return;
+  // Primer, els fitxers «.bin» (Word, PowerPoint… compartits des de l'iPhone): es reconeixen i se'ls posa el tipus bo
+  const bins = (state.documents || []).filter((d) => extDoc(d) === 'bin' && d.cami && !minisProvades.has('bin' + d.id));
+  if (bins.length) {
+    minisEnCurs = true;
+    let canvi = false;
+    for (const d of bins) {
+      minisProvades.add('bin' + d.id);
+      try { if ((Fitxers.esLocal(d.cami) || navigator.onLine) && await arreglaBin(d)) canvi = true; } catch (err) { /* es tornarà a provar */ }
+    }
+    minisEnCurs = false;
+    if (canvi) { render(); return; }
+  }
   const falten = [];
   (state.memoria || []).forEach((f) => (f.imatges || []).forEach((im) => { if (!im.mini && im.cami && !minisProvades.has(im.id)) falten.push([f, im]); }));
   // Les fotos que arriben com a document (drecera «Desa foto o PDF») tampoc porten miniatura
@@ -5164,6 +5209,7 @@ function tancaVisor() { document.querySelector('.doc-visor')?.remove(); }
 // Visor a pantalla completa: la foto (amb zoom), o una fitxa amb el tipus i el botó per obrir-lo
 async function obreVisor(doc, opc = {}) {
   tancaVisor();
+  if (extDoc(doc) === 'bin') { try { if (await arreglaBin(doc)) render(); } catch (e) { /* s'obre igualment */ } }
   const cat = catDoc(doc), esEnllac = cat === 'enllac', esFoto = cat === 'foto' && doc.tipus === 'image/jpeg';
   const v = document.createElement('div');
   v.className = 'doc-visor';
