@@ -1374,8 +1374,8 @@ button.gx-pindola, .gx-pindola { color: color-mix(in srgb, var(--text) 82%, var(
 .adj span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rec-bloc .adj-llista { margin: 0 0 8px; }
 /* Un punt petit que fa voltes lentament per l'òrbita: dona sensació de moviment sense moure les micro-apps */
-.gx-orbita::before { content: ''; position: absolute; left: 50%; top: -0.75px; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%;
+.gx-orbita::before { content: ''; position: absolute; left: 50%; top: -0.75px; width: 21px; height: 21px; margin: -10.5px 0 0 -10.5px; border-radius: 50%;
   background: radial-gradient(circle at 35% 30%, #A5F3FC, #22B8CF 55%, #0C8599); box-shadow: 0 0 10px rgba(34, 184, 207, .55);
-  pointer-events: none; transform-origin: 9px calc(var(--r) + 8.25px); animation: gxGira 22s linear infinite; }
+  pointer-events: none; transform-origin: 10.5px calc(var(--r) + 9.75px); animation: gxGira 18s linear infinite; }
 @keyframes gxGira { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .gx-orbita::before { animation: none; } }
