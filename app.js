@@ -1177,7 +1177,7 @@ function vistaAjustos() {
     </div>
     <div class="section">
       <h2>Còpia de seguretat</h2>
-      <p class="help">Desa en un fitxer <b>tot</b> el que tens a Galàxia: agenda, contactes, recordatoris, llistes, compres, Memòria, notes de veu, la llista de documents i els ajustos. En prémer <b>Desa una còpia</b> tries si la vols <b>completa</b> (també amb les fotos, els àudios i els fitxers de Documents) o <b>només les dades</b>, i on la deses: <b>al mòbil</b>, <b>al núvol (iCloud Drive)</b> o <b>a l'ordinador</b>. El més segur és una còpia completa a iCloud Drive: si perds el mòbil o el núvol de l'app falla, la tens.</p>
+      <p class="help">Desa en un fitxer <b>tot</b> el que tens a Galàxia: agenda, contactes, recordatoris, llistes, compres, Biblioteca, notes de veu, la llista de documents i els ajustos. En prémer <b>Desa una còpia</b> tries si la vols <b>completa</b> (també amb les fotos, els àudios i els fitxers de Documents) o <b>només les dades</b>, i on la deses: <b>al mòbil</b>, <b>al núvol (iCloud Drive)</b> o <b>a l'ordinador</b>. El més segur és una còpia completa a iCloud Drive: si perds el mòbil o el núvol de l'app falla, la tens.</p>
       ${(() => { const u = llegeixPref('ultimaCopia', ''); if (!u) return '<p class="help"><b>Encara no has fet cap còpia en aquest aparell.</b></p>'; const dies = Math.round((Date.now() - new Date(u).getTime()) / 86400000); return `<p class="help">Última còpia en aquest aparell: <b>${dies <= 0 ? 'avui' : dies === 1 ? 'ahir' : 'fa ' + dies + ' dies'}</b>.${dies > 30 ? ' Ja tocaria fer-ne una de nova.' : ''}</p>`; })()}
       <div class="grp">
         <button class="btn" id="btnExporta">Desa una còpia</button>
@@ -1247,7 +1247,7 @@ addEventListener('resize', () => { if (ui.view === 'inici') ajustaPortada(); });
 /* ---------- Galàxia: l'Agenda al mig i les micro-apps al voltant ---------- */
 const SATEL = [
   { id: 'recordatoris', nom: 'Recordatoris', color: '#E8590C' },
-  { id: 'memoria', nom: 'Memòria', color: '#7048E8' },
+  { id: 'memoria', nom: 'Biblioteca', color: '#7048E8' },
   { id: 'aniversaris', nom: 'Aniversaris', color: '#E64980' },
   { id: 'llista', nom: 'Llistes', color: '#1C7ED6' },
   { id: 'compres', nom: 'Compres', color: '#2F9E44' },
@@ -1453,7 +1453,7 @@ function vistaLlista() {
     </div>
     <div class="cf-peu">${triaCarpeta('llista', l)}</div>`;
 }
-// Carpetes de colors per a Llista i Documents (igual que les de Memòria).
+// Carpetes de colors per a Llista i Documents (igual que les de Biblioteca).
 // Les inicials tenen un id fix perquè siguin les mateixes a tots els aparells.
 const CARPETES_INICIALS = {
   llista: [['Avui', '#E8590C'], ['Escapada', '#2F9E44'], ['Vacances', '#1C7ED6'], ['Urgent', '#E03131']],
@@ -1491,7 +1491,7 @@ function peuCarpeta(k) {
   if (!c) return carpetaOberta(k) === '' ? `<div class="ll-peu"><button class="enllac" data-gennom="${k}">Canvia el nom</button></div>` : '';
   return `<div class="ll-peu"><button class="enllac" data-envcarp="${k}">Envia una còpia</button><button class="enllac" data-cfnom="${k}">Canvia el nom</button><button class="enllac" data-cfcolor="${k}">Canvia el color</button><button class="enllac perill" data-cfesborra="${k}">Esborra la carpeta</button></div>`;
 }
-/* ---------- Arxius adjunts (PDF, entrades, bitllets…) a les fitxes de Memòria i als recordatoris ---------- */
+/* ---------- Arxius adjunts (PDF, entrades, bitllets…) a les fitxes de Biblioteca i als recordatoris ---------- */
 // Cada adjunt és com un document (titol, tipus, cami, nomFitxer, mida), però viu dins de la fitxa o del recordatori.
 const adjDe = (d) => ({ id: nouId('a'), titol: String(d.titol || 'Document').slice(0, 80), tipus: d.tipus || 'application/octet-stream', cami: d.cami, nomFitxer: d.nomFitxer || '', mida: d.mida || 0 });
 const xipsAdj = (on, oid, llista) => ((llista || []).length ? `<div class="adj-llista">${llista.map((a) => `<button type="button" class="adj" data-adj="${on}|${esc(oid)}|${esc(a.id)}"><b style="--fc:${(CATS_DOC.find((c) => c.id === catDoc(a)) || CATS_DOC[6]).c}">${esc(etiquetaDoc(a))}</b><span>${esc(a.titol)}</span></button>`).join('')}</div>` : '');
@@ -1554,7 +1554,7 @@ $('#main').addEventListener('change', async (e) => {
 /* ---------- «Mou a…» comú a tota l'app: a una carpeta d'aquí o a una altra micro-app ---------- */
 // L'origen és { k, x, lid }: k = 'mem' (fitxa), 'docs' (document), 'llista' (llista sencera), 'item' (cosa d'una llista),
 // 'compra' (producte) o 'rec' (recordatori).
-const NOM_APP = { mem: 'Memòria', docs: 'Documents', llista: 'Llistes', compres: 'Compres', rec: 'Recordatoris' };
+const NOM_APP = { mem: 'Biblioteca', docs: 'Documents', llista: 'Llistes', compres: 'Compres', rec: 'Recordatoris' };
 const APP_DE = { mem: 'mem', docs: 'docs', llista: 'llista', item: 'llista', compra: 'compres', rec: 'rec' };
 const curtM = (t, n = 40) => (String(t || '').length > n ? String(t).slice(0, n) + '…' : String(t || ''));
 // El que hi ha a dins, en una forma comuna
@@ -1796,7 +1796,7 @@ $('#main').addEventListener('click', async (e) => {
   ui[UI_CARP[k]] = null; render(); toast('Carpeta esborrada');
 });
 // ---------- Carpetes i llistes: lliscar per esborrar, mantenir premut per moure o canviar el color ----------
-// k: 'mem' (Memòria), 'llista' o 'docs'
+// k: 'mem' (Biblioteca), 'llista' o 'docs'
 const carpsDe = (k) => (k === 'mem' ? carpetesReals() : carpetesDe(k));
 const posaCarps = (k, arr) => { state.ajustos[k === 'mem' ? 'carpetesMem' : 'carpetes_' + k] = arr; save(); };
 const itemsCarp = (k) => (k === 'mem' ? state.memoria : colCarp(k));
@@ -2061,11 +2061,11 @@ function vistaCompres() {
       ${FAMILIES.map((f) => { const seus = habituals.filter((r) => familiaDe(r) === f.id); return seus.length ? `<div class="ll-chips fam-chips" style="--fc:${f.c}">${seus.map((r) => `<button class="ll-chip${vegades(r) >= 3 ? ' sovint' : ''}" data-torna="${esc(r.id)}">${esc(r.text)}</button>`).join('')}</div>` : ''; }).join('')}` : '')
     + peuCarpeta('compres');
 }
-// Memòria: fitxes amb informació per consultar (no contrasenyes)
-// Memòria en carpetes (Restaurants, Vins, Filosofia…). «General» és la carpeta de les fitxes sense carpeta.
+// Biblioteca: fitxes amb informació per consultar (no contrasenyes)
+// Biblioteca en carpetes (Restaurants, Vins, Filosofia…). «General» és la carpeta de les fitxes sense carpeta.
 const COLORS_CARPETA = ['#E03131', '#E8590C', '#F59F00', '#C2A100', '#2F9E44', '#12B886', '#0B7285', '#1C7ED6', '#3B5BDB', '#7048E8', '#A61E4D', '#E64980', '#8B5E3C', '#5C677D', '#212529'];
 const carpetesReals = () => (Array.isArray(state.ajustos.carpetesMem) ? state.ajustos.carpetesMem : []);
-// «Safata d'entrada»: on arriba tot el que es desa des del menú Compartir de l'iPhone (fitxes de Memòria i documents
+// «Safata d'entrada»: on arriba tot el que es desa des del menú Compartir de l'iPhone (fitxes de Biblioteca i documents
 // amb la carpeta 'perclass'). No surt entre les carpetes: té el seu rectangle a la portada.
 const PER_CLASSIFICAR = { id: 'perclass', nom: "Safata d'entrada", color: '#F59F00', virtual: true };
 const carpetesMem = () => (state.memoria.some((f) => f.carpeta === 'perclass') ? [PER_CLASSIFICAR, ...carpetesReals()] : carpetesReals());
@@ -2133,10 +2133,10 @@ function vistaMemoria() {
   const cid = carpetaActual();
   if (cid === null) ui.memSel = null;
   if (cid === null) {
-    // Inici de Memòria: les carpetes i un cercador que busca a totes
+    // Inici de Biblioteca: les carpetes i un cercador que busca a totes
     const totes = [{ id: 'g', nom: nomGeneral('mem'), color: '#868E96' }, ...carpetesMem().filter((c) => !c.virtual)];
     const compta = (c) => state.memoria.filter((x) => carpetaDe(x) === (c.id === 'g' ? '' : c.id)).length;
-    return capSatel('Memòria') + `<p class="help">Les teves coses per consultar, ordenades en carpetes. Les contrasenyes, millor a l'app Contrasenyes de l'iPhone.</p>
+    return capSatel('Biblioteca') + `<p class="help">Les teves coses per consultar, ordenades en carpetes. Les contrasenyes, millor a l'app Contrasenyes de l'iPhone.</p>
       ${state.memoria.length ? '<input id="cercaMemG" type="search" class="doc-cerca" placeholder="Cerca a totes les carpetes…" autocomplete="off">' : ''}
       <div id="memCarpetes"><div class="mem-carpetes">${totes.map((c) => murCarpeta(c.id === 'g' || c.virtual ? '' : 'mem', c.id, `<button class="mem-carpeta" data-memcarpeta="${esc(c.id)}" style="--c:${esc(c.color)}"><b>${esc(c.nom)}</b><small>${compta(c) === 1 ? '1 fitxa' : compta(c) + ' fitxes'}</small></button>`)).join('')}
         <button class="mem-carpeta nova" data-memnovacarpeta><b>+ Nova carpeta</b></button></div>${AJUDA_CARPETES}</div>
@@ -2284,7 +2284,7 @@ const quanNota = (iso) => { const d = new Date(iso); return isNaN(d) ? '' : `${d
 function vistaVeu() {
   const notes = state.notesveu.slice().sort((a, b) => String(b.creat || '').localeCompare(String(a.creat || '')));
   const grava = ui.grava;
-  return capSatel('Notes de veu') + `<p class="help">Apunta el que se t'acudi sense haver d'escriure: després ho envies a Recordatoris, a una llista, a Compres o a Memòria.</p>
+  return capSatel('Notes de veu') + `<p class="help">Apunta el que se t'acudi sense haver d'escriure: després ho envies a Recordatoris, a una llista, a Compres o a Biblioteca.</p>
     ${true ? `<div class="veu-grava">
         <button type="button" class="veu-boto${grava ? ' grava' : ''}" id="veuBoto" aria-label="${grava ? 'Atura i desa' : 'Grava una nota de veu'}">
           <svg viewBox="0 0 24 24" aria-hidden="true">${grava ? '<rect x="7" y="7" width="10" height="10" rx="2"/>' : '<path d="M12 15a3.5 3.5 0 0 0 3.5-3.5v-5a3.5 3.5 0 0 0-7 0v5A3.5 3.5 0 0 0 12 15zm6-3.5a6 6 0 0 1-12 0H4.5a7.5 7.5 0 0 0 6.75 7.46V21h1.5v-2.04a7.5 7.5 0 0 0 6.75-7.46z"/>'}</svg></button>
@@ -2424,7 +2424,7 @@ $('#main').addEventListener('click', async (e) => {
     if (!nou || !nou.trim()) return;
     n.text = nou.trim().slice(0, 2000); save(); render();
   }
-  const on = await triaOpcio('Envia a…', [['rec', 'Recordatoris', ''], ['llista', 'Una llista', ''], ['compres', 'Compres', 'A la botiga que triïs'], ['memoria', 'Memòria', 'A la carpeta que triïs'], ['agenda', "L'Agenda", 'Com a pla nou']]);
+  const on = await triaOpcio('Envia a…', [['rec', 'Recordatoris', ''], ['llista', 'Una llista', ''], ['compres', 'Compres', 'A la botiga que triïs'], ['memoria', 'Biblioteca', 'A la carpeta que triïs'], ['agenda', "L'Agenda", 'Com a pla nou']]);
   if (!on) return;
   const text = n.text.trim(), ara = new Date().toISOString();
   if (on === 'rec') {
@@ -2453,7 +2453,7 @@ $('#main').addEventListener('click', async (e) => {
     if (!c) return;
     const [titol, ...resta] = text.split('\n');
     state.memoria.push({ id: nouId('m'), titol: titol.slice(0, 500), text: (titol.length > 500 ? titol.slice(500) +'\n' : '') + resta.join('\n'), carpeta: c === 'g' ? '' : c, creat: ara });
-    treuNota(n, 'Enviada a Memòria');
+    treuNota(n, 'Enviada a Biblioteca');
   } else if (on === 'agenda') {
     treuNota(n, 'Nota passada a l\'Agenda');
     obreForm(null, { titol: text.slice(0, 120) });
@@ -2853,7 +2853,7 @@ function aplicaTema() {
 }
 let tempsDesaMem = null;
 function render() {
-  // Abans de redibuixar, la fitxa de Memòria oberta es desa (així no es perd res en sortir-ne)
+  // Abans de redibuixar, la fitxa de Biblioteca oberta es desa (així no es perd res en sortir-ne)
   if (document.getElementById('formMem')) { clearTimeout(tempsDesaMem); desaFormMem(document.getElementById('formMem')); }
   aplicaTema();
   if (!VISTES[ui.view]) ui.view = 'propers';
@@ -3460,7 +3460,7 @@ async function repetitAltraBotiga(text, botiga) {
   if (op === 'mou') { altra.carpeta = botiga; save(); render(); toast(`Ara és a ${aqui}`); return 'fet'; }
   return op === 'si' ? 'afegeix' : 'fet';
 }
-// ---------- Enviar una còpia (carpeta de Memòria, fitxes, llista o botiga) a una altra persona ----------
+// ---------- Enviar una còpia (carpeta de Biblioteca, fitxes, llista o botiga) a una altra persona ----------
 // Qui la rep l'accepta i se li copia a la seva app; després cadascú té la seva, independent.
 async function triaDestinatari() {
   const amb = state.persones.filter(teApp);
@@ -3511,8 +3511,8 @@ $('#main').addEventListener('click', async (e) => {
 // Rebre: avís a la pantalla d'inici amb «Accepta» o «No, gràcies»
 function descEnviament(x) {
   const c = x.contingut || {};
-  if (x.tipus === 'memoria') return `la carpeta «${x.titol}» de Memòria (${nFitxes((c.fitxes || []).length)})`;
-  if (x.tipus === 'fitxes') return `${nFitxes((c.fitxes || []).length)} de Memòria`;
+  if (x.tipus === 'memoria') return `la carpeta «${x.titol}» de Biblioteca (${nFitxes((c.fitxes || []).length)})`;
+  if (x.tipus === 'fitxes') return `${nFitxes((c.fitxes || []).length)} de Biblioteca`;
   if (x.tipus === 'llista') return `la llista «${x.titol}» (${(c.items || []).length} coses)`;
   if (x.tipus === 'llistes') return `la carpeta de llistes «${x.titol}» (${(c.llistes || []).length === 1 ? '1 llista' : (c.llistes || []).length + ' llistes'})`;
   if (x.tipus === 'docs') return `${c.carpeta ? `la carpeta de documents «${x.titol}»` : 'un document'} (${(c.docs || []).length === 1 ? '1 document' : (c.docs || []).length + ' documents'})`;
@@ -3588,7 +3588,7 @@ $('#main').addEventListener('click', async (e) => {
     toast(navigator.onLine ? "No s'ha pogut fer. Torna-ho a provar." : 'Cal connexió a internet.');
   }
 });
-// «Envia una còpia» igual a tot arreu: qualsevol carpeta (Memòria, Llista, Compres, Documents), un document, un recordatori o un contacte
+// «Envia una còpia» igual a tot arreu: qualsevol carpeta (Biblioteca, Llista, Compres, Documents), un document, un recordatori o un contacte
 async function docsPerEnviar(docs) {
   const out = [];
   for (const d of docs) {
@@ -4112,7 +4112,7 @@ async function pujaFotosRecNou(id, fotos) {
   if (ui.view === 'recordatoris') render();
 }
 
-// Memòria: lliscar una fitxa cap a l'esquerra per esborrar-la (amb Desfés)
+// Biblioteca: lliscar una fitxa cap a l'esquerra per esborrar-la (amb Desfés)
 let lliscM = null, murMObert = null;
 const tancaMurM = (m = murMObert) => { if (!m) return; m.querySelector('.mem-fitxa').style.transform = ''; m.classList.remove('obert'); if (murMObert === m) murMObert = null; };
 const ampleM = (m) => m.querySelector('.mur-accions').offsetWidth;
@@ -4140,7 +4140,7 @@ $('#main').addEventListener('touchend', (e) => {
   if (ini + dx < -ampleM(m) / 2) { m.classList.add('obert'); m.querySelector('.mem-fitxa').style.transform = `translateX(-${ampleM(m)}px)`; murMObert = m; }
   else tancaMurM(m);
 }, { passive: true });
-// Memòria: seleccionar diverses fitxes (o totes) per esborrar-les de cop
+// Biblioteca: seleccionar diverses fitxes (o totes) per esborrar-les de cop
 const memSelN = (n) => (n === 1 ? '1 seleccionada' : `${n} seleccionades`);
 function actualitzaMemSel() {
   const n = (ui.memSel || []).length, totes = document.querySelectorAll('.mur-mem:not([hidden]) [data-memobre]').length;
@@ -4267,7 +4267,7 @@ $('#main').addEventListener('click', async (e) => {
   state.memoria.push(f); save(); render();
   toastDesfes(`Fitxa nova: ${titol.length > 40 ? titol.slice(0, 40) + '…' : titol}`, () => { state.memoria = state.memoria.filter((x) => x.id !== f.id); save(); render(); });
 });
-// Triar una fitxa de Memòria (amb cercador): les més noves primer
+// Triar una fitxa de Biblioteca (amb cercador): les més noves primer
 function triaFitxa(titol, excepte) {
   document.querySelector('.demana')?.remove();
   return new Promise((resol) => {
@@ -4365,7 +4365,7 @@ $('#main').addEventListener('click', (e) => {
   if (String(getSelection?.() || '').trim()) return;   // estava seleccionant text per copiar-lo
   ui.memEdita = f.dataset.memobre; render(); window.scrollTo(0, 0);
 });
-// Memòria: buscar a Google o a Maps el que hi ha al títol, i enganxar les dades copiades
+// Biblioteca: buscar a Google o a Maps el que hi ha al títol, i enganxar les dades copiades
 $('#main').addEventListener('click', async (e) => {
   const b = e.target.closest('[data-memcerca-web]');
   if (b) {
@@ -4646,7 +4646,7 @@ $('#main').addEventListener('submit', async (e) => {
   document.querySelector(`[data-formitem="${f.dataset.formitem}"] input`)?.focus();
 });
 
-/* ---------- Imprimir un full (Llista, Memòria, Documents) ---------- */
+/* ---------- Imprimir un full (Llista, Biblioteca, Documents) ---------- */
 // A l'app instal·lada a l'iPhone, «imprimir» no fa res (l'iPhone no ho permet): es fa un PDF i s'obre el menú de compartir,
 // on hi ha «Imprimir», «Desar a Arxius», WhatsApp…
 const appInstallada = () => window.navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
@@ -4728,7 +4728,7 @@ function imprimeixFull(html, nom = 'Galàxia.pdf') {
 }
 const htmlFitxa = (f) => `<div class="mem-imp"><h2>${esc(f.titol)}</h2>${f.text ? `<p>${esc(f.text)}</p>` : ''}</div>`;
 
-/* ---------- Memòria ---------- */
+/* ---------- Biblioteca ---------- */
 $('#main').addEventListener('click', async (e) => {
   const t = e.target;
   if (t.closest('[data-memnova]')) { ui.memEdita = 'nova'; render(); window.scrollTo(0, 0); $('#formMem [name="titol"]')?.focus(); return; }
@@ -4765,7 +4765,7 @@ $('#main').addEventListener('click', async (e) => {
     const totes = ip.dataset.memimprimeix === 'totes';
     const llista = totes ? state.memoria.filter((x) => carpetaDe(x) === (carpetaActual() || '')).sort((a, b) => a.titol.localeCompare(b.titol, 'ca')) : state.memoria.filter((x) => x.id === ip.dataset.memimprimeix);
     if (!llista.length) return;
-    imprimeixFull(`<div class="llista-full imprès full-mem"><p class="ll-app">Galàxia · Memòria</p>${llista.map(htmlFitxa).join('')}</div>`);
+    imprimeixFull(`<div class="llista-full imprès full-mem"><p class="ll-app">Galàxia · Biblioteca</p>${llista.map(htmlFitxa).join('')}</div>`);
     return;
   }
   const sh = t.closest('[data-memcomparteix]');
@@ -6125,7 +6125,7 @@ function obreForm(p, base = {}) {
 }
 
 /* ---------- Còpia de seguretat ---------- */
-// Els fitxers del núvol que fa servir l'app: fotos de Memòria i de Recordatoris, documents i àudios
+// Els fitxers del núvol que fa servir l'app: fotos de Biblioteca i de Recordatoris, documents i àudios
 function fitxersDeCopia(d) {
   const llista = [
     ...(d.memoria || []).flatMap((f) => (f.imatges || []).map((i) => i.cami)),
@@ -6212,7 +6212,7 @@ async function copiaCompleta(on) {
     await carregaZip();
     const zip = new window.JSZip();
     zip.file('galaxia.json', blobDades());
-    zip.file('LLEGEIX-ME.txt', "Còpia completa de Galàxia (" + avui() + ").\n\n- galaxia.json: totes les dades (agenda, contactes, recordatoris, llistes, compres, Memòria, notes de veu, documents i ajustos).\n- fitxers/: les fotos, els àudios i els fitxers de Documents.\n\nPer recuperar-la: Galàxia → Ajustos → Còpia de seguretat → Recupera una còpia, i tria aquest fitxer .zip tal com està.\n");
+    zip.file('LLEGEIX-ME.txt', "Còpia completa de Galàxia (" + avui() + ").\n\n- galaxia.json: totes les dades (agenda, contactes, recordatoris, llistes, compres, Biblioteca, notes de veu, documents i ajustos).\n- fitxers/: les fotos, els àudios i els fitxers de Documents.\n\nPer recuperar-la: Galàxia → Ajustos → Còpia de seguretat → Recupera una còpia, i tria aquest fitxer .zip tal com està.\n");
     for (let i = 0; i < camins.length; i++) {
       progres(['Preparant la còpia completa…', `Fitxer ${i + 1} de ${camins.length} · ${midaMB(total)}`]);
       try {
