@@ -1373,3 +1373,8 @@ button.gx-pindola, .gx-pindola { color: color-mix(in srgb, var(--text) 82%, var(
 .adj b { flex: none; padding: 3px 6px; border-radius: 6px; background: var(--fc, #868E96); color: #fff; font-size: 10.5px; letter-spacing: .3px; }
 .adj span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rec-bloc .adj-llista { margin: 0 0 8px; }
+/* Un punt petit que fa voltes lentament per l'òrbita: dona sensació de moviment sense moure les micro-apps */
+.gx-orbita::before { content: ''; position: absolute; left: 50%; top: -0.75px; width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; border-radius: 50%;
+  background: var(--text); opacity: .65; pointer-events: none; transform-origin: 3.5px calc(var(--r) + 2.75px); animation: gxGira 48s linear infinite; }
+@keyframes gxGira { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .gx-orbita::before { animation: none; } }
