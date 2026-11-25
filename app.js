@@ -161,12 +161,41 @@ function normalize(d) {
   };
 }
 function load() {
+  // Primer, el magatzem gran (IndexedDB); si encara no hi són, les de sempre (localStorage)
+  if (typeof window.__dadesIDB === 'string') { try { return normalize(JSON.parse(window.__dadesIDB)); } catch (e) { /* res */ } }
   try { const raw = localStorage.getItem(KEY); if (raw) return normalize(JSON.parse(raw)); } catch (e) { /* res */ }
   return seed();
 }
+// Desa les dades al magatzem gran. Només quan s'ha comprovat que hi són, s'esborra la còpia de localStorage (allibera l'espai).
+function desaDades(txt) {
+  const db = window.__dadesDB;
+  const alPetit = () => {
+    try { localStorage.setItem(KEY, txt); }
+    catch (e) { toast("No s'han pogut desar les dades. Fes-ne una còpia des d'Ajustos."); }
+  };
+  if (!db) { alPetit(); return; }
+  try {
+    const t = db.transaction('kv', 'readwrite');
+    t.objectStore('kv').put(txt, KEY);
+    t.oncomplete = () => {
+      let hiEra = false;
+      try {
+        if (localStorage.getItem(KEY + '-idb') !== '1') localStorage.setItem(KEY + '-idb', '1');   // les dades ja viuen al magatzem gran
+        hiEra = localStorage.getItem(KEY) !== null;
+      } catch (e) { /* res */ }
+      if (!hiEra) return;
+      const g = db.transaction('kv').objectStore('kv').get(KEY);
+      g.onsuccess = () => {
+        if (typeof g.result !== 'string' || !g.result.length) return;
+        try { localStorage.setItem(KEY + '-idb', '1'); localStorage.removeItem(KEY); } catch (e) { /* res */ }
+      };
+    };
+    t.onerror = t.onabort = () => alPetit();
+  } catch (e) { alPetit(); }
+}
 function save() {
-  try { localStorage.setItem(KEY, JSON.stringify(state)); }
-  catch (e) { toast("No s'han pogut desar les dades. Fes-ne una còpia des d'Ajustos."); }
+  if (window.__dadesBloquejades) { toast("No s'han pogut llegir les dades. Tanca l'app del tot i torna-la a obrir.", 6000); return; }
+  desaDades(JSON.stringify(state));
   if (typeof Sync !== 'undefined') Sync.canvi();
 }
 
@@ -193,7 +222,7 @@ function actualitzaPrincipals() {
 // En sortir del compte (o si entra una altra persona en aquest dispositiu) es comença de zero
 function reiniciaDades() {
   state = seed();
-  try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* res */ }
+  if (!window.__dadesBloquejades) desaDades(JSON.stringify(state));
 }
 
 function llegeixPref(k, def) { try { const v = localStorage.getItem('qqq-pref-' + k); return v === null ? def : JSON.parse(v); } catch (e) { return def; } }
@@ -6412,8 +6441,8 @@ async function importaCompleta(fitxer) {
 
 /* ---------- Arrencada ---------- */
 if (PROVES) $('#provesTag').hidden = false;
-// S'espera que estigui carregat sync.js. La primera vegada es demana d'entrar amb el correu.
-addEventListener('DOMContentLoaded', () => {
+// S'espera que estigui carregat sync.js (index.html avisa amb «galaxia-llesta»). La primera vegada es demana d'entrar amb el correu.
+addEventListener('galaxia-llesta', () => {
   ui.view = 'inici';
   if (sync()?.disponible && !sync().potserEntrat() && !llegeixPref('senseCompte', false)) ui.view = 'entrada';
   render();

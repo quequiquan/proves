@@ -39,7 +39,7 @@ const Sync = (() => {
     try { const m = JSON.parse(localStorage.getItem(k)); if (m && typeof m === 'object') return { ...JSON.parse(JSON.stringify(def)), ...m }; } catch (e) { /* res */ }
     return JSON.parse(JSON.stringify(def));
   }
-  setTimeout(() => { desa(); if (typeof save === 'function') try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* res */ } }, 0);
+  setTimeout(() => { if (!window.__dadesBloquejades) desa(); }, 0);
   function desa() {
     try { localStorage.setItem(MKEY, JSON.stringify(meta)); localStorage.setItem(CKEY, JSON.stringify(comp)); } catch (e) { /* res */ }
   }
@@ -244,6 +244,7 @@ const Sync = (() => {
   /* ---------- Cicle de sincronització ---------- */
   async function sincronitza() {
     if (!sb || !usuari) return;
+    if (window.__dadesBloquejades) return;   // no s'han pogut llegir les dades del mòbil: no s'envia res al núvol
     if (ocupat) { repetir = true; return ocupat; }
     ocupat = (async () => {
       posaEstat('sync');

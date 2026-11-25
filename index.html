@@ -63,10 +63,50 @@
   <div id="impressio" aria-hidden="true"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-  <script src="config.js"></script>
-  <script src="calendari.js"></script>
-  <script src="frases.js"></script>
-  <script src="app.js"></script>
-  <script src="sync.js"></script>
+  <script>
+    // Les dades de l'app són al magatzem gran del mòbil (IndexedDB): l'iPhone només deixa uns 5 MB a localStorage.
+    // Es llegeixen abans de carregar l'app; la primera vegada encara són a localStorage i l'app les hi passa.
+    (function () {
+      var KEY = 'qqq-dades-v1' + (/proves/i.test(location.pathname) ? '-proves' : '');
+      var MARCA = KEY + '-idb';
+      var fet = false;
+      function arrenca() {
+        if (fet) return; fet = true;
+        var fitxers = ['config.js', 'calendari.js', 'frases.js', 'app.js', 'sync.js'];
+        fitxers.forEach(function (src, i) {
+          var el = document.createElement('script');
+          el.src = src; el.async = false;
+          if (i === fitxers.length - 1) el.onload = function () { dispatchEvent(new Event('galaxia-llesta')); };
+          document.body.appendChild(el);
+        });
+      }
+      function marcada() { try { return localStorage.getItem(MARCA) === '1'; } catch (e) { return false; } }
+      // No s'ha pogut llegir: si les dades ja eren al magatzem gran, l'app no desa ni sincronitza (així no es perd res)
+      function falla() { if (marcada()) window.__dadesBloquejades = true; arrenca(); }
+      setTimeout(function () { if (!fet) falla(); }, 8000);
+      try {
+        var r = indexedDB.open('galaxia-dades', 1);
+        r.onupgradeneeded = function () { r.result.createObjectStore('kv'); };
+        r.onerror = falla; r.onblocked = falla;
+        r.onsuccess = function () {
+          if (fet) return;
+          try {
+            var db = r.result, g = db.transaction('kv').objectStore('kv').get(KEY);
+            g.onerror = falla;
+            g.onsuccess = function () {
+              if (fet) return;
+              window.__dadesDB = db;
+              if (typeof g.result === 'string') window.__dadesIDB = g.result;
+              else if (marcada()) {
+                // L'iPhone ha buidat el magatzem: es comença de nou i tot torna del núvol (sense esborrar-hi res)
+                try { localStorage.removeItem(MARCA); localStorage.removeItem(KEY + '-sync'); } catch (e) { /* res */ }
+              }
+              arrenca();
+            };
+          } catch (e) { falla(); }
+        };
+      } catch (e) { falla(); }
+    })();
+  </script>
 </body>
 </html>
