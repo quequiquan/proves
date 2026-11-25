@@ -24,11 +24,22 @@ const Sync = (() => {
   let ocupat = null, repetir = false, temps = null, aplicant = false;
   let meta = llegeix(MKEY, META0);
   let comp = llegeix(CKEY, COMP0);
+  // Abans es guardava una còpia sencera de cada registre (les dades hi eren dues vegades i el mòbil s'omplia):
+  // ara només una empremta curta, que n'hi ha prou per saber si ha canviat
+  for (const k in meta.snap) if (!/^#/.test(meta.snap[k])) meta.snap[k] = empremta(meta.snap[k]);
+  function empremta(str) {
+    let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+    for (let i = 0; i < str.length; i++) { const c = str.charCodeAt(i); h1 = Math.imul(h1 ^ c, 2654435761); h2 = Math.imul(h2 ^ c, 1597334677); }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    return '#' + (h2 >>> 0).toString(36) + (h1 >>> 0).toString(36) + '.' + str.length.toString(36);
+  }
 
   function llegeix(k, def) {
     try { const m = JSON.parse(localStorage.getItem(k)); if (m && typeof m === 'object') return { ...JSON.parse(JSON.stringify(def)), ...m }; } catch (e) { /* res */ }
     return JSON.parse(JSON.stringify(def));
   }
+  setTimeout(() => { desa(); if (typeof save === 'function') try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* res */ } }, 0);
   function desa() {
     try { localStorage.setItem(MKEY, JSON.stringify(meta)); localStorage.setItem(CKEY, JSON.stringify(comp)); } catch (e) { /* res */ }
   }
@@ -48,8 +59,8 @@ const Sync = (() => {
   }
   function pendents() {
     const ara = mapa(), out = [];
-    for (const k in ara) if (meta.snap[k] !== ara[k]) out.push({ k, v: ara[k], esborrat: false });
-    for (const k in meta.snap) if (!(k in ara)) out.push({ k, v: meta.snap[k], esborrat: true });
+    for (const k in ara) if (meta.snap[k] !== empremta(ara[k])) out.push({ k, v: ara[k], esborrat: false });
+    for (const k in meta.snap) if (!(k in ara)) out.push({ k, v: JSON.stringify({ id: parteix(k)[1] }), esborrat: true });
     return out;
   }
   const parteix = (k) => { const i = k.indexOf(':'); return [k.slice(0, i), k.slice(i + 1)]; };
@@ -78,7 +89,7 @@ const Sync = (() => {
       const [coleccio, id] = parteix(k);
       return { propietari: usuari.id, entorn: ENTORN, coleccio, id, dades: JSON.parse(v), esborrat };
     }), 'propietari,entorn,coleccio,id');
-    p.forEach(({ k, v, esborrat }) => { if (esborrat) delete meta.snap[k]; else meta.snap[k] = v; });
+    p.forEach(({ k, v, esborrat }) => { if (esborrat) delete meta.snap[k]; else meta.snap[k] = empremta(v); });
     desa();
   }
 
@@ -134,10 +145,10 @@ const Sync = (() => {
     let canvi = primer;
     for (const f of files) {
       const k = f.coleccio + ':' + f.id;
-      const pendentLocal = primer ? k === 'config:ajustos' : (k in ara ? ara[k] !== meta.snap[k] : k in meta.snap);
+      const pendentLocal = primer ? k === 'config:ajustos' : (k in ara ? empremta(ara[k]) !== meta.snap[k] : k in meta.snap);
       if (!pendentLocal) {
         if (f.esborrat) { if (treu(f.coleccio, f.id)) canvi = true; delete meta.snap[k]; }
-        else { if (posa(f.coleccio, f.id, f.dades)) canvi = true; meta.snap[k] = estable(f.dades); }
+        else { if (posa(f.coleccio, f.id, f.dades)) canvi = true; meta.snap[k] = empremta(estable(f.dades)); }
       }
       if (!meta.ultima || f.actualitzat > meta.ultima) meta.ultima = f.actualitzat;
     }
@@ -209,7 +220,7 @@ const Sync = (() => {
     const { data, error } = await sb.from('registres').select('id,dades,esborrat,actualitzat').eq('propietari', usuari.id).eq('entorn', ENTORN).eq('coleccio', 'notesveu');
     if (error) throw error;
     let noves = 0;
-    (data || []).filter((f) => !f.esborrat).forEach((f) => { if (!state.notesveu.some((x) => x.id === f.id)) { state.notesveu.push(f.dades); meta.snap['notesveu:' + f.id] = estable(f.dades); noves++; } });
+    (data || []).filter((f) => !f.esborrat).forEach((f) => { if (!state.notesveu.some((x) => x.id === f.id)) { state.notesveu.push(f.dades); meta.snap['notesveu:' + f.id] = empremta(estable(f.dades)); noves++; } });
     desa(); if (noves) save();
     return { total: (data || []).length, esborrades: (data || []).filter((f) => f.esborrat).length, noves };
   }
