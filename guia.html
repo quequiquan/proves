@@ -46,7 +46,7 @@ b { font-weight: 800; }
 
 /* Índex: tres columnes iguals */
 .eines { display: flex; justify-content: flex-end; margin-top: 18px; }
-.imprimeix { border: 1px solid var(--border); background: var(--surface); color: var(--text); font: 800 14px var(--f-text); padding: 8px 14px; border-radius: 99px; cursor: pointer; }
+.imprimeix { text-decoration: none; display: inline-block; border: 1px solid var(--border); background: var(--surface); color: var(--text); font: 800 14px var(--f-text); padding: 8px 14px; border-radius: 99px; cursor: pointer; }
 .index { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .index a { display: flex !important; align-items: center; justify-content: center; text-align: center; min-height: 44px; padding: 6px 8px !important; line-height: 1.2; }
 .amunt { position: fixed; right: 16px; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); z-index: 5; background: var(--text); color: var(--bg); text-decoration: none; font: 800 14px var(--f-text);
@@ -207,11 +207,11 @@ section.final h2 { font-size: clamp(24px, 4vw, 30px); }
     <svg viewBox="0 0 1024 1024" aria-hidden="true"><rect width="1024" height="1024" rx="230" fill="#221C18"/><circle cx="512" cy="512" r="170" fill="#FF4430"/><circle cx="512.0" cy="222.0" r="78" fill="#FF8A00"/><circle cx="763.1" cy="367.0" r="78" fill="#A66BFF"/><circle cx="763.1" cy="657.0" r="78" fill="#FF3D9A"/><circle cx="512.0" cy="802.0" r="78" fill="#1FA8FF"/><circle cx="260.9" cy="657.0" r="78" fill="#22E06B"/><circle cx="260.9" cy="367.0" r="78" fill="#FFD000"/></svg>
     <div>
       <h1>Galàxia</h1>
-      <p>Manual d'ús. L'agenda al centre i, al voltant, tot el que vols tenir a mà: recordatoris, memòria, aniversaris, llistes, la compra de cada botiga, els documents i les notes de veu. Els plans surten sols a l'agenda de l'iPhone, cada etiqueta amb el seu color.</p>
+      <p>Manual d'ús. L'agenda al centre i, al voltant, tot el que vols tenir a mà: recordatoris, biblioteca, aniversaris, llistes, la compra de cada botiga, els documents i les notes de veu. Els plans surten sols a l'agenda de l'iPhone, cada etiqueta amb el seu color.</p>
     </div>
   </header>
 
-  <div class="eines"><button type="button" class="imprimeix" onclick="window.print()">Imprimeix la guia</button></div>
+  <div class="eines"><a class="imprimeix" href="guia.pdf" target="_blank" rel="noopener">PDF de la guia (per imprimir o desar)</a></div>
   <nav class="index" id="index" aria-label="Apartats">
     <a href="#installar">Instal·lar</a>
     <a href="#galaxia">La galàxia</a>
