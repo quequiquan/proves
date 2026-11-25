@@ -868,6 +868,26 @@ section.final h2 { font-size: clamp(24px, 4vw, 30px); }
 </div>
 <a class="amunt" href="#index">Torna a l'índex</a>
 <script>(() => { const b = document.querySelector(".amunt"); const mira = () => b.classList.toggle("on", scrollY > 500); addEventListener("scroll", mira, { passive: true }); mira(); })();</script>
+<script>
+// A l'app instal·lada, obrir el PDF hi deixa encallat (no hi ha botó per tornar): es fa sortir el menú Compartir de l'iPhone
+(() => {
+  const instal = navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
+  const boto = document.querySelector('a.imprimeix');
+  if (!instal || !boto || !navigator.canShare) return;
+  let fitxer = null;
+  const baixa = () => fetch('guia.pdf').then((r) => r.blob()).then((b) => (fitxer = new File([b], 'Manual-Galaxia.pdf', { type: 'application/pdf' })));
+  let prep = baixa().catch(() => null);   // es baixa abans, perquè el menú pugui sortir de seguida en tocar
+  boto.addEventListener('click', async (e) => {
+    e.preventDefault();
+    const text = boto.textContent;
+    if (!fitxer) { boto.textContent = 'Preparant el PDF…'; await (prep = prep.then((f) => f || baixa()).catch(() => null)); boto.textContent = text; }
+    if (!fitxer) { alert('No s\'ha pogut baixar el PDF. Cal connexió a internet.'); return; }
+    if (!navigator.canShare({ files: [fitxer] })) { location.href = 'guia.pdf'; return; }
+    try { await navigator.share({ files: [fitxer] }); }
+    catch (x) { if (x.name !== 'AbortError') { boto.textContent = 'PDF a punt: toca per enviar, imprimir o desar'; } }
+  });
+})();
+</script>
 
 </body>
 </html>
