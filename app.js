@@ -1474,7 +1474,7 @@ const carpetaItem = (k, x) => (carpetesDe(k).some((c) => c.id === x.carpeta) ? x
 // null = a l'inici (es veuen les carpetes); '' = General (els que no tenen carpeta); si no, l'id de la carpeta
 const carpetaOberta = (k) => { const v = ui[UI_CARP[k]]; return v === 'g' ? '' : carpetesDe(k).some((c) => c.id === v) ? v : null; };
 // La carpeta «General» (el que no té carpeta) també es pot reanomenar, a cada micro-app per separat
-const nomGeneral = (k) => ((state.ajustos.nomsGeneral || {})[k] || '').trim() || 'General';
+const nomGeneral = (k) => ((state.ajustos.nomsGeneral || {})[k] || '').trim() || 'Classificar';
 const nomCarpeta = (k, id) => carpetesDe(k).find((c) => c.id === id)?.nom || nomGeneral(k);
 function graellaCarpetes(k, unitat) {
   const vis = colCarp(k).filter((x) => x.carpeta !== 'perclass');
@@ -1790,7 +1790,7 @@ $('#main').addEventListener('click', async (e) => {
     return;
   }
   const n = colCarp(k).filter((x) => x.carpeta === c.id).length;
-  if (el.dataset.segur !== '1') { el.dataset.segur = '1'; el.textContent = n ? `Segur? ${n === 1 ? 'Passarà' : `Els ${n} passaran`} a General` : "Segur? Toca'l un altre cop"; return; }
+  if (el.dataset.segur !== '1') { el.dataset.segur = '1'; el.textContent = n ? `Segur? ${n === 1 ? 'Passarà' : `Els ${n} passaran`} a ${nomGeneral(k)}` : "Segur? Toca'l un altre cop"; return; }
   colCarp(k).forEach((x) => { if (x.carpeta === c.id) x.carpeta = ''; });
   state.ajustos[camp] = carpetesDe(k).filter((x) => x.id !== c.id); save();
   ui[UI_CARP[k]] = null; render(); toast('Carpeta esborrada');
@@ -2116,7 +2116,7 @@ function vistaMemoria() {
       <label>Títol<textarea name="titol" data-triatot rows="1" class="mem-titol" placeholder="Nom del restaurant, del vi, de la pòlissa, una frase…" maxlength="500" required>${esc(f?.titol || '')}</textarea></label>
       <div class="mem-web"><button type="button" class="btn" data-memcerca-web="google">Cerca a Google</button><button type="button" class="btn" data-memcerca-web="maps">Cerca a Maps</button><button type="button" class="btn" data-memenganxa>Enganxa les dades</button></div>
       <p class="help mem-web-ajuda">Busca el nom a Google o a Maps, copia l'adreça, el telèfon o la web (a Maps: Compartir → Copiar) i torna aquí a prémer «Enganxa les dades».</p>
-      <label>Carpeta<select name="carpeta"><option value="">General</option>${carpetesMem().map((c) => `<option value="${esc(c.id)}"${c.id === cSel ? ' selected' : ''}>${esc(c.nom)}</option>`).join('')}</select></label>
+      <label>Carpeta<select name="carpeta"><option value="">${esc(nomGeneral('mem'))}</option>${carpetesMem().map((c) => `<option value="${esc(c.id)}"${c.id === cSel ? ' selected' : ''}>${esc(c.nom)}</option>`).join('')}</select></label>
       <label>Què has de recordar<textarea name="text" rows="6" maxlength="10000" placeholder="Adreça, telèfon, enllaç, el que calgui…">${esc(f?.text || '')}</textarea></label>
       <div class="rec-bloc"><span>Fotos</span>
         ${f && (f.imatges || []).length ? `<div class="rec-imgs">${f.imatges.map((im) => `<button type="button" class="rec-img" data-memimg="${esc(f.id)}|${esc(im.id)}"><img src="${esc(im.mini)}" alt=""></button>`).join('')}</div>` : ''}
@@ -2199,7 +2199,7 @@ $('#main').addEventListener('click', async (e) => {
   const es = t.closest('[data-memcarpesborra]');
   if (es) {
     const n = state.memoria.filter((x) => carpetaDe(x) === c.id).length;
-    if (es.dataset.segur !== '1') { es.dataset.segur = '1'; es.textContent = n ? `Segur? Les ${n} fitxes passaran a General` : "Segur? Toca'l un altre cop"; return; }
+    if (es.dataset.segur !== '1') { es.dataset.segur = '1'; es.textContent = n ? `Segur? Les ${n} fitxes passaran a ${nomGeneral('mem')}` : "Segur? Toca'l un altre cop"; return; }
     state.memoria.forEach((x) => { if (x.carpeta === c.id) x.carpeta = ''; });
     state.ajustos.carpetesMem = carpetesReals().filter((k) => k.id !== c.id); save();
     ui.memCarpeta = null; render(); toast('Carpeta esborrada');
