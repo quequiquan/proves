@@ -2922,7 +2922,8 @@ async function completaMinis() {
   const falten = [];
   (state.memoria || []).forEach((f) => (f.imatges || []).forEach((im) => { if (!im.mini && im.cami && !minisProvades.has(im.id)) falten.push([f, im]); }));
   // Les fotos que arriben com a document (drecera «Desa foto o PDF») tampoc porten miniatura
-  (state.documents || []).forEach((d) => { if (/^image\//.test(d.tipus || '') && !d.mini && d.cami && !minisProvades.has(d.id)) falten.push([null, d]); });
+  // i els PDF: la miniatura és la primera pàgina
+  (state.documents || []).forEach((d) => { if ((/^image\//.test(d.tipus || '') || catDoc(d) === 'pdf') && !d.mini && d.cami && !minisProvades.has(d.id)) falten.push([null, d]); });
   if (!falten.length) return;
   minisEnCurs = true;
   let fet = false;
@@ -2931,6 +2932,17 @@ async function completaMinis() {
     try {
       if (!Fitxers.esLocal(im.cami) && !navigator.onLine) continue;
       const url = await Fitxers.url(im.cami);
+      if (!f && catDoc(im) === 'pdf') {
+        await carregaPdfjs();
+        const pdf = await window.pdfjsLib.getDocument({ url }).promise, p = await pdf.getPage(1);
+        const vp0 = p.getViewport({ scale: 1 }), vp = p.getViewport({ scale: 240 / vp0.width });
+        const cv = document.createElement('canvas'); cv.width = Math.round(vp.width); cv.height = Math.round(vp.height);
+        const cx = cv.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height);
+        await p.render({ canvasContext: cx, viewport: vp }).promise;
+        const dd = state.documents.find((x) => x.id === im.id);
+        if (dd) { dd.mini = cv.toDataURL('image/jpeg', 0.6); fet = true; }
+        continue;
+      }
       const img = await new Promise((ok, ko) => { const i = new Image(); if (!Fitxers.esLocal(im.cami)) i.crossOrigin = 'anonymous'; i.onload = () => ok(i); i.onerror = ko; i.src = url; });
       const mini = redueix(img, 240).toDataURL('image/jpeg', 0.6);
       const ara = f && state.memoria.find((x) => x.id === f.id), ii = f ? ara && (ara.imatges || []).find((x) => x.id === im.id) : state.documents.find((x) => x.id === im.id);

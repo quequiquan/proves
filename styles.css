@@ -1379,3 +1379,5 @@ button.gx-pindola, .gx-pindola { color: color-mix(in srgb, var(--text) 82%, var(
   pointer-events: none; transform-origin: 10.5px calc(var(--r) + 9.75px); animation: gxGira 18s linear infinite; }
 @keyframes gxGira { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .gx-orbita::before { animation: none; } }
+/* Els noms de les micro-apps, nets, sobre el fons de la pantalla (un halo del color del fons els separa de la línia de l'òrbita) */
+.gx-nom { background: none; box-shadow: none; padding: 2px 4px; text-shadow: 0 0 3px var(--bg), 0 0 3px var(--bg), 0 0 6px var(--bg); }
