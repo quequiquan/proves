@@ -2907,6 +2907,8 @@ async function completaMinis() {
   if (minisEnCurs) return;
   const falten = [];
   (state.memoria || []).forEach((f) => (f.imatges || []).forEach((im) => { if (!im.mini && im.cami && !minisProvades.has(im.id)) falten.push([f, im]); }));
+  // Les fotos que arriben com a document (drecera «Desa foto o PDF») tampoc porten miniatura
+  (state.documents || []).forEach((d) => { if (/^image\//.test(d.tipus || '') && !d.mini && d.cami && !minisProvades.has(d.id)) falten.push([null, d]); });
   if (!falten.length) return;
   minisEnCurs = true;
   let fet = false;
@@ -2917,7 +2919,7 @@ async function completaMinis() {
       const url = await Fitxers.url(im.cami);
       const img = await new Promise((ok, ko) => { const i = new Image(); if (!Fitxers.esLocal(im.cami)) i.crossOrigin = 'anonymous'; i.onload = () => ok(i); i.onerror = ko; i.src = url; });
       const mini = redueix(img, 240).toDataURL('image/jpeg', 0.6);
-      const ara = state.memoria.find((x) => x.id === f.id), ii = ara && (ara.imatges || []).find((x) => x.id === im.id);
+      const ara = f && state.memoria.find((x) => x.id === f.id), ii = f ? ara && (ara.imatges || []).find((x) => x.id === im.id) : state.documents.find((x) => x.id === im.id);
       if (ii) { ii.mini = mini; fet = true; }
     } catch (err) { /* es tornarà a provar el proper cop que s'obri l'app */ }
   }
