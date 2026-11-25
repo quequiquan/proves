@@ -1667,7 +1667,12 @@ function desfesCreats(creats) {
 async function mouA(o) {
   const c = contingutDe(o), propia = APP_DE[o.k];
   const opcions = [];
-  if (o.k === 'item') {
+  // Un arxiu de la Safata d'entrada: a dalt sempre les carpetes de Biblioteca (on va a parar quasi tot)
+  const arxiuSafata = o.k === 'docs' && o.x.carpeta === 'perclass';
+  if (arxiuSafata) {
+    opcions.push(['§', `Carpetes de ${NOM_APP.mem}`], ...destinsDe('mem', o).map(([id, n, aj]) => ['bib|' + id, n, aj]));
+    opcions.push(['§', 'Altres micro-apps'], ['app|docs', NOM_APP.docs + ' ›', ''], ...appsPossibles(o, c).filter((a) => a !== 'mem').map((a) => ['app|' + a, NOM_APP[a] + (a === 'rec' ? '' : ' ›'), '']));
+  } else if (o.k === 'item') {
     const ll = destinsDe('llista', o);
     if (ll.length) opcions.push(['§', 'Altres llistes'], ...ll.map(([id, n, aj]) => ['aqui|' + id, n, aj]));
   } else if (o.k !== 'rec') {
@@ -1676,7 +1681,7 @@ async function mouA(o) {
     const llocs = totsLlocs.filter(([id]) => (id === 'g' ? '' : id) !== ara);
     if (llocs.length) opcions.push(['§', o.k === 'compra' ? 'Botigues' : `Carpetes de ${NOM_APP[propia]}`], ...llocs.map(([id, n, aj]) => ['aqui|' + id, n, aj]));
   }
-  const apps = appsPossibles(o, c);
+  const apps = arxiuSafata ? [] : appsPossibles(o, c);
   if (apps.length) opcions.push(['§', 'Altres micro-apps'], ...apps.map((a) => ['app|' + a, NOM_APP[a] + (a === 'rec' ? '' : ' ›'), '']));
   const tria = await triaOpcio(`Mou «${curtM(c.titol)}» a…`, opcions);
   if (!tria) return;
@@ -1696,10 +1701,19 @@ async function mouA(o) {
     toastDesfes(`Ara és a ${nom}`, () => { o.x.carpeta = abans; save(); render(); });
     return;
   }
-  // A una altra micro-app
-  const a = val;
-  let desti = '';
-  if (a !== 'rec') {
+  // Un arxiu de la safata a Documents: només cal triar la carpeta
+  if (tipus === 'app' && val === propia) {
+    const d2 = await triaOpcio(`A ${NOM_APP[propia]}: a quina carpeta?`, destinsDe(propia, o));
+    if (!d2) return;
+    const abans = o.x.carpeta || '', desti2 = d2 === 'g' ? '' : d2;
+    o.x.carpeta = desti2; save(); render();
+    toastDesfes(`Ara és a ${NOM_APP[propia]} › ${nomCarpeta(propia, desti2)}`, () => { o.x.carpeta = abans; save(); render(); });
+    return;
+  }
+  // A una altra micro-app (des de la safata, Biblioteca ja porta la carpeta triada)
+  const a = tipus === 'bib' ? 'mem' : val;
+  let desti = tipus === 'bib' ? val : '';
+  if (a !== 'rec' && tipus !== 'bib') {
     const ds = destinsDe(a, o);
     if (!ds.length) { toast(a === 'llista' ? "Encara no tens cap llista. Crea'n una a Llistes." : 'No hi ha on posar-ho.'); return; }
     desti = await triaOpcio(`A ${NOM_APP[a]}: ${a === 'llista' ? 'a quina llista?' : a === 'compres' ? 'a quina botiga?' : 'a quina carpeta?'}`, ds);
