@@ -848,7 +848,7 @@ body.mode-galaxia main { padding-bottom: calc(40px + var(--safe-b)); }
 .gx-sat small { color: var(--muted); font-size: 11px; font-weight: 700; margin-top: -3px; }
 .gx-sat.aviat .gx-bola { opacity: .4; box-shadow: none; }
 .gx-sat.aviat .gx-nom { color: var(--muted); }
-@media (max-width: 360px) { .gx-cercle { --r: 108px; } .gx-centre { width: 104px; height: 104px; } .gx-bola { width: 54px; height: 54px; } }
+@media (max-width: 360px) { .gx-cercle { --r: 96px; } .gx-centre { width: 86px; height: 86px; } .gx-bola { width: 50px; height: 50px; } }
 /* Capçalera de les micro-apps */
 .sat-cap { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; }
 .sat-cap h1 { margin: 0; font-size: 24px; }
@@ -1381,3 +1381,9 @@ button.gx-pindola, .gx-pindola { color: color-mix(in srgb, var(--text) 82%, var(
 @media (prefers-reduced-motion: reduce) { .gx-orbita::before { animation: none; } }
 /* Els noms de les micro-apps, nets, sobre el fons de la pantalla (un halo del color del fons els separa de la línia de l'òrbita) */
 .gx-nom { background: none; box-shadow: none; padding: 2px 4px; text-shadow: 0 0 3px var(--bg), 0 0 3px var(--bg), 0 0 6px var(--bg); }
+/* Pantalles estretes (iPhone amb «Zoom de pantalla» o lletra gran): noms una mica més petits perquè no toquin l'Agenda */
+@media (max-width: 360px) {
+  .gx-nom { font-size: 12px; }
+  .gx-centre .gx-centre-nom { font-size: 21px; }
+  .gx-sat[data-sat="veu"] .gx-nom { transform: translateX(-16px); }
+}
