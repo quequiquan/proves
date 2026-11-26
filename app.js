@@ -2247,7 +2247,7 @@ function vistaMemoria() {
     return capSatel('Biblioteca') + `<p class="help">Les teves coses per consultar, ordenades en carpetes. Les contrasenyes, millor a l'app Contrasenyes de l'iPhone.</p>
       ${state.memoria.length ? '<input id="cercaMemG" type="search" class="doc-cerca" placeholder="Cerca a totes les carpetes…" autocomplete="off">' : ''}
       <div id="memCarpetes">${botoOrdre('mem')}<div class="mem-carpetes">${totes.map((c) => murCarpeta(c.id === 'g' || c.virtual ? '' : 'mem', c.id, `<button class="mem-carpeta${c.id === 'g' ? ' general' : ''}" data-memcarpeta="${esc(c.id)}" style="--c:${esc(c.color)}"><b>${esc(c.nom)}</b><small>${compta(c) === 1 ? '1 fitxa' : compta(c) + ' fitxes'}</small></button>`)).join('')}
-        <button class="mem-carpeta nova" data-memnovacarpeta><b>+ Nova carpeta</b></button></div>${ajudaCarpetes('mem')}</div>
+        <button class="mem-carpeta nova" data-memnovacarpeta><b>+ Nova carpeta</b></button></div>${ajudaCarpetes('mem')}<div class="ll-peu"><label class="enllac">Afegeix una carpeta rebuda<input type="file" id="memImportaCarp" accept=".zip,application/zip" hidden></label></div></div>
       <div class="mem-llista" id="memResultats" hidden>${state.memoria.slice().sort(perOrdre).map((x) => filaFitxa(x, true)).join('')}</div>
       <p class="help buit" id="memRes" hidden>No hi ha cap fitxa que hi coincideixi.</p>`;
   }
@@ -3803,12 +3803,20 @@ async function docsPerEnviar(docs) {
   return out;
 }
 async function enviaCarpeta(k, id) {
-  if (!usuari()) { toast('Per enviar còpies cal haver entrat amb el teu correu.'); return; }
   if (k === 'mem') {
     const c = carpetesMem().find((x) => x.id === id), fitxes = state.memoria.filter((f) => carpetaDe(f) === id);
     if (!c || !fitxes.length) { toast('Aquesta carpeta és buida.'); return; }
+    const op = await triaOpcio(`Envia una còpia de «${c.nom}»`, [
+      ...(usuari() ? [['compte', 'A algú amb compte de Galàxia', "Li arriba a la seva app i l'ha d'acceptar"]] : []),
+      ['arxius', 'Com a arxius (WhatsApp, correu…)', 'Els PDF de les fitxes i un PDF amb tot el text. Ho pot obrir tothom, tingui Galàxia o no'],
+      ['paquet', 'Com a paquet Galàxia', "Un sol arxiu perquè l'afegeixi a la seva Galàxia (també si la fa servir com a convidat)"],
+    ]);
+    if (!op) return;
+    if (op === 'arxius') return enviaComArxius(c, fitxes);
+    if (op === 'paquet') return enviaComPaquet(c, fitxes);
     return enviaCopia('memoria', c.nom, async () => ({ carpeta: { nom: c.nom, color: c.color }, fitxes: await fitxesPerEnviar(fitxes) }), `«${c.nom}» (${nFitxes(fitxes.length)})`, ambFitxers(fitxes));
   }
+  if (!usuari()) { toast('Per enviar còpies cal haver entrat amb el teu correu.'); return; }
   const c = carpetesDe(k).find((x) => x.id === id);
   if (!c) return;
   if (k === 'llista') {
@@ -3829,6 +3837,152 @@ async function enviaCarpeta(k, id) {
     return enviaCopia('docs', c.nom, { carpeta: { nom: c.nom, color: c.color }, docs: await docsPerEnviar(docs) }, `la carpeta «${c.nom}» (${docs.length === 1 ? '1 document' : docs.length + ' documents'})`);
   }
 }
+/* ---------- Enviar una carpeta de Biblioteca a qualsevol persona (WhatsApp, correu, AirDrop…) ---------- */
+const nomArxiuNet = (t) => String(t || '').replace(/[\\/:*?"<>|\u0000-\u001f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80) || 'Arxiu';
+const extDe = (nom, tipus) => ((String(nom || '').match(/\.([a-z0-9]{1,8})$/i) || [])[1] || (tipus === 'application/pdf' ? 'pdf' : /^image\//.test(tipus || '') ? 'jpg' : 'bin')).toLowerCase();
+// El text de les fitxes en un PDF (títol, text i quins arxius té cada una)
+async function pdfDeFitxes(nomCarpeta, fitxes) {
+  if (!window.jspdf) await carregaScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  // Les lletres del PDF només tenen els caràcters de l'alfabet llatí (accents, ç, l·l): la resta es canvia o es treu
+  const net = (t) => String(t || '').normalize('NFC').replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[–—]/g, '-').replace(/…/g, '...').replace(/€/g, 'EUR').replace(/[^\t\n\x20-\x7E\xA0-\xFF]/g, '');
+  const M = 18, AMPLE = 174, BAIX = 282;
+  let y = M;
+  const escriu = (text, mida, estil, color, abans = 0, interl = 0.45) => {
+    doc.setFont('helvetica', estil); doc.setFontSize(mida); doc.setTextColor(...color);
+    y += abans;
+    for (const linia of doc.splitTextToSize(net(text), AMPLE)) {
+      const h = mida * interl;
+      if (y + h > BAIX) { doc.addPage(); y = M; }
+      y += h; doc.text(linia, M, y);
+    }
+  };
+  escriu(nomCarpeta, 20, 'bold', [20, 20, 20]);
+  escriu(`${fitxes.length === 1 ? '1 fitxa' : fitxes.length + ' fitxes'} · Galàxia · ${new Date().toLocaleDateString('ca-ES')}`, 10, 'normal', [120, 120, 120], 1);
+  y += 4;
+  for (const f of fitxes) {
+    if (y > BAIX - 20) { doc.addPage(); y = M; }
+    doc.setDrawColor(220, 220, 220); doc.line(M, y + 2, M + AMPLE, y + 2); y += 4;
+    escriu(f.titol, 13, 'bold', [20, 20, 20], 2);
+    if (f.text) escriu(f.text, 11, 'normal', [40, 40, 40], 1.5, 0.48);
+    const arx = [...(f.adjunts || []).map((a) => a.nomFitxer || a.titol), ...((f.imatges || []).length ? [(f.imatges.length === 1 ? '1 foto' : f.imatges.length + ' fotos')] : [])];
+    if (arx.length) escriu('Arxius: ' + arx.join(', '), 9.5, 'italic', [110, 110, 110], 1.5);
+    y += 3;
+  }
+  return doc.output('blob');
+}
+// Comparteix uns arxius: al mòbil, el menú de l'iPhone (cal un toc nou, per això es pregunta); a l'ordinador es descarreguen
+async function comparteixArxius(files, titol, pista) {
+  const mida = files.reduce((t, f) => t + f.size, 0);
+  const mobil = esIOS() || /Android/i.test(navigator.userAgent);
+  if (mobil && navigator.canShare && navigator.canShare({ files })) {
+    const ok = await triaOpcio(`${titol}: ${files.length === 1 ? '1 arxiu' : files.length + ' arxius'} (${midaMB(mida)})`, [['envia', 'Envia-ho ara', pista]]);
+    if (!ok) return false;
+    try { await navigator.share({ files }); return true; } catch (x) { if (x.name === 'AbortError') return false; }
+  }
+  if (files.length === 1) { await desaFitxerCopia(files[0], files[0].name, files[0].type); return true; }
+  await carregaZip();
+  const zip = new window.JSZip();
+  files.forEach((f) => zip.file(f.name, f, { binary: true }));
+  const blob = await zip.generateAsync({ type: 'blob', compression: 'STORE', mimeType: 'application/zip' });
+  await desaFitxerCopia(blob, nomArxiuNet(titol) + '.zip', 'application/zip');
+  return true;
+}
+// A: com a arxius normals (els PDF i les fotos de les fitxes, i un PDF amb tot el text)
+async function enviaComArxius(c, fitxes) {
+  const files = [], usats = new Set();
+  const unic = (nom) => { let n = nom, i = 2; const p = nom.replace(/(\.[a-z0-9]+)$/i, ''), e = (nom.match(/(\.[a-z0-9]+)$/i) || [''])[0]; while (usats.has(n.toLowerCase())) n = `${p} (${i++})${e}`; usats.add(n.toLowerCase()); return n; };
+  let fallen = 0;
+  try {
+    progres(['Preparant els arxius…', '']);
+    files.push(new File([await pdfDeFitxes(c.nom, fitxes)], unic(nomArxiuNet(c.nom) + ' - fitxes.pdf'), { type: 'application/pdf' }));
+    const total = fitxes.reduce((t, f) => t + (f.adjunts || []).length + (f.imatges || []).length, 0);
+    let i = 0;
+    for (const f of fitxes) {
+      for (const a of (f.adjunts || [])) {
+        progres(['Preparant els arxius…', `${++i} de ${total}`]);
+        try { const b = await Fitxers.blob(a.cami), ext = extDe(a.nomFitxer, a.tipus); files.push(new File([b], unic(nomArxiuNet((a.nomFitxer || a.titol || f.titol).replace(/\.[a-z0-9]{1,8}$/i, '')) + '.' + ext), { type: a.tipus || b.type })); }
+        catch (e) { fallen++; }
+      }
+      for (const [j, im] of (f.imatges || []).entries()) {
+        progres(['Preparant els arxius…', `${++i} de ${total}`]);
+        try { const b = await Fitxers.blob(im.cami); files.push(new File([b], unic(`${nomArxiuNet(f.titol)}${f.imatges.length > 1 ? ' ' + (j + 1) : ''}.jpg`), { type: 'image/jpeg' })); }
+        catch (e) { fallen++; }
+      }
+    }
+    progres(null);
+  } catch (e) { progres(null); toast(navigator.onLine ? "No s'han pogut preparar els arxius. Torna-ho a provar." : 'Cal connexió a internet per preparar els arxius.', 5000); return; }
+  if (fallen) toast(`${fallen === 1 ? "1 arxiu no s'ha pogut" : fallen + " arxius no s'han pogut"} afegir`, 4000);
+  await comparteixArxius(files, c.nom, 'Al menú: WhatsApp, Correu, AirDrop… i tria a qui');
+}
+// B: paquet Galàxia (.zip amb galaxia-carpeta.json i els arxius), per afegir-la a una altra Galàxia amb «Afegeix una carpeta rebuda»
+async function enviaComPaquet(c, fitxes) {
+  let fallen = 0, n = 0;
+  try {
+    progres(['Preparant el paquet…', '']);
+    await carregaZip();
+    const zip = new window.JSZip(), out = [];
+    for (const f of fitxes) {
+      const x = { titol: f.titol, text: f.text || '' }, imatges = [], adjunts = [];
+      for (const im of (f.imatges || [])) {
+        try { const b = await Fitxers.blob(im.cami), p = `fitxers/${++n}.jpg`; zip.file(p, b, { binary: true }); imatges.push({ fitxer: p, mini: im.mini || '' }); } catch (e) { fallen++; }
+      }
+      for (const a of (f.adjunts || [])) {
+        progres(['Preparant el paquet…', `Arxiu ${n + 1}`]);
+        try { const b = await Fitxers.blob(a.cami), p = `fitxers/${++n}.${extDe(a.nomFitxer, a.tipus)}`; zip.file(p, b, { binary: true }); adjunts.push({ fitxer: p, titol: a.titol || '', tipus: a.tipus || b.type, nomFitxer: a.nomFitxer || '', mida: b.size }); } catch (e) { fallen++; }
+      }
+      if (imatges.length) x.imatges = imatges;
+      if (adjunts.length) x.adjunts = adjunts;
+      out.push(x);
+    }
+    zip.file('galaxia-carpeta.json', JSON.stringify({ app: 'galaxia-carpeta', versio: 1, data: new Date().toISOString(), carpeta: { nom: c.nom, color: c.color }, fitxes: out }, null, 1));
+    zip.file('LLEGEIX-ME.txt', `Carpeta «${c.nom}» de Galàxia (${out.length === 1 ? '1 fitxa' : out.length + ' fitxes'}).\n\nPer afegir-la a la teva Galàxia: obre l'app → Biblioteca → «Afegeix una carpeta rebuda» i tria aquest arxiu tal com està.\n`);
+    const blob = await zip.generateAsync({ type: 'blob', compression: 'STORE', mimeType: 'application/zip' });
+    progres(null);
+    if (fallen) toast(`${fallen === 1 ? "1 arxiu no s'ha pogut" : fallen + " arxius no s'han pogut"} afegir`, 4000);
+    await comparteixArxius([new File([blob], `${nomArxiuNet(c.nom)} (Galàxia).zip`, { type: 'application/zip' })], `Paquet «${c.nom}»`, "Al menú: WhatsApp, Correu, AirDrop… Qui el rebi l'ha de desar a Arxius i obrir-lo des de Galàxia");
+  } catch (e) { progres(null); toast(navigator.onLine ? "No s'ha pogut preparar el paquet. Torna-ho a provar." : 'Cal connexió a internet per preparar el paquet.', 5000); }
+}
+// Rebre un paquet Galàxia: s'afegeix com una carpeta més (no esborra ni substitueix res)
+async function importaCarpeta(fitxer) {
+  let d, zip;
+  try {
+    progres(['Obrint la carpeta…', '']);
+    await carregaZip();
+    zip = await window.JSZip.loadAsync(fitxer);
+    const j = zip.file('galaxia-carpeta.json');
+    if (!j) throw new Error('format');
+    d = JSON.parse(await j.async('string'));
+    if (!d || d.app !== 'galaxia-carpeta' || !Array.isArray(d.fitxes) || !d.carpeta?.nom) throw new Error('format');
+  } catch (e) { progres(null); toast('Aquest arxiu no és una carpeta de Galàxia.'); return; }
+  progres(null);
+  if (!confirm(`Vols afegir la carpeta «${d.carpeta.nom}» (${d.fitxes.length === 1 ? '1 fitxa' : d.fitxes.length + ' fitxes'}) a la teva Biblioteca?`)) return;
+  const urls = [];
+  const url = async (p, tipus) => { const e = p && zip.file(p); if (!e) return ''; const u = URL.createObjectURL(new Blob([await e.async('blob')], { type: tipus || '' })); urls.push(u); return u; };
+  try {
+    progres(['Afegint la carpeta…', '']);
+    const fitxes = [];
+    for (const f of d.fitxes) {
+      if (!f || !f.titol) continue;
+      fitxes.push({ titol: f.titol, text: f.text || '',
+        imatges: (await Promise.all((f.imatges || []).map(async (im) => ({ fitxer: await url(im.fitxer, 'image/jpeg'), mini: im.mini || '' })))).filter((im) => im.fitxer),
+        adjunts: (await Promise.all((f.adjunts || []).map(async (a) => ({ ...a, fitxer: await url(a.fitxer, a.tipus) })))).filter((a) => a.fitxer) });
+    }
+    const r = await acceptaEnviament({ tipus: 'memoria', titol: d.carpeta.nom, contingut: { carpeta: { nom: d.carpeta.nom, color: d.carpeta.color }, fitxes } });
+    progres(null);
+    const k = carpetesReals().find((c) => normal(c.nom) === normal(d.carpeta.nom));
+    ui.view = 'memoria'; ui.memCarpeta = k ? k.id : null; render(); window.scrollTo(0, 0);
+    toast(`Carpeta «${r.on}» afegida: ${r.n === 1 ? '1 fitxa' : r.n + ' fitxes'}${r.rep ? ` (${r.rep} ja les tenies)` : ''}${r.errors ? ` · ${r.errors} arxius no s'han pogut copiar` : ''}`, 6000);
+  } catch (e) { progres(null); toast("No s'ha pogut afegir la carpeta. Torna-ho a provar."); }
+  finally { urls.forEach((u) => URL.revokeObjectURL(u)); }
+}
+$('#main').addEventListener('change', (e) => {
+  if (e.target.id !== 'memImportaCarp') return;
+  const f = e.target.files?.[0];
+  e.target.value = '';
+  if (f) importaCarpeta(f);
+});
 const recPerEnviar = (r) => ({ text: r.text, notes: r.notes || '', url: r.url || '', data: r.data || '', hora: r.hora || '', avis: r.avis || '', important: Boolean(r.important),
   lloc: r.lloc || '', llocUrl: r.llocUrl || '', subtasques: (r.subtasques || []).map((s) => ({ text: s.text, fet: Boolean(s.fet) })) });
 const personaPerEnviar = (pe) => Object.fromEntries([['nom', pe.nom], ...CAMPS_CONTACTE.map((k) => [k, pe[k] || ''])].filter(([, v]) => v));
@@ -6565,6 +6719,7 @@ async function importaCompleta(fitxer) {
     await carregaZip();
     zip = await window.JSZip.loadAsync(fitxer);
     const j = zip.file('galaxia.json');
+    if (!j && zip.file('galaxia-carpeta.json')) { progres(null); importaCarpeta(fitxer); return; }
     if (!j) throw new Error('format');
     d = JSON.parse(await j.async('string'));
     if (!d || !Array.isArray(d.plans)) throw new Error('format');
