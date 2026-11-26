@@ -1207,7 +1207,7 @@ function vistaAjustos() {
     <div class="section">
       <h2>Còpia de seguretat</h2>
       <p class="help">Desa en un fitxer <b>tot</b> el que tens a Galàxia: agenda, contactes, recordatoris, llistes, compres, Biblioteca, notes de veu, la llista de documents i els ajustos. En prémer <b>Desa una còpia</b> tries si la vols <b>completa</b> (també amb les fotos, els àudios i els fitxers de Documents) o <b>només les dades</b>, i on la deses: <b>al mòbil</b>, <b>al núvol (iCloud Drive)</b> o <b>a l'ordinador</b>. El més segur és una còpia completa a iCloud Drive: si perds el mòbil o el núvol de l'app falla, la tens.</p>
-      ${(() => { const u = llegeixPref('ultimaCopia', ''); if (!u) return '<p class="help"><b>Encara no has fet cap còpia en aquest aparell.</b></p>'; const dies = Math.round((Date.now() - new Date(u).getTime()) / 86400000); const c = llegeixPref('ultimaCompleta', ''), dc = diesDes(c), quan = (d) => (d <= 0 ? 'avui' : d === 1 ? 'ahir' : 'fa ' + d + ' dies'); return `<p class="help">Última còpia en aquest aparell: <b>${quan(dies)}</b>.${c ? ` Última còpia <b>completa</b>: <b>${quan(dc)}</b>.` : ''}${Math.min(dies, dc) > 30 ? ' Ja tocaria fer-ne una de nova.' : ''} Cada mes, la portada t'ho recorda.</p>`; })()}
+      ${(() => { const u = darreraCopia('ultimaCopia'); if (!u) return '<p class="help"><b>Encara no has fet cap còpia.</b></p>'; const dies = Math.round((Date.now() - new Date(u).getTime()) / 86400000); const c = darreraCopia('ultimaCompleta'), dc = diesDes(c), quan = (d) => (d <= 0 ? 'avui' : d === 1 ? 'ahir' : 'fa ' + d + ' dies'); return `<p class="help">Última còpia (des de qualsevol aparell): <b>${quan(dies)}</b>.${c ? ` Última còpia <b>completa</b>: <b>${quan(dc)}</b>.` : ''}${Math.min(dies, dc) > 30 ? ' Ja tocaria fer-ne una de nova.' : ''} Cada mes, la portada t'ho recorda.</p>`; })()}
       <div class="grp">
         <button class="btn" id="btnExporta">Desa una còpia</button>
         <label class="btn">Recupera una còpia<input type="file" id="fitxerImporta" accept=".json,application/json,.zip,application/zip" hidden></label>
@@ -1351,11 +1351,24 @@ function tipusFitxa(f) {
   return '✏️ Text';
 }
 // Un cop al mes, la portada recorda de fer una còpia completa a iCloud Drive («Més tard» l'amaga una setmana)
+// La data de la darrera còpia va amb el compte (state.ajustos.copies), perquè tots els aparells ho sàpiguen.
+// Les còpies fetes abans d'aquest canvi només eren a l'aparell (llegeixPref): la primera vegada es passen al compte.
+const darreraCopia = (k) => {
+  const local = llegeixPref(k, ''), compte = (state.ajustos.copies || {})[k] || '';
+  if (local > compte) { state.ajustos.copies = { ...(state.ajustos.copies || {}), [k]: local }; save(); return local; }
+  return compte;
+};
+const marcaCopia = (...claus) => {
+  const ara = new Date().toISOString();
+  claus.forEach((k) => desaPref(k, ara));
+  state.ajustos.copies = { ...(state.ajustos.copies || {}), ...Object.fromEntries(claus.map((k) => [k, ara])) };
+  save();
+};
 const diesDes = (iso) => (iso ? Math.floor((Date.now() - new Date(iso).getTime()) / 86400000) : Infinity);
 function avisCopia() {
   if (modeAgenda()) return '';
   const ambFitxers = fitxersDeCopia(state).length > 0;
-  const u = llegeixPref('ultimaCompleta', '') || llegeixPref('ultimaCopia', ''), dies = diesDes(u);
+  const u = darreraCopia('ultimaCompleta') || darreraCopia('ultimaCopia'), dies = diesDes(u);
   if (dies < 30 || diesDes(llegeixPref('copiaAjornada', '')) < 7) return '';
   return `<div class="gx-copia"><p><b>Toca fer una còpia de seguretat</b>${u ? `La darrera és de fa ${dies} dies.` : "Encara no n'has fet cap en aquest mòbil."} Fes-ne una${ambFitxers ? ' completa' : ''} i desa-la a iCloud Drive.</p>
     <div class="gx-copia-botons"><button class="btn primary" data-copiaavis="fes">Fes-la ara</button><button class="enllac" data-copiaavis="despres">Més tard</button></div></div>`;
@@ -6449,7 +6462,7 @@ async function triaOnCopia() {
 }
 const blobDades = () => new Blob([JSON.stringify({ app: 'que-qui-quan', versio: 1, data: new Date().toISOString(), ...state }, null, 2)], { type: 'application/json' });
 async function exporta() {
-  desaPref('ultimaCopia', new Date().toISOString());
+  marcaCopia('ultimaCopia');
   await desaFitxerCopia(blobDades(), `Galaxia-copia-${avui()}.json`, 'application/json');
 }
 // Al mòbil: menú Compartir (Desar a Arxius, iCloud Drive, Correu…); a l'ordinador: es descarrega
@@ -6487,18 +6500,18 @@ async function copiaCompleta(on) {
     progres(['Preparant la còpia completa…', `Empaquetant ${midaMB(total)}…`]);
     const blob = await zip.generateAsync({ type: 'blob', compression: 'STORE', mimeType: 'application/zip' });
     progres(null);
-    desaPref('ultimaCopia', new Date().toISOString());
+    marcaCopia('ultimaCopia');
     const nom = `Galaxia-copia-completa-${avui()}.zip`;
     const avis = fallen ? ` (${fallen === 1 ? '1 fitxer no s\'ha pogut' : fallen + " fitxers no s'han pogut"} afegir)` : '';
     if (esIOS()) {
       // L'iPhone només obre el menú Compartir si es toca un botó: s'espera que es toqui «Desa-la»
       const pista = on === 'mobil' ? 'Al menú: Desar a Arxius → En el meu iPhone → Desa' : on === 'icloud' ? 'Al menú: Desar a Arxius → iCloud Drive → Desa' : 'Al menú: Mail → posa el teu correu';
       const ok = await triaOpcio(`La còpia completa és a punt: ${midaMB(blob.size)}${avis}`, [['desa', 'Desa-la ara', pista]]);
-      if (ok) { await desaFitxerCopia(blob, nom, 'application/zip'); desaPref('ultimaCompleta', new Date().toISOString()); desaPref('copiaAjornada', ''); }
+      if (ok) { await desaFitxerCopia(blob, nom, 'application/zip'); marcaCopia('ultimaCompleta'); desaPref('copiaAjornada', ''); }
       return Boolean(ok);
     }
     await desaFitxerCopia(blob, nom, 'application/zip');
-    desaPref('ultimaCompleta', new Date().toISOString()); desaPref('copiaAjornada', '');
+    marcaCopia('ultimaCompleta'); desaPref('copiaAjornada', '');
     if (fallen) toast(`Còpia desada${avis}.`, 6000);
     return !fallen;
   } catch (e) {
