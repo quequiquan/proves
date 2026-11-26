@@ -3614,14 +3614,34 @@ async function triaDestinatari() {
   return em.trim().toLowerCase();
 }
 const nomDe = (email) => state.persones.find((p) => normal(p.email || '') === normal(email))?.nom || email;
-async function enviaCopia(tipus, titol, contingut, resum) {
+// contingut pot ser una funció: es prepara després de triar a qui (p. ex. els enllaços dels PDF de les fitxes)
+async function enviaCopia(tipus, titol, contingut, resum, ambArxius) {
   if (!usuari()) { toast('Per enviar còpies cal haver entrat amb el teu correu.'); return; }
   const per = await triaDestinatari();
   if (!per) return;
-  try { await sync().enviaCopia(per, tipus, titol, contingut); toast(`Enviat a ${nomDe(per)}: ${resum}. Quan l'accepti, ja la tindrà.`, 5000); }
+  try {
+    if (typeof contingut === 'function') { if (ambArxius) toast('Preparant els arxius…', 2500); contingut = await contingut(); }
+    await sync().enviaCopia(per, tipus, titol, contingut);
+    toast(`Enviat a ${nomDe(per)}: ${resum}. Quan l'accepti, ja la tindrà${ambArxius ? " (té 7 dies per acceptar-la amb les fotos i els arxius)" : ''}.`, ambArxius ? 7000 : 5000);
+  }
   catch (x) { toast(navigator.onLine ? "No s'ha pogut enviar. Torna-ho a provar." : 'Cal connexió a internet per enviar.', 5000); }
 }
-const fitxesPerEnviar = (llista) => llista.map((f) => ({ titol: f.titol, text: f.text || '' }));
+// Fitxes per enviar: el text i també les fotos i els arxius (PDF…), amb un enllaç que dura 7 dies perquè qui la rep els copiï al seu núvol
+async function fitxesPerEnviar(llista) {
+  const enllac = async (cami) => { if (!cami || Fitxers.esLocal(cami)) return ''; try { return await sync().urlDoc(cami, null, 7 * 86400); } catch (e) { return ''; } };
+  const out = [];
+  for (const f of llista) {
+    const x = { titol: f.titol, text: f.text || '' };
+    const imatges = [], adjunts = [];
+    for (const im of (f.imatges || [])) { const u = await enllac(im.cami); if (u) imatges.push({ fitxer: u, mini: im.mini || '' }); }
+    for (const a of (f.adjunts || [])) { const u = await enllac(a.cami); if (u) adjunts.push({ fitxer: u, titol: a.titol || '', tipus: a.tipus || '', nomFitxer: a.nomFitxer || '', mida: a.mida || 0 }); }
+    if (imatges.length) x.imatges = imatges;
+    if (adjunts.length) x.adjunts = adjunts;
+    out.push(x);
+  }
+  return out;
+}
+const ambFitxers = (llista) => llista.some((f) => (f.imatges || []).length || (f.adjunts || []).length);
 const nFitxes = (n) => (n === 1 ? '1 fitxa' : n + ' fitxes');
 $('#main').addEventListener('click', async (e) => {
   const t = e.target;
@@ -3630,7 +3650,7 @@ $('#main').addEventListener('click', async (e) => {
     if (!c || c.virtual) return;
     const fitxes = state.memoria.filter((f) => carpetaDe(f) === c.id);
     if (!fitxes.length) { toast('Aquesta carpeta és buida.'); return; }
-    await enviaCopia('memoria', c.nom, { carpeta: { nom: c.nom, color: c.color }, fitxes: fitxesPerEnviar(fitxes) }, `«${c.nom}» (${nFitxes(fitxes.length)})`);
+    await enviaCarpeta('mem', c.id);
     return;
   }
   const el = t.closest('[data-envllista]');
@@ -3669,7 +3689,7 @@ function avisosEnviaments() {
 async function acceptaEnviament(x) {
   const c = x.contingut || {}, ara = new Date().toISOString();
   if (['llistes', 'docs', 'recordatoris', 'contactes'].includes(x.tipus)) { const r = await acceptaMes(x, c); save(); return r; }
-  let n = 0, rep = 0, on = '';
+  let n = 0, rep = 0, on = '', errors = 0;
   if (x.tipus === 'memoria' || x.tipus === 'fitxes') {
     let carpeta = 'perclass';
     if (x.tipus === 'memoria') {
@@ -3677,11 +3697,31 @@ async function acceptaEnviament(x) {
       if (!k) { k = { id: nouId('cm'), nom: (c.carpeta?.nom || x.titol).slice(0, 40), color: c.carpeta?.color || COLORS_CARPETA[0] }; state.ajustos.carpetesMem = [...carpetesReals(), k]; }
       carpeta = k.id; on = k.nom;
     } else on = "la Safata d'entrada";
-    (c.fitxes || []).forEach((f) => {
-      if (!f || !f.titol) return;
-      if (fitxaRepetida(f.titol, f.text)) { rep++; return; }
-      state.memoria.push({ id: nouId('m'), titol: String(f.titol).slice(0, 500), text: String(f.text || '').slice(0, 3000), carpeta, creat: ara }); n++;
-    });
+    // Les fotos i els arxius es baixen de l'enllaç i es desen al núvol propi (així la còpia és del tot seva)
+    const copia = async (url, tipus, ext, pref) => {
+      const r = await fetch(url);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const blob = await r.blob(), t = tipus || blob.type || 'application/octet-stream';
+      return { cami: await Fitxers.puja(nouId(pref), blob, t, ext), mida: blob.size, tipus: t };
+    };
+    for (const f of (c.fitxes || [])) {
+      if (!f || !f.titol) continue;
+      if (fitxaRepetida(f.titol, f.text)) { rep++; continue; }
+      const nova = { id: nouId('m'), titol: String(f.titol).slice(0, 500), text: String(f.text || '').slice(0, 10000), carpeta, creat: ara };
+      const imatges = [], adjunts = [];
+      for (const im of (f.imatges || [])) {
+        try { const k = await copia(im.fitxer, 'image/jpeg', 'jpg', 'mi'); imatges.push({ id: k.cami.split('/').pop().replace(/\.[a-z0-9]+$/i, ''), cami: k.cami, mini: im.mini || '' }); }
+        catch (err) { errors++; }
+      }
+      for (const a of (f.adjunts || [])) {
+        const ext = ((a.nomFitxer || '').match(/\.([a-z0-9]{1,8})$/i) || [])[1] || (a.tipus === 'application/pdf' ? 'pdf' : 'bin');
+        try { const k = await copia(a.fitxer, a.tipus, ext, 'd'); adjunts.push({ id: k.cami.split('/').pop().replace(/\.[a-z0-9]+$/i, ''), titol: a.titol || a.nomFitxer || 'Arxiu', tipus: k.tipus, cami: k.cami, nomFitxer: a.nomFitxer || '', mida: k.mida }); }
+        catch (err) { errors++; }
+      }
+      if (imatges.length) nova.imatges = imatges;
+      if (adjunts.length) nova.adjunts = adjunts;
+      state.memoria.push(nova); n++;
+    }
   } else if (x.tipus === 'llista') {
     let l = state.llistes.find((y) => normal(y.nom) === normal(c.nom || x.titol));
     if (!l) {
@@ -3707,7 +3747,7 @@ async function acceptaEnviament(x) {
     });
   }
   save();
-  return { n, rep, on };
+  return { n, rep, on, errors };
 }
 $('#main').addEventListener('click', async (e) => {
   const ac = e.target.closest('[data-envaccepta]'), rb = e.target.closest('[data-envrebutja]');
@@ -3744,7 +3784,7 @@ async function enviaCarpeta(k, id) {
   if (k === 'mem') {
     const c = carpetesMem().find((x) => x.id === id), fitxes = state.memoria.filter((f) => carpetaDe(f) === id);
     if (!c || !fitxes.length) { toast('Aquesta carpeta és buida.'); return; }
-    return enviaCopia('memoria', c.nom, { carpeta: { nom: c.nom, color: c.color }, fitxes: fitxesPerEnviar(fitxes) }, `«${c.nom}» (${nFitxes(fitxes.length)})`);
+    return enviaCopia('memoria', c.nom, async () => ({ carpeta: { nom: c.nom, color: c.color }, fitxes: await fitxesPerEnviar(fitxes) }), `«${c.nom}» (${nFitxes(fitxes.length)})`, ambFitxers(fitxes));
   }
   const c = carpetesDe(k).find((x) => x.id === id);
   if (!c) return;
@@ -4318,7 +4358,7 @@ $('#main').addEventListener('click', async (e) => {
   if (acc === 'envia') {
     const ids = ui.memSel || [], fitxes = state.memoria.filter((f) => ids.includes(f.id));
     if (!fitxes.length) return;
-    await enviaCopia('fitxes', nFitxes(fitxes.length), { fitxes: fitxesPerEnviar(fitxes) }, nFitxes(fitxes.length));
+    await enviaCopia('fitxes', nFitxes(fitxes.length), async () => ({ fitxes: await fitxesPerEnviar(fitxes) }), nFitxes(fitxes.length), ambFitxers(fitxes));
     ui.memSel = null; render();
     return;
   }
