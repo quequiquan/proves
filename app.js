@@ -1873,11 +1873,7 @@ $('#main').addEventListener('click', async (e) => {
     if (nom && nom.trim()) { state.ajustos[camp] = carpetesDe(k).map((x) => (x.id === c.id ? { ...x, nom: nom.trim().slice(0, 40) } : x)); save(); render(); }
     return;
   }
-  if (el.dataset.cfcolor) {
-    const i = COLORS_CARPETA.indexOf(c.color);
-    state.ajustos[camp] = carpetesDe(k).map((x) => (x.id === c.id ? { ...x, color: COLORS_CARPETA[(i + 1) % COLORS_CARPETA.length] } : x)); save(); render();
-    return;
-  }
+  if (el.dataset.cfcolor) { menuCarpeta(k, c.id, true); return; }
   const n = colCarp(k).filter((x) => x.carpeta === c.id).length;
   if (el.dataset.segur !== '1') { el.dataset.segur = '1'; el.textContent = n ? `Segur? ${n === 1 ? 'Passarà' : `Els ${n} passaran`} a ${nomGeneral(k)}` : "Segur? Toca'l un altre cop"; return; }
   colCarp(k).forEach((x) => { if (x.carpeta === c.id) x.carpeta = ''; });
@@ -1926,7 +1922,7 @@ function esborraCarpeta(k, id) {
     moguts.forEach((x) => { x.carpeta = id; }); save(); render();
   });
 }
-function menuCarpeta(k, id) {
+function menuCarpeta(k, id, nomesColor = false) {
   const c = carpsDe(k).find((x) => x.id === id);
   if (!c) return;
   document.querySelector('.demana')?.remove();
@@ -1934,10 +1930,10 @@ function menuCarpeta(k, id) {
   d.className = 'demana';
   d.innerHTML = `<div class="demana-caixa cf-menu"><b>${esc(c.nom)}</b><span class="cf-menu-t">Color</span>
     <div class="cf-colors">${COLORS_CARPETA.map((col) => `<button type="button" class="cf-color${col === c.color ? ' on' : ''}" data-col="${col}" style="--c:${col}" aria-label="Color"></button>`).join('')}</div>
-    <button type="button" class="btn" data-op="envia">Envia una còpia…</button>
+    ${nomesColor ? '' : `<button type="button" class="btn" data-op="envia">Envia una còpia…</button>
     <button type="button" class="btn" data-op="nom">Canvia el nom</button>
     <button type="button" class="btn cf-perill" data-op="esborra">Esborra la carpeta</button>
-    <p class="help">Per canviar-la de lloc, mantén-la premuda i arrossega-la on vulguis.</p>
+    ${ordreAZ(k) ? '' : '<p class="help">Per canviar-la de lloc, mantén-la premuda i arrossega-la on vulguis.</p>'}`}
     <button type="button" class="enllac" data-op="">Fet</button></div>`;
   document.body.appendChild(d);
   d.addEventListener('click', async (e) => {
@@ -2303,11 +2299,7 @@ $('#main').addEventListener('click', async (e) => {
     if (nom && nom.trim()) { state.ajustos.carpetesMem = carpetesReals().map((k) => (k.id === c.id ? { ...k, nom: nom.trim().slice(0, 40) } : k)); save(); render(); }
     return;
   }
-  if (t.closest('[data-memcarpcolor]')) {
-    const i = COLORS_CARPETA.indexOf(c.color);
-    state.ajustos.carpetesMem = carpetesReals().map((k) => (k.id === c.id ? { ...k, color: COLORS_CARPETA[(i + 1) % COLORS_CARPETA.length] } : k)); save(); render();
-    return;
-  }
+  if (t.closest('[data-memcarpcolor]')) { menuCarpeta('mem', c.id, true); return; }
   const es = t.closest('[data-memcarpesborra]');
   if (es) {
     const n = state.memoria.filter((x) => carpetaDe(x) === c.id).length;
