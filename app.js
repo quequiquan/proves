@@ -1355,7 +1355,15 @@ function vistaSafata() {
   const recents = (a, b) => String(b.creat || '').localeCompare(String(a.creat || ''));
   const fitxes = fitxesSafata().sort(recents), docs = docsSafata().sort(recents);
   if (!fitxes.length && !docs.length) return capSatel("Safata d'entrada") + `<p class="help buit safata-buida">La safata és buida ✓<br>Tot el que desis des del mòbil arribarà aquí:<br><b>Desa enllaç o text</b> → enllaços, ubicacions i textos seleccionats.<br><b>Desa foto o PDF</b> → fotos, PDF i arxius.</p>`;
-  return capSatel("Safata d'entrada") + `<p class="help">El que has desat des del mòbil. Llisca cada cosa cap a l'esquerra i toca <b>Mou a…</b> per posar-la a la micro-app i la carpeta que toca.</p>
+  const n = fitxes.length + docs.length, sel = ui.safSel;
+  if (sel) ui.safSel = sel.filter((k) => (k.startsWith('mem:') ? fitxes : docs).some((x) => x.id === k.slice(k.indexOf(':') + 1)));
+  const barra = ui.safSel
+    ? `<div class="mem-sel-barra"><b id="safSelN">${safSelN(ui.safSel.length)}</b><button class="btn" data-safsel="totes">${ui.safSel.length >= n ? 'Desmarca-les totes' : 'Selecciona-les totes'}</button>
+      <button class="btn primary mem-sel-mou" data-safsel="mou"${ui.safSel.length ? '' : ' disabled'}>Mou a…${ui.safSel.length ? ' (' + ui.safSel.length + ')' : ''}</button><button class="enllac" data-safsel="surt">Fet</button></div>
+      <p class="help">Toca les coses que vulguis posar a la mateixa carpeta i després <b>Mou a…</b></p>`
+    : `<p class="help">El que has desat des del mòbil. Llisca cada cosa cap a l'esquerra i toca <b>Mou a…</b> per posar-la a la micro-app i la carpeta que toca.</p>
+      ${n > 1 ? '<div class="mem-sota-barra"><button class="enllac" data-safsel="entra">Selecciona per moure\'n diverses de cop</button></div>' : ''}`;
+  return capSatel("Safata d'entrada") + `${barra}
     ${fitxes.length ? `${docs.length ? '<h2 class="safata-cap">Enllaços, textos i fotos</h2>' : ''}<div class="mem-llista">${fitxes.map((x) => filaFitxa(x, false, tipusFitxa(x))).join('')}</div>` : ''}
     ${docs.length ? `${fitxes.length ? '<h2 class="safata-cap">Arxius</h2>' : ''}${graellaDocs(docs, '')}` : ''}`;
 }
@@ -2136,9 +2144,14 @@ function preparaCarpetes() {
 }
 // Text amb els enllaços (http…) que es poden tocar
 const ambEnllacos = (t) => esc(t).replace(/https?:\/\/[^\s<]+/g, (u) => `<a href="${u}" target="_blank" rel="noopener">${u.replace(/^https?:\/\/(www\.)?/, '').slice(0, 40)}${u.length > 48 ? '…' : ''}</a>`);
+// Classe de selecció: a la safata (fitxes i arxius junts, ui.safSel) o dins d'una carpeta de Biblioteca (ui.memSel)
+function classeSel(k, id) {
+  if (ui.view === 'safata') return ui.safSel ? ' triant' + (ui.safSel.includes(k + ':' + id) ? ' triada' : '') : '';
+  return ui.memSel ? ' triant' + (ui.memSel.includes(id) ? ' triada' : '') : '';
+}
 function filaFitxa(x, ambCarpeta, etiq) {
   const c = ambCarpeta ? carpetesMem().find((k) => k.id === carpetaDe(x)) : null;
-  return `<div class="mur-mem" data-memcerca="${esc(normal(x.titol + ' ' + x.text))}"><div class="mur-accions"><button type="button" class="acc-mou" data-memmouacc="${esc(x.id)}">Mou a…</button><button type="button" class="acc-esborra" data-memtreu="${esc(x.id)}">Esborra</button></div><div class="mem-fitxa${ui.memSel ? ' triant' + (ui.memSel.includes(x.id) ? ' triada' : '') : ''}" data-memobre="${esc(x.id)}"${c ? ` style="--c:${esc(c.color)}"` : ''}>
+  return `<div class="mur-mem" data-memcerca="${esc(normal(x.titol + ' ' + x.text))}"><div class="mur-accions"><button type="button" class="acc-mou" data-memmouacc="${esc(x.id)}">Mou a…</button><button type="button" class="acc-esborra" data-memtreu="${esc(x.id)}">Esborra</button></div><div class="mem-fitxa${classeSel('mem', x.id)}" data-memobre="${esc(x.id)}"${c ? ` style="--c:${esc(c.color)}"` : ''}>
         ${ambCarpeta ? `<small class="mem-de">${esc(c ? c.nom : nomGeneral('mem'))}</small>` : etiq ? `<small class="mem-de">${esc(etiq)}</small>` : ''}<b>${esc(x.titol)}</b>${x.text ? `<p>${ambEnllacos(x.text)}</p>` : ''}
         ${(x.imatges || []).length ? `<div class="mem-imgs">${x.imatges.map((im) => `<button class="rec-img" data-memimg="${esc(x.id)}|${esc(im.id)}"><img src="${esc(im.mini)}" alt=""></button>`).join('')}</div>` : ''}
         ${xipsAdj('mem', x.id, x.adjunts)}
@@ -2285,7 +2298,7 @@ const etiquetaDoc = (d) => (d.tipus === 'enllac' ? 'WEB' : extDoc(d).toUpperCase
 const domini = (u) => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return u; } };
 const graellaDocs = (docs, q) => `<div class="doc-graella">${docs.map((x) => {
   const cat = CATS_DOC.find((c) => c.id === catDoc(x)), cerca = normal([x.titol, x.nomFitxer, x.url, cat.nom, etiquetaDoc(x), nomCarpeta('docs', carpetaItem('docs', x))].filter(Boolean).join(' '));
-  return `<div class="mur-g doc-mur" data-doccerca="${esc(cerca)}"${q && !cerca.includes(q) ? ' hidden' : ''}><div class="mur-accions"><button type="button" class="acc-mou" data-docmou="${esc(x.id)}">Mou a…</button><button type="button" class="acc-esborra" data-doctreu="${esc(x.id)}">Esborra</button></div><button class="mur-cos doc-fitxa" data-docobre="${esc(x.id)}">
+  return `<div class="mur-g doc-mur" data-doccerca="${esc(cerca)}"${q && !cerca.includes(q) ? ' hidden' : ''}><div class="mur-accions"><button type="button" class="acc-mou" data-docmou="${esc(x.id)}">Mou a…</button><button type="button" class="acc-esborra" data-doctreu="${esc(x.id)}">Esborra</button></div><button class="mur-cos doc-fitxa${ui.view === 'safata' ? classeSel('docs', x.id) : ''}" data-docobre="${esc(x.id)}">
         <span class="doc-mini" style="--fc:${cat.c}">${x.mini ? `<img src="${esc(x.mini)}" alt="">` : `<b>${esc(etiquetaDoc(x))}</b>`}</span>
         <span class="doc-nom">${esc(x.titol)}</span><small>${esc(x.tipus === 'enllac' ? domini(x.url) : [dataDoc(x.creat), midaText(x.mida)].filter(Boolean).join(' · '))}</small></button></div>`;
 }).join('')}</div>`;
@@ -3469,13 +3482,13 @@ $('#main').addEventListener('click', (e) => {
     obreAgendaMes(); return;
   }
   if (e.target.closest('[data-safata]')) {
-    ui.view = 'safata'; ui.memEdita = ''; ui.memSel = null; ui.memCarpeta = 'perclass'; render(); window.scrollTo(0, 0); return;
+    ui.view = 'safata'; ui.memEdita = ''; ui.memSel = null; ui.safSel = null; ui.memCarpeta = 'perclass'; render(); window.scrollTo(0, 0); return;
   }
   const s = e.target.closest('[data-sat]');
   if (s) {
     const sat = SATEL.find((x) => x.id === s.dataset.sat);
     if (sat?.aviat) { toast(`${sat.nom}: aviat`); return; }
-    ui.view = s.dataset.sat; ui.llista = ''; ui.memEdita = ''; ui.recObert = ''; ui.recTorna = ''; ui.memCarpeta = null; ui.memSel = null; ui.compTot = false; ui.llCarpeta = null; ui.docCarpeta = null; ui.compCarpeta = null; ui.docCerca = ''; render(); window.scrollTo(0, 0); return;
+    ui.view = s.dataset.sat; ui.llista = ''; ui.memEdita = ''; ui.recObert = ''; ui.recTorna = ''; ui.memCarpeta = null; ui.memSel = null; ui.safSel = null; ui.compTot = false; ui.llCarpeta = null; ui.docCarpeta = null; ui.compCarpeta = null; ui.docCerca = ''; render(); window.scrollTo(0, 0); return;
   }
   const f = e.target.closest('[data-fitxa]');
   if (f) { ui.tornaA = ui.view === 'aniversaris' ? 'aniversaris' : ''; ui.view = 'gent'; ui.persona = f.dataset.fitxa; render(); window.scrollTo(0, 0); return; }
@@ -4302,6 +4315,70 @@ $('#main').addEventListener('click', async (e) => {
     setTimeout(() => treure.forEach((f) => { if (!state.memoria.some((x) => x.id === f.id)) (f.imatges || []).forEach((im) => Fitxers.esborra(im.cami).catch(() => {})); }), 7000);
   }
 });
+// Safata d'entrada: seleccionar diverses coses (fitxes i arxius) i moure-les totes a la mateixa carpeta
+const safSelN = (n) => (n === 1 ? '1 seleccionada' : `${n} seleccionades`);
+function actualitzaSafSel() {
+  const n = (ui.safSel || []).length, totes = document.querySelectorAll('.vista-safata [data-memobre], .vista-safata [data-docobre]').length;
+  const t = document.getElementById('safSelN'); if (t) t.textContent = safSelN(n);
+  const b = document.querySelector('[data-safsel="totes"]'); if (b) b.textContent = n && n >= totes ? 'Desmarca-les totes' : 'Selecciona-les totes';
+  const mo = document.querySelector('[data-safsel="mou"]'); if (mo) { mo.disabled = !n; mo.textContent = n ? `Mou a… (${n})` : 'Mou a…'; }
+}
+const clauSel = (el) => (el.dataset.memobre ? 'mem:' + el.dataset.memobre : 'docs:' + el.dataset.docobre);
+$('#main').addEventListener('click', (e) => {
+  if (!ui.safSel || ui.view !== 'safata') return;
+  if (e.target.closest('.mur-accions')) return;
+  const f = e.target.closest('[data-memobre], [data-docobre]');
+  if (!f) return;
+  e.preventDefault(); e.stopImmediatePropagation();
+  const k = clauSel(f), i = ui.safSel.indexOf(k);
+  if (i >= 0) ui.safSel.splice(i, 1); else ui.safSel.push(k);
+  f.classList.toggle('triada', i < 0);
+  actualitzaSafSel();
+}, true);
+$('#main').addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-safsel]');
+  if (!b) return;
+  const acc = b.dataset.safsel;
+  if (acc === 'entra') { ui.safSel = []; render(); return; }
+  if (acc === 'surt') { ui.safSel = null; render(); return; }
+  if (acc === 'totes') {
+    const tots = [...document.querySelectorAll('.vista-safata [data-memobre], .vista-safata [data-docobre]')];
+    const totes = ui.safSel.length >= tots.length;
+    ui.safSel = totes ? [] : tots.map(clauSel);
+    tots.forEach((el) => el.classList.toggle('triada', !totes));
+    actualitzaSafSel();
+    return;
+  }
+  if (acc === 'mou' && (ui.safSel || []).length) mouSafata(ui.safSel.slice());
+});
+async function mouSafata(claus) {
+  const items = claus.map((k) => {
+    const t = k.slice(0, k.indexOf(':')), id = k.slice(k.indexOf(':') + 1);
+    const x = (t === 'mem' ? state.memoria : state.documents).find((y) => y.id === id);
+    return x && { k: t, x };
+  }).filter(Boolean);
+  if (!items.length) return;
+  const opcions = [['§', `Carpetes de ${NOM_APP.mem}`], ...destinsDe('mem').map(([id, n, aj]) => ['mem|' + id, n, aj]),
+    ['§', 'Altres micro-apps'], ['docs|', NOM_APP.docs + ' ›', '']];
+  const tria = await triaOpcio(items.length === 1 ? 'Mou a…' : `Mou ${items.length} coses a…`, opcions);
+  if (!tria) return;
+  const a = tria.slice(0, tria.indexOf('|'));
+  let desti = tria.slice(tria.indexOf('|') + 1);
+  if (a === 'docs') { desti = await triaOpcio(`A ${NOM_APP.docs}: a quina carpeta?`, destinsDe('docs')); if (!desti) return; }
+  const carpeta = desti === 'g' ? '' : desti, desfer = [];
+  let fallen = 0;
+  for (const o of items) {
+    // Ja és de la micro-app de destí: només canvia de carpeta
+    if (o.k === a) { const abans = o.x.carpeta; o.x.carpeta = carpeta; desfer.push(() => { o.x.carpeta = abans; }); continue; }
+    try { const creats = await posaA(a, desti, contingutDe(o), o); const recupera = treuOrigen(o); desfer.push(() => { desfesCreats(creats); recupera(); }); }
+    catch (err) { fallen++; }
+  }
+  ui.safSel = null; save(); render();
+  const fets = items.length - fallen, nom = (destinsDe(a).find(([id]) => id === desti) || [, ''])[1];
+  if (!fets) { toast("No s'ha pogut moure. Torna-ho a provar."); return; }
+  toastDesfes(`${fets === 1 ? '1 cosa moguda' : fets + ' coses mogudes'} a ${NOM_APP[a]} › ${nom}${fallen ? ` (${fallen} no s'han pogut moure)` : ''}`,
+    () => { desfer.reverse().forEach((f) => f()); save(); render(); });
+}
 // Moure fitxes a una altra carpeta sense sortir de la carpeta on ets (per classificar de pressa)
 async function mouFitxes(ids) {
   const ara = carpetaActual();
