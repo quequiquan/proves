@@ -1646,7 +1646,10 @@ function destinsDe(a, o) {
     // Des de la safata, per ordre alfabètic (per trobar-la de pressa); a Biblioteca, l'ordre que hi has posat
     return ui.view === 'safata' ? l.sort((x, y) => x[1].localeCompare(y[1], 'ca', { sensitivity: 'base' })) : l;
   }
-  if (a === 'docs') return [['g', nomGeneral('docs'), ''], ...carpetesDe('docs').map((c) => [c.id, c.nom, ''])];
+  if (a === 'docs') {
+    const l = [['g', nomGeneral('docs'), ''], ...carpetesDe('docs').map((c) => [c.id, c.nom, ''])];
+    return ui.view === 'safata' ? l.sort((x, y) => x[1].localeCompare(y[1], 'ca', { sensitivity: 'base' })) : l;
+  }
   if (a === 'compres') return [...carpetesDe('compres').map((c) => [c.id, c.nom, '']), ['g', nomGeneral('compres'), 'Sense botiga']];
   if (a === 'llista') return state.llistes.filter((l) => !(o.k === 'item' && l.id === o.lid)).slice().sort(perOrdreLl).map((l) => [l.id, l.nom, nomCarpeta('llista', carpetaItem('llista', l))]);
   return [];
