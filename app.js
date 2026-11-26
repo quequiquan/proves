@@ -1207,7 +1207,7 @@ function vistaAjustos() {
     <div class="section">
       <h2>Còpia de seguretat</h2>
       <p class="help">Desa en un fitxer <b>tot</b> el que tens a Galàxia: agenda, contactes, recordatoris, llistes, compres, Biblioteca, notes de veu, la llista de documents i els ajustos. En prémer <b>Desa una còpia</b> tries si la vols <b>completa</b> (també amb les fotos, els àudios i els fitxers de Documents) o <b>només les dades</b>, i on la deses: <b>al mòbil</b>, <b>al núvol (iCloud Drive)</b> o <b>a l'ordinador</b>. El més segur és una còpia completa a iCloud Drive: si perds el mòbil o el núvol de l'app falla, la tens.</p>
-      ${(() => { const u = llegeixPref('ultimaCopia', ''); if (!u) return '<p class="help"><b>Encara no has fet cap còpia en aquest aparell.</b></p>'; const dies = Math.round((Date.now() - new Date(u).getTime()) / 86400000); return `<p class="help">Última còpia en aquest aparell: <b>${dies <= 0 ? 'avui' : dies === 1 ? 'ahir' : 'fa ' + dies + ' dies'}</b>.${dies > 30 ? ' Ja tocaria fer-ne una de nova.' : ''}</p>`; })()}
+      ${(() => { const u = llegeixPref('ultimaCopia', ''); if (!u) return '<p class="help"><b>Encara no has fet cap còpia en aquest aparell.</b></p>'; const dies = Math.round((Date.now() - new Date(u).getTime()) / 86400000); const c = llegeixPref('ultimaCompleta', ''), dc = diesDes(c), quan = (d) => (d <= 0 ? 'avui' : d === 1 ? 'ahir' : 'fa ' + d + ' dies'); return `<p class="help">Última còpia en aquest aparell: <b>${quan(dies)}</b>.${c ? ` Última còpia <b>completa</b>: <b>${quan(dc)}</b>.` : ''}${Math.min(dies, dc) > 30 ? ' Ja tocaria fer-ne una de nova.' : ''} Cada mes, la portada t'ho recorda.</p>`; })()}
       <div class="grp">
         <button class="btn" id="btnExporta">Desa una còpia</button>
         <label class="btn">Recupera una còpia<input type="file" id="fitxerImporta" accept=".json,application/json,.zip,application/zip" hidden></label>
@@ -1331,6 +1331,7 @@ function vistaInici() {
             <span class="gx-bola"><span class="gx-ini" aria-hidden="true">${esc(lletraSatel(s, i))}</span>${comptes[s.id] ? `<i>${comptes[s.id]}</i>` : ''}</span><span class="gx-nom">${esc(s.nom)}</span>${s.aviat ? '<small>aviat</small>' : ''}</button>`).join('')}
       </div>
       ${modeAgenda() ? '' : (() => { const n = nSafata(); return `<button class="gx-safata${n ? '' : ' buida'}" data-safata aria-label="Safata d'entrada: ${n ? n + (n === 1 ? ' cosa per classificar' : ' coses per classificar') : 'buida'}"><span>Safata d'entrada</span>${n ? `<b>${n}</b>` : '<small>Buida ✓</small>'}</button>`; })()}
+      ${avisCopia()}
       ${typeof pindolaDelDia === 'function' ? `<button class="gx-pindola" data-pindoles>${esc(pindola())}</button>` : ''}
       ${avisosEnviaments()}
       ${inv ? `<button class="enllac portada-veure" data-anar="propers">${inv === 1 ? 'Tens 1 invitació per respondre' : `Tens ${inv} invitacions per respondre`}</button>` : ''}
@@ -1349,6 +1350,23 @@ function tipusFitxa(f) {
   if (/https?:\/\//.test(t)) return '🔗 Enllaç';
   return '✏️ Text';
 }
+// Un cop al mes, la portada recorda de fer una còpia completa a iCloud Drive («Més tard» l'amaga una setmana)
+const diesDes = (iso) => (iso ? Math.floor((Date.now() - new Date(iso).getTime()) / 86400000) : Infinity);
+function avisCopia() {
+  if (modeAgenda()) return '';
+  const ambFitxers = fitxersDeCopia(state).length > 0;
+  const u = llegeixPref('ultimaCompleta', '') || llegeixPref('ultimaCopia', ''), dies = diesDes(u);
+  if (dies < 30 || diesDes(llegeixPref('copiaAjornada', '')) < 7) return '';
+  return `<div class="gx-copia"><p><b>Toca fer una còpia de seguretat</b>${u ? `La darrera és de fa ${dies} dies.` : "Encara no n'has fet cap en aquest mòbil."} Fes-ne una${ambFitxers ? ' completa' : ''} i desa-la a iCloud Drive.</p>
+    <div class="gx-copia-botons"><button class="btn primary" data-copiaavis="fes">Fes-la ara</button><button class="enllac" data-copiaavis="despres">Més tard</button></div></div>`;
+}
+$('#main').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-copiaavis]');
+  if (!b) return;
+  if (b.dataset.copiaavis === 'fes') { triaOnCopia(); return; }
+  desaPref('copiaAjornada', new Date().toISOString()); render();
+  toast("D'acord, t'ho tornaré a recordar d'aquí a una setmana", 4000);
+});
 function vistaSafata() {
   if (ui.memEdita) return vistaMemoria();   // una fitxa oberta per editar: torna a la safata
   ui.memCarpeta = 'perclass';
@@ -6411,10 +6429,11 @@ async function copiaCompleta(on) {
       // L'iPhone només obre el menú Compartir si es toca un botó: s'espera que es toqui «Desa-la»
       const pista = on === 'mobil' ? 'Al menú: Desar a Arxius → En el meu iPhone → Desa' : on === 'icloud' ? 'Al menú: Desar a Arxius → iCloud Drive → Desa' : 'Al menú: Mail → posa el teu correu';
       const ok = await triaOpcio(`La còpia completa és a punt: ${midaMB(blob.size)}${avis}`, [['desa', 'Desa-la ara', pista]]);
-      if (ok) await desaFitxerCopia(blob, nom, 'application/zip');
+      if (ok) { await desaFitxerCopia(blob, nom, 'application/zip'); desaPref('ultimaCompleta', new Date().toISOString()); desaPref('copiaAjornada', ''); }
       return Boolean(ok);
     }
     await desaFitxerCopia(blob, nom, 'application/zip');
+    desaPref('ultimaCompleta', new Date().toISOString()); desaPref('copiaAjornada', '');
     if (fallen) toast(`Còpia desada${avis}.`, 6000);
     return !fallen;
   } catch (e) {
