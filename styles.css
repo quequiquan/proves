@@ -1402,3 +1402,7 @@ button.gx-pindola, .gx-pindola { color: color-mix(in srgb, var(--text) 82%, var(
 .cf-ordre { display: flex; align-items: center; justify-content: flex-end; gap: 6px; margin: 0 0 8px; font-size: 13px; color: var(--muted, #868E96); }
 .cf-ordre button { border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 999px; padding: 4px 12px; font: inherit; font-size: 13px; cursor: pointer; }
 .cf-ordre button.on { background: var(--text); color: var(--surface); border-color: var(--text); font-weight: 600; }
+/* «Classificar» (el que encara no té carpeta): en negatiu, perquè no es confongui amb les carpetes */
+.mem-carpeta.general { background: var(--text); color: var(--surface); border-color: var(--text); border-left-color: var(--text); }
+.mem-carpeta.general small { color: color-mix(in srgb, var(--surface) 75%, transparent); }
+.mem-carpeta.general b::before { content: '📥 '; }

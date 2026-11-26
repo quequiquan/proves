@@ -1534,12 +1534,12 @@ const nomCarpeta = (k, id) => carpetesDe(k).find((c) => c.id === id)?.nom || nom
 function graellaCarpetes(k, unitat) {
   const vis = colCarp(k).filter((x) => x.carpeta !== 'perclass');
   const compta = (id) => vis.filter((x) => carpetaItem(k, x) === id && !(k === 'compres' && x.fet)).length;
-  const totes = [...ordenaCarps(carpetesDe(k)), ...(vis.some((x) => carpetaItem(k, x) === '') ? [{ id: 'g', nom: nomGeneral(k), color: '#868E96' }] : [])];
-  return `${botoOrdre()}<div class="mem-carpetes" id="carp-${k}">${totes.map((c) => {
+  const totes = [...(vis.some((x) => carpetaItem(k, x) === '') ? [{ id: 'g', nom: nomGeneral(k), color: '#868E96' }] : []), ...ordenaCarps(k, carpetesDe(k))];
+  return `${botoOrdre(k)}<div class="mem-carpetes" id="carp-${k}">${totes.map((c) => {
     const n = compta(c.id === 'g' ? '' : c.id);
-    return murCarpeta(c.id === 'g' ? '' : k, c.id, `<button class="mem-carpeta" data-cfobre="${k}|${esc(c.id)}" style="--c:${esc(c.color)}"><b>${esc(c.nom)}</b><small>${n === 1 ? '1 ' + unitat[0] : n + ' ' + unitat[1]}</small></button>`);
+    return murCarpeta(c.id === 'g' ? '' : k, c.id, `<button class="mem-carpeta${c.id === 'g' ? ' general' : ''}" data-cfobre="${k}|${esc(c.id)}" style="--c:${esc(c.color)}"><b>${esc(c.nom)}</b><small>${n === 1 ? '1 ' + unitat[0] : n + ' ' + unitat[1]}</small></button>`);
   }).join('')}
-    <button class="mem-carpeta nova" data-cfnova="${k}"><b>+ Nova carpeta</b></button></div>${ajudaCarpetes()}`;
+    <button class="mem-carpeta nova" data-cfnova="${k}"><b>+ Nova carpeta</b></button></div>${ajudaCarpetes(k)}`;
 }
 function peuCarpeta(k) {
   const c = carpetesDe(k).find((x) => x.id === carpetaOberta(k));
@@ -1644,11 +1644,11 @@ function destinsDe(a, o) {
   if (a === 'mem') {
     const l = [['g', nomGeneral('mem'), ''], ...carpetesMem().filter((c) => !c.virtual).map((c) => [c.id, c.nom, ''])];
     // Des de la safata, per ordre alfabètic (per trobar-la de pressa); a Biblioteca, l'ordre que hi has posat
-    return ui.view === 'safata' || ordreAZ() ? l.sort((x, y) => x[1].localeCompare(y[1], 'ca', { sensitivity: 'base' })) : l;
+    return ui.view === 'safata' || ordreAZ(a) ? l.sort((x, y) => x[1].localeCompare(y[1], 'ca', { sensitivity: 'base' })) : l;
   }
   if (a === 'docs') {
     const l = [['g', nomGeneral('docs'), ''], ...carpetesDe('docs').map((c) => [c.id, c.nom, ''])];
-    return ui.view === 'safata' || ordreAZ() ? l.sort((x, y) => x[1].localeCompare(y[1], 'ca', { sensitivity: 'base' })) : l;
+    return ui.view === 'safata' || ordreAZ(a) ? l.sort((x, y) => x[1].localeCompare(y[1], 'ca', { sensitivity: 'base' })) : l;
   }
   if (a === 'compres') return [...carpetesDe('compres').map((c) => [c.id, c.nom, '']), ['g', nomGeneral('compres'), 'Sense botiga']];
   if (a === 'llista') return state.llistes.filter((l) => !(o.k === 'item' && l.id === o.lid)).slice().sort(perOrdreLl).map((l) => [l.id, l.nom, nomCarpeta('llista', carpetaItem('llista', l))]);
@@ -1879,22 +1879,24 @@ const itemsCarp = (k) => (k === 'mem' ? state.memoria : colCarp(k));
 // Embolcall d'una carpeta de veritat (no General ni Per classificar): es pot lliscar i arrossegar
 const murCarpeta = (k, id, html) => (!k ? html
   : `<div class="mur-g cf-mur" data-cfreal="${k}|${esc(id)}"><div class="mur-accions"><button type="button" class="acc-esborra" data-cftreu="${k}|${esc(id)}">Esborra</button></div>${html.replace('class="mem-carpeta', 'class="mur-cos mem-carpeta')}</div>`);
-// Ordre de les carpetes: «A–Z» (alfabètic) o «El meu ordre» (el que es fa arrossegant). Va amb el compte: cadascú el seu.
-const ordreAZ = () => state.ajustos.carpetesAZ === true;
+// Ordre de les carpetes: «A–Z» (alfabètic) o «El meu ordre» (el que es fa arrossegant). Cada micro-app el seu, i va amb el compte: cadascú el seu.
+// (A la v192 era un sol valor per a totes: si era A–Z, es queda només a Biblioteca, que és on es va triar)
+const ordreAZ = (k) => { const v = state.ajustos.carpetesAZ; return v === true ? k === 'mem' : Boolean(v && typeof v === 'object' && v[k]); };
 const perNomCa = (a, b) => a.nom.localeCompare(b.nom, 'ca', { sensitivity: 'base' });
-const ordenaCarps = (llista) => (ordreAZ() ? [...llista].sort(perNomCa) : llista);
-const botoOrdre = () => `<div class="cf-ordre" role="group" aria-label="Ordre de les carpetes"><span>Ordre:</span><button type="button" data-cfordre="az"${ordreAZ() ? ' class="on" aria-pressed="true"' : ''}>A–Z</button><button type="button" data-cfordre="meu"${ordreAZ() ? '' : ' class="on" aria-pressed="true"'}>El meu ordre</button></div>`;
+const ordenaCarps = (k, llista) => (ordreAZ(k) ? [...llista].sort(perNomCa) : llista);
+const botoOrdre = (k) => `<div class="cf-ordre" role="group" aria-label="Ordre de les carpetes"><span>Ordre:</span><button type="button" data-cfordre="${k}|az"${ordreAZ(k) ? ' class="on" aria-pressed="true"' : ''}>A–Z</button><button type="button" data-cfordre="${k}|meu"${ordreAZ(k) ? '' : ' class="on" aria-pressed="true"'}>El meu ordre</button></div>`;
 $('#main').addEventListener('click', (e) => {
   const b = e.target.closest('[data-cfordre]');
   if (!b) return;
-  const az = b.dataset.cfordre === 'az';
-  if (az === ordreAZ()) return;
-  state.ajustos.carpetesAZ = az; save(); render();
+  const [k, quin] = b.dataset.cfordre.split('|'), az = quin === 'az';
+  if (az === ordreAZ(k)) return;
+  const v = state.ajustos.carpetesAZ, ara = v === true ? { mem: true } : v && typeof v === 'object' ? v : {};
+  state.ajustos.carpetesAZ = { ...ara, [k]: az }; save(); render();
   toast(az ? 'Carpetes per ordre alfabètic' : 'Carpetes en el teu ordre (mantén-ne una premuda i arrossega-la per canviar-lo)', az ? 2500 : 4500);
 });
 const AJUDA_CARPETES_MEU = '<p class="help cf-ajuda">Mantén premuda una carpeta per moure-la de lloc o canviar-ne el color. Llisca-la cap a l\'esquerra per esborrar-la.</p>';
 const AJUDA_CARPETES_AZ = '<p class="help cf-ajuda">Mantén premuda una carpeta per canviar-ne el nom o el color. Llisca-la cap a l\'esquerra per esborrar-la.</p>';
-const ajudaCarpetes = () => (ordreAZ() ? AJUDA_CARPETES_AZ : AJUDA_CARPETES_MEU);
+const ajudaCarpetes = (k) => (ordreAZ(k) ? AJUDA_CARPETES_AZ : AJUDA_CARPETES_MEU);
 // Botiga on es mostra Compres ara mateix ('' = General)
 const botigaAra = () => carpetaOberta('compres') || '';
 function esborraCarpeta(k, id) {
@@ -1963,7 +1965,7 @@ function mouGest(x, y, ev) {
   const dx = x - gG.x, dy = y - gG.y;
   if (gG.drag) {
     if (ev && ev.cancelable) ev.preventDefault();   // mentre s'arrossega, la pantalla no es desplaça
-    if (gG.m.dataset.cfreal && ordreAZ()) return;   // per ordre alfabètic no es mouen de lloc
+    if (gG.m.dataset.cfreal && ordreAZ(gG.m.dataset.cfreal.split('|')[0])) return;   // per ordre alfabètic no es mouen de lloc
     if (Math.hypot(dx, dy) > 6) gG.moguda = true;
     gG.m.style.pointerEvents = 'none';
     const sota = document.elementFromPoint(x, y)?.closest('[data-cfreal],[data-ordre]');
@@ -2231,12 +2233,12 @@ function vistaMemoria() {
   if (cid === null) ui.memSel = null;
   if (cid === null) {
     // Inici de Biblioteca: les carpetes i un cercador que busca a totes
-    const totes = [{ id: 'g', nom: nomGeneral('mem'), color: '#868E96' }, ...ordenaCarps(carpetesMem().filter((c) => !c.virtual))];
+    const totes = [{ id: 'g', nom: nomGeneral('mem'), color: '#868E96' }, ...ordenaCarps('mem', carpetesMem().filter((c) => !c.virtual))];
     const compta = (c) => state.memoria.filter((x) => carpetaDe(x) === (c.id === 'g' ? '' : c.id)).length;
     return capSatel('Biblioteca') + `<p class="help">Les teves coses per consultar, ordenades en carpetes. Les contrasenyes, millor a l'app Contrasenyes de l'iPhone.</p>
       ${state.memoria.length ? '<input id="cercaMemG" type="search" class="doc-cerca" placeholder="Cerca a totes les carpetes…" autocomplete="off">' : ''}
-      <div id="memCarpetes">${botoOrdre()}<div class="mem-carpetes">${totes.map((c) => murCarpeta(c.id === 'g' || c.virtual ? '' : 'mem', c.id, `<button class="mem-carpeta" data-memcarpeta="${esc(c.id)}" style="--c:${esc(c.color)}"><b>${esc(c.nom)}</b><small>${compta(c) === 1 ? '1 fitxa' : compta(c) + ' fitxes'}</small></button>`)).join('')}
-        <button class="mem-carpeta nova" data-memnovacarpeta><b>+ Nova carpeta</b></button></div>${ajudaCarpetes()}</div>
+      <div id="memCarpetes">${botoOrdre('mem')}<div class="mem-carpetes">${totes.map((c) => murCarpeta(c.id === 'g' || c.virtual ? '' : 'mem', c.id, `<button class="mem-carpeta${c.id === 'g' ? ' general' : ''}" data-memcarpeta="${esc(c.id)}" style="--c:${esc(c.color)}"><b>${esc(c.nom)}</b><small>${compta(c) === 1 ? '1 fitxa' : compta(c) + ' fitxes'}</small></button>`)).join('')}
+        <button class="mem-carpeta nova" data-memnovacarpeta><b>+ Nova carpeta</b></button></div>${ajudaCarpetes('mem')}</div>
       <div class="mem-llista" id="memResultats" hidden>${state.memoria.slice().sort(perOrdre).map((x) => filaFitxa(x, true)).join('')}</div>
       <p class="help buit" id="memRes" hidden>No hi ha cap fitxa que hi coincideixi.</p>`;
   }
