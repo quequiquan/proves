@@ -122,6 +122,27 @@ h2, h3 { font-family: var(--font-title); font-weight: 600; margin: 0; }
 }
 .ajuda-btn:hover, .ajuda-btn:focus-visible { background: rgba(255, 255, 255, .2); outline: none; }
 body.mode-entrada .ajuda-btn { display: grid; }
+/* Lupa de la capçalera: obre la cerca general */
+.cerca-btn {
+  flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; padding: 0; cursor: pointer;
+  background: rgba(255, 255, 255, .1); color: inherit; border: 0; margin-right: -6px;
+}
+.cerca-btn svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
+.cerca-btn:hover, .cerca-btn:focus-visible { background: rgba(255, 255, 255, .2); outline: none; }
+body.mode-entrada .cerca-btn { display: none; }
+.cerca-tot { width: 100%; box-sizing: border-box; font-size: 16px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); color: var(--text); margin-bottom: 8px; }
+.cerca-res h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted, inherit); margin: 14px 0 6px; }
+.cerca-res h3 small { font-weight: 400; opacity: .7; }
+.cres-fila { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 9px 10px; margin: 0 0 4px; border-radius: 12px;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text); font: inherit; cursor: pointer; }
+.cres-fila:hover { border-color: var(--text); }
+.cres-fila > span:last-child { display: flex; flex-direction: column; min-width: 0; }
+.cres-fila b { font-weight: 700; overflow-wrap: anywhere; }
+.cres-fila small { font-size: 12.5px; opacity: .7; }
+.cres-fila .punt { flex: none; width: 12px; height: 12px; border-radius: 50%; background: var(--c, #868E96); }
+.cres-rec { flex: none; width: 12px; text-align: center; font-size: 13px; opacity: .7; }
+.cres-fila.fet { cursor: default; opacity: .6; }
+.cres-fila.fet b { text-decoration: line-through; }
 
 /* ---------- Botons ---------- */
 .btn {
@@ -304,7 +325,7 @@ fieldset > input { margin-top: 8px; }
   .logo { width: 30px; height: 30px; }
   .sync-pill { margin-left: 8px; }
   .sync-pill span { display: none; }
-  .ajuda-btn { margin-left: auto; }
+  .cerca-btn { margin-left: auto; }
   .tabs {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; margin: 0;
     background: var(--head-bg); justify-content: space-around; padding: 6px 4px calc(6px + var(--safe-b));

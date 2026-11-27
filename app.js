@@ -5940,6 +5940,58 @@ function tancaDlg() {
   if (abans) { dlgForm.abansDeTancar = null; if (abans() === false) { if (!dlgForm.abansDeTancar) dlgForm.abansDeTancar = abans; return; } }
   if (dlg.open) dlg.close();
 }
+/* ---------- Cerca general (la lupa de dalt): plans, esdeveniments i recordatoris ---------- */
+function obreCerca() {
+  obreDlg(`<header class="dlg-cap"><h2>Cerca</h2><button type="button" class="x" data-tanca aria-label="Tanca">×</button></header>
+    <div class="dlg-cos"><input type="search" id="cercaTot" class="cerca-tot" placeholder="Què busques? (sopar, Marta, metge…)" autocomplete="off" enterkeyhint="search" value="${esc(ui.cercaTot || '')}">
+    <div id="cercaRes" class="cerca-res"></div></div>`, 'dlg-cerca');
+  const inp = $('#cercaTot');
+  pintaCerca();
+  inp.focus(); inp.select();
+  dlgForm.oninput = (e) => { if (e.target.id === 'cercaTot') { ui.cercaTot = e.target.value; pintaCerca(); } };
+  dlgForm.onsubmit = (e) => e.preventDefault();
+  dlgForm.onclick = (e) => {
+    const b = e.target.closest('[data-cres]');
+    if (!b) return;
+    const [k, id] = b.dataset.cres.split('|');
+    if (k === 'rec') {
+      tancaDlg();
+      ui.recTorna = ui.view; ui.view = 'recordatoris'; ui.recObert = id; render(); window.scrollTo(0, 0);
+      return;
+    }
+    const p = trobaPla(id);
+    if (p) (p.extern ? obreExtern(p) : obreDetall(p));
+  };
+}
+function pintaCerca() {
+  const caixa = $('#cercaRes');
+  if (!caixa) return;
+  const paraules = normal((ui.cercaTot || '').trim()).split(/\s+/).filter(Boolean);
+  if (!paraules.length) { caixa.innerHTML = '<p class="help">Escriu una paraula del títol, el lloc, les notes o el nom d\'una persona. Busca a tots els plans (també els passats) i als recordatoris.</p>'; return; }
+  const hi = (txt) => { const t = normal(txt); return paraules.every((w) => t.includes(w)); };
+  const ara = avui();
+  const plans = [...state.plans, ...rebuts(), ...plansExterns()]
+    .filter((p) => p && p.data && hi([titolPla(p), tipDe(p).nom, p.lloc, p.notes, p.rebut?.de_nom, ...noms(p)].join(' ')));
+  const propers = plans.filter((p) => (p.dataFi || p.data) >= ara || p.repeteix).sort((a, b) => a.data.localeCompare(b.data));
+  const passats = plans.filter((p) => !propers.includes(p)).sort((a, b) => b.data.localeCompare(a.data));
+  const recs = (state.recordatoris || []).filter((r) => hi([r.text, r.notes, r.lloc, ...(r.subtasques || []).map((x) => x.text)].join(' ')))
+    .sort((a, b) => Boolean(a.fet) - Boolean(b.fet));
+  const fila = (p) => {
+    const info = [dataCurta(p.data), p.repeteix ? 'Es repeteix' : '', horaText(p), p.lloc || ''].filter((x) => x && x !== 'Sense hora').join(' · ');
+    return `<button type="button" class="cres-fila" data-cres="pla|${esc(p.id)}" style="--c:${esc(tipDe(p).color)}"><span class="punt" aria-hidden="true"></span><span><b>${esc(titolPla(p))}</b><small>${esc(info)}</small></span></button>`;
+  };
+  const filaRec = (r) => {
+    const info = [r.fet ? 'Fet' : 'Pendent', r.data ? dataCurta(r.data) + (r.hora ? ' ' + r.hora : '') : ''].filter(Boolean).join(' · ');
+    return r.fet
+      ? `<div class="cres-fila fet"><span class="cres-rec" aria-hidden="true">✓</span><span><b>${esc(r.text)}</b><small>${esc(info)}</small></span></div>`
+      : `<button type="button" class="cres-fila" data-cres="rec|${esc(r.id)}"><span class="cres-rec" aria-hidden="true">○</span><span><b>${esc(r.text)}</b><small>${esc(info)}</small></span></button>`;
+  };
+  const MAX = 40;
+  const bloc = (titol, llista, f) => (llista.length ? `<h3>${titol} <small>${llista.length}</small></h3>${llista.slice(0, MAX).map(f).join('')}${llista.length > MAX ? `<p class="help">I ${llista.length - MAX} més: afina una mica la cerca.</p>` : ''}` : '');
+  const html = bloc('Plans i esdeveniments propers', propers, fila) + bloc('Recordatoris', recs, filaRec) + bloc('Plans passats', passats, fila);
+  caixa.innerHTML = html || `<p class="buit">No tens res entrat amb «${esc((ui.cercaTot || '').trim())}».</p>`;
+}
+$('#cercaBtn').addEventListener('click', obreCerca);
 // La tecla Esc també passa per tancaDlg
 dlg.addEventListener('cancel', (e) => { if (dlgForm.abansDeTancar) { e.preventDefault(); tancaDlg(); } });
 dlg.addEventListener('click', (e) => {
