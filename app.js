@@ -516,9 +516,27 @@ function obreCalendariDates(inp) {
   const min = inp.min || '';
   const base = parseYmd(inp.value || (min && min > avui() ? min : '') || min || avui());
   let mes = new Date(base.getFullYear(), base.getMonth(), 1);
+  let vista = 'dies';   // 'dies' (el mes), 'mesos' (els 12 mesos d'un any) o 'anys' (12 anys)
   const fons = document.createElement('div');
   fons.className = 'dp-fons';
   const pinta = () => {
+    // Tocant el títol: primer els mesos de l'any, i tocant l'any, els anys (per anar lluny sense passar mes per mes)
+    if (vista !== 'dies') {
+      const y = mes.getFullYear(), y0 = y - ((y % 12) + 12) % 12;
+      const caselles = vista === 'mesos'
+        ? MESOS.map((m, i) => `<button type="button" class="dp-mes${i === mes.getMonth() ? ' triat' : ''}${y === new Date().getFullYear() && i === new Date().getMonth() ? ' avui' : ''}" data-dptriames="${i}">${esc(cap(m.slice(0, 3)))}</button>`).join('')
+        : Array.from({ length: 12 }, (_, i) => y0 + i).map((a) => `<button type="button" class="dp-mes${a === y ? ' triat' : ''}${a === new Date().getFullYear() ? ' avui' : ''}" data-dptriaany="${a}">${a}</button>`).join('');
+      fons.innerHTML = `<div class="dp" role="dialog" aria-label="${vista === 'mesos' ? 'Tria el mes' : "Tria l'any"}">
+        <div class="dp-cap">
+          <button type="button" class="dp-nav" data-dpsalt="-1" aria-label="${vista === 'mesos' ? 'Any anterior' : 'Anys anteriors'}">‹</button>
+          ${vista === 'mesos' ? `<button type="button" class="dp-titol" data-dpvista="anys">${y} ▾</button>` : `<b>${y0} – ${y0 + 11}</b>`}
+          <button type="button" class="dp-nav" data-dpsalt="1" aria-label="${vista === 'mesos' ? 'Any següent' : 'Anys següents'}">›</button>
+        </div>
+        <div class="dp-mesos">${caselles}</div>
+        <div class="dp-peu"><span></span><button type="button" class="enllac" data-dpavui>Avui</button></div>
+      </div>`;
+      return;
+    }
     const ini = mondayOf(mes);
     let dies = '';
     for (let i = 0; i < 42; i++) {
@@ -530,7 +548,7 @@ function obreCalendariDates(inp) {
     fons.innerHTML = `<div class="dp" role="dialog" aria-label="Tria el dia">
         <div class="dp-cap">
           <button type="button" class="dp-nav" data-dpmes="-1" aria-label="Mes anterior">‹</button>
-          <b>${esc(cap(MESOS[mes.getMonth()]))} ${mes.getFullYear()}</b>
+          <button type="button" class="dp-titol" data-dpvista="mesos" aria-label="Tria el mes i l'any">${esc(cap(MESOS[mes.getMonth()]))} ${mes.getFullYear()} ▾</button>
           <button type="button" class="dp-nav" data-dpmes="1" aria-label="Mes següent">›</button>
         </div>
         <div class="dp-graella">${DIES.map((x) => `<span>${x}</span>`).join('')}${dies}</div>
@@ -552,6 +570,10 @@ function obreCalendariDates(inp) {
     const b = e.target.closest('button');
     if (!b) { if (e.target === fons) fons.remove(); return; }
     if (b.dataset.dpmes) { mes = new Date(mes.getFullYear(), mes.getMonth() + Number(b.dataset.dpmes), 1); pinta(); return; }
+    if (b.dataset.dpvista) { vista = b.dataset.dpvista; pinta(); return; }
+    if (b.dataset.dpsalt) { mes = new Date(mes.getFullYear() + Number(b.dataset.dpsalt) * (vista === 'anys' ? 12 : 1), mes.getMonth(), 1); pinta(); return; }
+    if (b.dataset.dptriaany) { mes = new Date(Number(b.dataset.dptriaany), mes.getMonth(), 1); vista = 'mesos'; pinta(); return; }
+    if (b.dataset.dptriames) { mes = new Date(mes.getFullYear(), Number(b.dataset.dptriames), 1); vista = 'dies'; pinta(); return; }
     if (b.dataset.dpdia) { tria(b.dataset.dpdia); return; }
     if (b.dataset.dpbuida !== undefined) { tria(''); return; }
     if (b.dataset.dpavui !== undefined) { const a = avui(); if (min && a < min) { mes = new Date(parseYmd(min).getFullYear(), parseYmd(min).getMonth(), 1); pinta(); } else tria(a); }
@@ -562,7 +584,7 @@ function obreCalendariDates(inp) {
   fons.addEventListener('touchend', (e) => {
     if (x0 === null) return;
     const dx = e.changedTouches[0].clientX - x0; x0 = null;
-    if (Math.abs(dx) > 50) { mes = new Date(mes.getFullYear(), mes.getMonth() + (dx < 0 ? 1 : -1), 1); pinta(); }
+    if (Math.abs(dx) > 50) { const pas = dx < 0 ? 1 : -1; mes = vista === 'dies' ? new Date(mes.getFullYear(), mes.getMonth() + pas, 1) : new Date(mes.getFullYear() + pas * (vista === 'anys' ? 12 : 1), mes.getMonth(), 1); pinta(); }
   }, { passive: true });
   pinta();
   dlg.appendChild(fons);

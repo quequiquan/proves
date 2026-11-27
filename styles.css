@@ -757,6 +757,13 @@ body.mode-inici .top .nou { display: none; }   /* a la portada ja hi ha el botó
 .dp-cap b { font-family: var(--font-title); font-weight: 600; font-size: 20px; }
 .dp-nav { width: 42px; height: 42px; border-radius: 50%; border: 0; background: transparent; color: var(--text); font-size: 28px; line-height: 1; cursor: pointer; }
 .dp-nav:active { background: var(--border); }
+.dp-titol { border: 0; background: transparent; color: var(--text); cursor: pointer; padding: 6px 10px; border-radius: 10px;
+  font-family: var(--font-title); font-weight: 600; font-size: 20px; }
+.dp-titol:active, .dp-titol:hover { background: var(--border); }
+.dp-mesos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 6px 2px; }
+.dp-mes { min-height: 50px; border-radius: 12px; border: 1px solid var(--border); background: transparent; color: var(--text); font: inherit; font-size: 16px; font-weight: 700; cursor: pointer; }
+.dp-mes.avui { box-shadow: inset 0 0 0 1.5px var(--qui); }
+.dp-mes.triat { background: var(--qui); color: #1A1A1A; border-color: transparent; box-shadow: none; }
 .dp-graella { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; }
 .dp-graella > span { font-size: 11px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; color: var(--muted); padding: 6px 0; }
 .dp-dia {
